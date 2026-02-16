@@ -12,5 +12,6 @@ export async function GET(request: NextRequest) {
   }
 
   // After auth, redirect to the origin (home page)
-  return NextResponse.redirect(requestUrl.origin);
+  const origin = requestUrl.origin.replace("0.0.0.0", "localhost");
+  return NextResponse.redirect(origin);
 }
