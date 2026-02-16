@@ -1,0 +1,97 @@
+// ============================================
+// Breakpoints
+// ============================================
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+
+@mixin sm {
+  @media (min-width: $breakpoint-sm) {
+    @content;
+  }
+}
+
+@mixin md {
+  @media (min-width: $breakpoint-md) {
+    @content;
+  }
+}
+
+@mixin lg {
+  @media (min-width: $breakpoint-lg) {
+    @content;
+  }
+}
+
+// ============================================
+// Layout: 1/2/3 column responsive grid
+// ============================================
+@mixin responsive-grid($gap: 1rem) {
+  display: grid;
+  gap: $gap;
+  grid-template-columns: 1fr; // mobile: 1 column
+
+  @include sm {
+    grid-template-columns: repeat(2, 1fr); // tablet: 2 columns
+  }
+
+  @include lg {
+    grid-template-columns: repeat(3, 1fr); // desktop: 3 columns
+  }
+}
+
+// ============================================
+// Typography
+// ============================================
+@mixin heading($size: 1.5rem, $weight: 700) {
+  font-size: $size;
+  font-weight: $weight;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+@mixin body-text($size: 1rem) {
+  font-size: $size;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+// ============================================
+// Interactive
+// ============================================
+@mixin focus-ring($color: var(--color-primary)) {
+  &:focus-visible {
+    outline: 2px solid $color;
+    outline-offset: 2px;
+  }
+}
+
+@mixin hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// ============================================
+// Utilities
+// ============================================
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

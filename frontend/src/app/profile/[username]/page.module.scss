@@ -1,0 +1,200 @@
+@use "../../../styles/mixins" as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  flex: 1;
+  padding: var(--space-lg) 0 var(--space-2xl);
+
+  @include sm {
+    padding-top: var(--space-xl);
+  }
+}
+
+.container {
+  width: 100%;
+  max-width: 960px;
+  margin-inline: auto;
+  padding-inline: var(--space-md);
+
+  @include md {
+    padding-inline: var(--space-lg);
+  }
+}
+
+// User card wrapper — slight offset for editorial asymmetry
+.cardWrap {
+  margin-bottom: var(--space-xl);
+}
+
+// Tabs
+.tabs {
+  display: flex;
+  gap: var(--space-xs);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-xl);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  // Hide scrollbar on mobile
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+  margin-bottom: -1px;
+
+  &:hover {
+    color: var(--color-text-secondary);
+  }
+
+  @include focus-ring;
+
+  @include sm {
+    padding: var(--space-sm) var(--space-lg);
+    font-size: 0.9375rem;
+  }
+}
+
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.tabIcon {
+  flex-shrink: 0;
+  opacity: 0.7;
+
+  .tabActive & {
+    opacity: 1;
+  }
+}
+
+.tabCount {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  padding: 1px var(--space-sm);
+  border-radius: var(--radius-full);
+  line-height: 1.5;
+  min-width: 20px;
+  text-align: center;
+
+  .tabActive & {
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  }
+}
+
+// Grid of plots
+.tabContent {
+  min-height: 200px;
+}
+
+.grid {
+  @include responsive-grid(var(--space-md));
+
+  // On profile, 2 columns max is enough
+  @include lg {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+// Empty state
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  margin-bottom: var(--space-md);
+}
+
+.emptyText {
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+}
+
+// Error state
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
+  text-align: center;
+  min-height: 50vh;
+}
+
+.errorIcon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+}
+
+.errorText {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.errorLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-full);
+  transition:
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+
+  &:hover {
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+  }
+
+  @include focus-ring;
+}

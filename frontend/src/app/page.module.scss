@@ -1,0 +1,91 @@
+@use "../styles/mixins" as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.main {
+  flex: 1;
+}
+
+.hero {
+  position: relative;
+  padding: var(--space-2xl) var(--space-md);
+  text-align: center;
+  overflow: hidden;
+
+  // Subtle diagonal grain texture
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 4px,
+        var(--color-surface) 4px,
+        var(--color-surface) 5px
+      );
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  @include md {
+    padding: var(--space-2xl) var(--space-lg);
+  }
+
+  @include lg {
+    padding: 5rem var(--space-lg);
+  }
+}
+
+.heroTitle {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+}
+
+.heroAccent {
+  color: var(--color-primary);
+  display: inline-block;
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: var(--color-primary);
+    opacity: 0.15;
+    border-radius: 3px;
+  }
+}
+
+.heroSub {
+  position: relative;
+  font-size: clamp(0.9375rem, 1.5vw, 1.125rem);
+  color: var(--color-text-secondary);
+  max-width: 480px;
+  margin-inline: auto;
+  line-height: 1.7;
+}
+
+.content {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: var(--space-xl) var(--space-md) var(--space-2xl);
+
+  @include md {
+    padding-inline: var(--space-lg);
+  }
+}
