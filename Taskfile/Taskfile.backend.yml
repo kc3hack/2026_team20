@@ -1,0 +1,17 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Python依存関係のインストール (uv)
+    cmds:
+      - uv sync
+
+  dev:
+    desc: FastAPIサーバーの起動
+    cmds:
+      - uv run fastapi dev main.py
+
+  gen-types:
+    desc: (内部用) サーバーを起動してOpenAPIを公開
+    cmds:
+      - uv run fastapi dev main.py --port 8000

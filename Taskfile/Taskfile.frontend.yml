@@ -1,0 +1,67 @@
+version: "3"
+
+tasks:
+  default:
+    desc: 利用可能なタスク一覧
+    cmd: task --list
+
+  # ----------------------------------------------------------------
+  # 開発・ビルド
+  # ----------------------------------------------------------------
+  dev:
+    desc: 開発サーバー起動
+    deps: [install]
+    cmd: pnpm dev
+
+  build:
+    desc: 本番ビルド
+    cmd: pnpm build
+
+  start:
+    desc: 本番サーバー起動
+    cmd: pnpm start
+
+  install:
+    desc: 依存関係のインストール
+    cmd: pnpm install
+
+  # ----------------------------------------------------------------
+  # ライブラリ管理 (前のプロジェクトの便利機能を継承)
+  # ----------------------------------------------------------------
+  add:
+    desc: ライブラリを追加
+    cmd: pnpm add {{.CLI_ARGS}}
+
+  remove:
+    desc: ライブラリを削除
+    cmd: pnpm remove {{.CLI_ARGS}}
+
+  ui:
+    desc: shadcn/uiコンポーネントを追加
+    cmd: pnpm dlx shadcn@latest add {{.CLI_ARGS}}
+
+  # ----------------------------------------------------------------
+  # コード品質 (Biome)
+  # ----------------------------------------------------------------
+  check:
+    desc: Biomeによるチェック (Lint + Format確認)
+    cmd: pnpm biome check .
+
+  check-w:
+    desc: Biomeによるチェック & 自動修正 (おすすめ)
+    cmd: pnpm biome check --write .
+
+  format:
+    desc: フォーマットのみ実行
+    cmd: pnpm biome format .
+
+  lint:
+    desc: Lintのみ実行
+    cmd: pnpm biome lint .
+
+  # ----------------------------------------------------------------
+  # 型生成 (FastAPI連携)
+  # ----------------------------------------------------------------
+  gen-types:
+    desc: バックエンド(FastAPI)からTypeScriptの型を自動生成
+    cmd: pnpm openapi-zod-client http://127.0.0.1:8000/openapi.json -o src/types/api.ts
