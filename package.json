@@ -1,0 +1,5 @@
+{
+	"devDependencies": {
+		"openapi-zod-client": "^1.18.3"
+	}
+}
