@@ -1,5 +1,14 @@
 version: "3"
 
+vars:
+  INFISICAL_RUN:
+    sh: |
+      if [ -z "$INFISICAL_PROJECT_ID" ] && command -v infisical >/dev/null 2>&1; then
+        echo "infisical run --env=dev -- "
+      else
+        echo ""
+      fi
+
 tasks:
   default:
     desc: 利用可能なタスク一覧
@@ -11,22 +20,22 @@ tasks:
   dev:
     desc: 開発サーバー起動
     deps: [install]
-    cmd: pnpm dev
+    cmd: "{{.INFISICAL_RUN}} pnpm dev"
 
   build:
     desc: 本番ビルド
-    cmd: pnpm build
+    cmd: "{{.INFISICAL_RUN}} pnpm build"
 
   start:
     desc: 本番サーバー起動
-    cmd: pnpm start
+    cmd: "{{.INFISICAL_RUN}} pnpm start"
 
   install:
     desc: 依存関係のインストール
     cmd: pnpm install
 
   # ----------------------------------------------------------------
-  # ライブラリ管理 (前のプロジェクトの便利機能を継承)
+  # ライブラリ管理
   # ----------------------------------------------------------------
   add:
     desc: ライブラリを追加
@@ -48,7 +57,7 @@ tasks:
     cmd: pnpm biome check .
 
   check-w:
-    desc: Biomeによるチェック & 自動修正 (おすすめ)
+    desc: Biomeによるチェック & 自動修正
     cmd: pnpm biome check --write .
 
   format:
@@ -64,4 +73,4 @@ tasks:
   # ----------------------------------------------------------------
   gen-types:
     desc: バックエンド(FastAPI)からTypeScriptの型を自動生成
-    cmd: pnpm openapi-zod-client http://127.0.0.1:8000/openapi.json -o src/types/api.ts
+    cmd: "{{.INFISICAL_RUN}} pnpm openapi-zod-client http://127.0.0.1:8000/openapi.json -o src/types/api.ts"

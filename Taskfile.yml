@@ -4,10 +4,10 @@ dotenv:
   - ".env"
 
 vars:
-  DOPPLER_CMD:
+  INFISICAL_CMD:
     sh: |
-      if command -v doppler >/dev/null 2>&1; then
-        echo "doppler run --"
+      if command -v infisical >/dev/null 2>&1; then
+        echo "infisical run --env=dev -- "
       else
         echo ""
       fi
@@ -34,10 +34,11 @@ tasks:
   # 全体操作コマンド
   # ----------------------------------------------------------------
   dev:
-    desc: 🚀 フロントとバックを同時に起動 (Doppler経由)
-    cmd: "{{.DOPPLER_CMD}} task dev:start"
+    desc: 🚀 フロントとバックを同時に起動 (Infisical経由)
+    cmd: "{{.INFISICAL_CMD}} task dev:start"
 
   dev:start:
+    internal: true
     deps:
       - task: backend:dev
       - task: frontend:dev
@@ -53,8 +54,18 @@ tasks:
   # ----------------------------------------------------------------
   up:
     desc: DBコンテナなどを起動
-    cmd: "{{.DOPPLER_CMD}} {{.COMPOSE_CMD}} up -d"
+    cmd: "{{.INFISICAL_CMD}} {{.COMPOSE_CMD}} up -d"
 
   down:
     desc: コンテナを停止
-    cmd: "{{.DOPPLER_CMD}} {{.COMPOSE_CMD}} down"
+    cmd: "{{.INFISICAL_CMD}} {{.COMPOSE_CMD}} down"
+
+  # ----------------------------------------------------------------
+  # 便利機能
+  # ----------------------------------------------------------------
+  sync:
+    desc: Infisical の値をローカルの .env に書き出し (エディタ用)
+    cmds:
+      - infisical export --env=dev --format=env > .env
+      - cd frontend && infisical export --env=dev --format=env > .env
+      - cd backend && infisical export --env=dev --format=env > .env

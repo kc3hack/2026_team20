@@ -1,5 +1,14 @@
 version: "3"
 
+vars:
+  INFISICAL_RUN:
+    sh: |
+      if [ -z "$INFISICAL_PROJECT_ID" ] && command -v infisical >/dev/null 2>&1; then
+        echo "infisical run --env=dev -- "
+      else
+        echo ""
+      fi
+
 tasks:
   install:
     desc: Python依存関係のインストール (uv)
@@ -9,9 +18,9 @@ tasks:
   dev:
     desc: FastAPIサーバーの起動
     cmds:
-      - uv run fastapi dev main.py
+      - "{{.INFISICAL_RUN}} uv run fastapi dev main.py"
 
   gen-types:
     desc: (内部用) サーバーを起動してOpenAPIを公開
     cmds:
-      - uv run fastapi dev main.py --port 8000
+      - "{{.INFISICAL_RUN}} uv run fastapi dev main.py --port 8000"
