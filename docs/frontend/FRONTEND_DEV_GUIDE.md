@@ -9,13 +9,18 @@
 
 ## ⚠️ ハッカソン鉄則（全員必読）
 
-> **この計画書は「理想の完成形」です。ハッカソンでは時間が命。以下の 3 つのルールを常に意識してください。**
+> **この計画書は「理想の完成形」です。ハッカソンでは時間が命。以下のルールを常に意識してください。**
 
 | # | ルール | 具体的な行動 |
 |---|-------|-------------|
 | 1 | **テストは Unit のみ。E2E は後回し** | E2E (Playwright) は時間が溶ける。**機能実装を最優先**し、テストは `lib/api/client.test.ts` 等のロジック Unit Test だけ書く。E2E は全機能完成後に余裕があれば。 |
 | 2 | **Tiptap エディタは MVP で止める** | 最初は `StarterKit` だけで「文字が打てて保存できる」を実現する。ツールバー装飾・色パレット・画像挿入は **後まわし**。沼にハマると 1 日消える。 |
 | 3 | **Mock ファーストで開発する** | バックエンド API を待たない。`NEXT_PUBLIC_USE_MOCK=true` でモックデータを返し、UIを先に完成させる。最後に API を繋ぎ込む。**ただし認証（Supabase Auth）だけは最初から実物を使う**（→ [付録E](#e-api-が未完成の場合の暫定対応mock-ファースト開発) 参照） |
+| 4 | **shadcn/ui を最優先で使う** | UI コンポーネントは **まず shadcn/ui のカタログを確認**。Button, Card, Input, Dialog, Sheet, Tabs 等、95% のケースは shadcn/ui で解決できる。ゼロから実装するのは時間の無駄。`pnpm dlx shadcn@latest add <component>` で即座に追加。カスタマイズは `className` での Tailwind 追加のみ（内部を直接編集しない）。 |
+| 5 | **ロジックは TDD、UI はプレビュー駆動** | **複雑な計算・通信（API client, Repository, Hook）はテストを先に書いてから実装**（TDD）。バグを防ぎ、リファクタリングしやすい。**見た目（コンポーネント、スタイル）はブラウザで確認しながら臨機応変に実装**。デザイン調整は目で見て判断する方が速い。UI テストは後回し。 |
+| 6 | **Taskfile でコマンド実行を統一** | 開発サーバー起動、ビルド、テスト実行は必ず `task` コマンドを使う（例: `task frontend:dev`, `task frontend:build`）。直接 `pnpm` や `npm` を叩かない。環境差異を防ぎ、チーム全体で同じ手順を共有する。 |
+| 7 | **コミットは細かく、こまめに行う** | 1 機能実装 = 1 コミット以上。ファイル追加、機能実装、テスト追加を分けてコミット。コミットメッセージは具体的に（例: `feat: PlotCard コンポーネント実装`, `test: PlotCard の表示テスト追加`）。大きな変更を一度にコミットしない。 |
+| 8 | **レスポンシブデザインを考慮** | すべてのコンポーネントは **レスポンシブデザイン** に対応する。スマートフォン（320px〜）、タブレット（768px〜）、デスクトップ（1024px〜）の各画面サイズで動作確認。SCSS Mixin (`@include respond-to(md)`) を活用し、ブレイクポイントを統一する。 |
 
 ---
 
@@ -28,6 +33,12 @@
    - [C.2 スタイリング戦略](#c2-スタイリング戦略)
    - [C.3 テスト戦略](#c3-テスト戦略)
 4. [D. 開発ステップとタスク割り当て](#d-開発ステップとタスク割り当て)
+5. [E. API が未完成の場合の暫定対応（Mock ファースト開発）](#e-api-が未完成の場合の暫定対応mock-ファースト開発)
+   - [E.1 環境変数設定](#e1-環境変数設定)
+   - [E.2 Mock データ実装パターン](#e2-mock-データ実装パターン)
+   - [E.3 認証フロー実装パターン（Supabase Auth）](#e3-認証フロー実装パターンsupabase-auth)
+   - [E.4 Mock ⇄ 実API 切り替えフロー](#e4-mock--実api-切り替えフロー)
+   - [E.5 Mock データの追加ルール](#e5-mock-データの追加ルール)
 
 ---
 
@@ -40,8 +51,8 @@
 | Framework | Next.js (App Router) | 16.x | SSR/RSC/ルーティング |
 | Language | TypeScript | 5.x | 型安全 |
 | UI Library | shadcn/ui (New York) | latest | 基盤 UI コンポーネント |
-| Styling (primary) | Tailwind CSS | 4.x | ユーティリティファーストCSS |
-| Styling (secondary) | SCSS Modules | sass 1.x | 複雑なカスタムスタイル |
+| Styling (primary) | SCSS Modules | sass 1.x | **自前スタイルのメイン実装** |
+| Styling (secondary) | Tailwind CSS | 4.x | **shadcn/ui のため & 簡単なユーティリティ** |
 | Editor | Tiptap | 2.x | リッチテキストエディタ |
 | Realtime | Y.js + y-prosemirror | 13.x | CRDT 共同編集 |
 | Auth | Supabase Auth (@supabase/ssr) | latest | OAuth / セッション管理 |
@@ -244,6 +255,7 @@ frontend/
 │   ├── lib/                             # ===== ユーティリティ & インフラ =====
 │   │   ├── api/                         #   --- API 抽象化レイヤー ---
 │   │   │   ├── client.ts               #     HTTP クライアント (fetch ラッパー + エラー処理)
+│   │   │   ├── client.test.ts          #     HTTP クライアントのテスト
 │   │   │   ├── types.ts                #     全 API リクエスト/レスポンス型定義
 │   │   │   ├── plots.ts                #     Plot リポジトリ
 │   │   │   ├── sections.ts             #     Section リポジトリ
@@ -258,6 +270,12 @@ frontend/
 │   │   │   ├── client.ts               #     ブラウザ用クライアント (createBrowserClient)
 │   │   │   ├── server.ts               #     Server Component 用クライアント
 │   │   │   └── middleware.ts           #     Middleware 用クライアント
+│   │   │
+│   │   ├── mock/                        #   --- Mock データ (開発初期用) ---
+│   │   │   ├── data.ts                 #     Mock データ定義 (plots, users, sections 等)
+│   │   │   ├── storage.ts              #     ブラウザストレージ Mock (localStorage 使用)
+│   │   │   ├── storage.test.ts         #     ストレージ Mock テスト
+│   │   │   └── migration.ts            #     Mock データバージョン管理・マイグレーション
 │   │   │
 │   │   ├── utils.ts                     #   cn() ユーティリティ等 (shadcn 生成)
 │   │   ├── constants.ts                 #   定数 (ページサイズ, 制限値)
@@ -275,7 +293,11 @@ frontend/
 │   │   └── _typography.scss             #   タイポグラフィユーティリティ (Tiptap 用)
 │   │
 │   ├── types/                           # ===== 共通 TypeScript 型 =====
-│   │   └── index.ts                     #   ドメイン横断の共通型
+│   │   └── index.ts                     #   ドメイン横断の共通型 (ユーティリティ型、定数型等)
+│   │
+│   ├── test/                            # ===== テストユーティリティ =====
+│   │   ├── setup.ts                     #   Vitest グローバルセットアップ (Testing Library 設定)
+│   │   └── smoke.test.ts                #   スモークテスト (環境正常性確認)
 │   │
 │   └── middleware.ts                    # Next.js ミドルウェア (認証ガード)
 │
@@ -299,19 +321,159 @@ frontend/
 | ディレクトリ | 原則 |
 |-------------|------|
 | `app/` | **ルーティングのみ**に責任を持つ。ページコンポーネントは薄く保ち、ロジックは `hooks/`、表示は `components/` に委譲する。 |
-| `components/ui/` | shadcn/ui が自動生成するファイル。**手動で編集しない**。 |
-| `components/{feature}/` | 機能ドメインごとにグルーピング。1 コンポーネント = 1 フォルダ（`.tsx` + `.module.scss` + `.test.tsx`）。 |
-| `components/shared/` | 2 つ以上の機能ドメインで使われる汎用コンポーネント。 |
+| `components/ui/` | **shadcn/ui が自動生成するファイル。絶対に手動で編集しない。** カスタマイズは呼び出し側で `className` prop を使って Tailwind クラスを追加する。新しいコンポーネントが必要になったら、まず [shadcn/ui のドキュメント](https://ui.shadcn.com/) で該当コンポーネントがあるか確認する。 |
+| `components/{feature}/` | 機能ドメインごとにグルーピング。1 コンポーネント = 1 フォルダ（`.tsx` + `.module.scss` + `.test.tsx`）。**内部では shadcn/ui コンポーネントを組み合わせて実装する。** |
+| `components/shared/` | 2 つ以上の機能ドメインで使われる汎用コンポーネント。shadcn/ui の薄いラッパーとして実装することが多い（例: `TagBadge` は内部で `<Badge>` を使う）。 |
 | `hooks/` | TanStack Query ベースのカスタム Hook。ページコンポーネントから API を直接呼ばない。 |
-| `lib/api/` | **API 変更の影響を吸収する唯一のレイヤー**。Repository パターンでリクエスト関数を分離。 |
+| `lib/api/` | **API 変更の影響を吸収する唯一のレイヤー**。Repository パターンでリクエスト関数を分離。`client.ts` は必ずテスト（`client.test.ts`）を書く。 |
+| `lib/supabase/` | Supabase クライアント生成関数。ブラウザ用・サーバー用・Middleware 用の 3 種類を用意。 |
+| `lib/mock/` | **Mock ファースト開発用**。`data.ts` で偽データ定義、`storage.ts` で永続化、`migration.ts` でバージョン管理。`NEXT_PUBLIC_USE_MOCK=true` 時に使用。付録E参照。 |
 | `providers/` | Client Component 限定の Context Provider。`"use client"` 境界をここに集約。 |
 | `styles/` | SCSS パーシャル。`@use` で各 `.module.scss` から参照。 |
+| `types/` | **ドメイン横断の共通型定義**。API 型（`lib/api/types.ts`）とは別に、ユーティリティ型や定数型をここに配置。 |
+| `test/` | Vitest セットアップファイル。`setup.ts` で Testing Library のグローバル設定、`smoke.test.ts` で基本動作確認。 |
+
+---
+
+### 型定義ファイルの使い分け
+
+プロジェクト内で型定義を管理するファイルは以下の 2 つがあり、**明確に責務を分けて使用する**：
+
+| ファイル | 用途 | 具体例 |
+|---------|------|--------|
+| **`lib/api/types.ts`** | **API リクエスト/レスポンスの型定義** | `PlotItem`, `UserBrief`, `PlotListResponse`, `CreatePlotRequest` 等。バックエンド API とやり取りする際の型をすべてここに集約。 |
+| **`types/index.ts`** | **ドメイン横断の共通型・ユーティリティ型** | `Nullable<T>`, `DeepPartial<T>`, アプリ固有の定数型、列挙型など。複数のドメインで使われる汎用的な型。 |
+
+**使い分けの判断基準：**
+
+```typescript
+// ✅ lib/api/types.ts に配置すべき型
+export interface PlotItem { /* API レスポンス */ }
+export interface CreatePlotRequest { /* API リクエスト */ }
+
+// ✅ types/index.ts に配置すべき型
+export type Nullable<T> = T | null;
+export type DeepPartial<T> = { [P in keyof T]?: DeepPartial<T[P]> };
+export type SortOrder = "asc" | "desc";
+export type Theme = "light" | "dark" | "system";
+```
+
+**原則:** API と直接関係する型は `lib/api/types.ts`、それ以外の汎用型は `types/index.ts`。
 
 ---
 
 ## C. 共通設計方針
 
+### C.0 コンポーネント設計戦略
+
+#### shadcn/ui ファーストの原則
+
+**🎯 ゼロからコンポーネントを作らない。99% は shadcn/ui で解決できる。**
+
+コンポーネント実装が必要になったら、以下の順序で検討する：
+
+```
+1. shadcn/ui にそのままのコンポーネントがある？
+   ├─ YES → `pnpm dlx shadcn@latest add <component>` して使う
+   └─ NO → 2 へ
+
+2. shadcn/ui の複数コンポーネントを組み合わせれば実現できる？
+   ├─ YES → 組み合わせて使う（例: Card + Badge + Button で PlotCard を作る）
+   └─ NO → 3 へ
+
+3. 既存の shadcn/ui コンポーネントをラップしてカスタマイズすれば実現できる？
+   ├─ YES → ラッパーコンポーネントを作る（components/{feature}/ に配置）
+   └─ NO → 本当に shadcn/ui にない？もう一度探す。それでもなければゼロから実装。
+```
+
+#### shadcn/ui コンポーネント一覧（優先使用）
+
+本プロジェクトで使用する shadcn/ui コンポーネント：
+
+| カテゴリ | コンポーネント | 用途 |
+|---------|--------------|------|
+| **基本** | `Button` | すべてのボタン（ログイン、送信、キャンセル等） |
+| | `Input` | テキスト入力（検索バー、フォーム入力） |
+| | `Textarea` | 複数行入力（コメント、説明文） |
+| | `Badge` | タグ表示、ステータス表示 |
+| | `Avatar` | ユーザーアイコン表示 |
+| | `Card` | Plot カード、セクションカード等 |
+| **ナビゲーション** | `Dropdown Menu` | ユーザーメニュー、アクションメニュー |
+| | `Tabs` | セクション切り替え、プロフィールページのタブ |
+| | `Sheet` | モバイルナビゲーション |
+| **フィードバック** | `Dialog` | 確認ダイアログ（削除確認等） |
+| | `Skeleton` | ローディング中のプレースホルダー |
+| | `Sonner` | トースト通知（成功/エラーメッセージ） |
+| | `Tooltip` | ツールチップ（ボタンの説明等） |
+| **フォーム** | `Form` | react-hook-form 統合フォーム |
+| **レイアウト** | `Separator` | 区切り線 |
+
+**インストールコマンド（Issue #2 で実行）:**
+
+```bash
+pnpm dlx shadcn@latest add button card input textarea badge avatar
+pnpm dlx shadcn@latest add dropdown-menu dialog sheet separator skeleton
+pnpm dlx shadcn@latest add tabs tooltip form sonner
+```
+
+#### カスタマイズ方法
+
+shadcn/ui コンポーネントは `className` prop で Tailwind カスタマイズ、自前スタイルは SCSS Module で書く：
+
+```tsx
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import styles from "./LoginButton.module.scss";
+import { cn } from "@/lib/utils";
+
+// ❌ 悪い例: components/ui/button.tsx を直接編集
+// → shadcn/ui のファイルは触らない！
+
+// ✅ 良い例 1: className で Tailwind クラスを追加（shadcn/ui のカスタマイズ）
+<Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500">
+  ログイン
+</Button>
+
+// ✅ 良い例 2: ラッパーコンポーネント + SCSS Module（自前スタイルが必要な場合）
+// components/auth/LoginButton/LoginButton.tsx
+export function LoginButton({ provider }: { provider: string }) {
+  return (
+    <Button 
+      className={cn("w-full", styles.loginButton)}  // Tailwind + SCSS 併用
+      variant="outline"
+    >
+      <span className={styles.icon}>{/* アイコン */}</span>
+      {provider} でログイン
+    </Button>
+  );
+}
+
+// components/auth/LoginButton/LoginButton.module.scss
+// 複雑なスタイルは SCSS で書く
+.loginButton {
+  position: relative;
+  
+  &:hover .icon {
+    animation: bounce 0.5s ease;
+  }
+}
+
+.icon {
+  @include mixins.focus-ring;
+  /* Tailwind では書きにくいスタイルを SCSS で */
+}
+```
+
+**まとめ:**
+- **Tailwind の使用場所：** shadcn/ui の `className` prop でのカスタマイズのみ（`w-full`, `bg-primary` 等）
+- **SCSS の使用場所：** 自前のコンポーネント固有スタイル、アニメーション、疑似要素、ネストセレクタ
+- **併用:** `cn()` ユーティリティで Tailwind と SCSS のクラスを合成可能
+
+---
+
 ### C.1 API 抽象化戦略
+
+> **📘 API仕様の詳細:** バックエンドAPIのエンドポイント仕様、リクエスト/レスポンス形式、認証方法等の詳細は [docs/api.md](../api.md) を参照してください。
 
 #### 設計思想
 
@@ -563,59 +725,13 @@ export interface UserProfile {
 
 ```typescript
 import { apiClient } from "./client";
-import type {
-  PlotListResponse,
-  PlotDetailResponse,
-  PlotItem,
-  CreatePlotRequest,
-  UpdatePlotRequest,
-} from "./types";
 
 export const plotRepository = {
-  /** Plot 一覧取得 */
-  list(params?: { tag?: string; limit?: number; offset?: number }) {
-    const query = new URLSearchParams();
-    if (params?.tag) query.set("tag", params.tag);
-    if (params?.limit) query.set("limit", String(params.limit));
-    if (params?.offset) query.set("offset", String(params.offset));
-    const qs = query.toString();
-    return apiClient<PlotListResponse>(`/plots${qs ? `?${qs}` : ""}`);
-  },
-
-  /** Plot 詳細取得 */
-  get(id: string) {
-    return apiClient<PlotDetailResponse>(`/plots/${id}`);
-  },
-
-  /** Plot 作成 */
-  create(data: CreatePlotRequest, token: string) {
-    return apiClient<PlotItem>("/plots", { method: "POST", body: data, token });
-  },
-
-  /** Plot 更新 */
-  update(id: string, data: UpdatePlotRequest, token: string) {
-    return apiClient<PlotItem>(`/plots/${id}`, { method: "PUT", body: data, token });
-  },
-
-  /** Plot 削除 */
-  delete(id: string, token: string) {
-    return apiClient<void>(`/plots/${id}`, { method: "DELETE", token });
-  },
-
-  /** 急上昇 */
-  trending(limit = 5) {
-    return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`);
-  },
-
-  /** 人気 */
-  popular(limit = 5) {
-    return apiClient<PlotListResponse>(`/plots/popular?limit=${limit}`);
-  },
-
-  /** 新規 */
-  latest(limit = 5) {
-    return apiClient<PlotListResponse>(`/plots/new?limit=${limit}`);
-  },
+  list(params) { return apiClient<PlotListResponse>(`/plots?${query}`) },
+  get(id) { return apiClient<PlotDetailResponse>(`/plots/${id}`) },
+  create(data, token) { return apiClient<PlotItem>("/plots", { method: "POST", body: data, token }) },
+  trending(limit = 5) { return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`) },
+  // ... popular, latest など同様
 };
 ```
 
@@ -624,17 +740,8 @@ export const plotRepository = {
 ```typescript
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { plotRepository } from "@/lib/api/plots";
-import { queryKeys } from "@/lib/query-keys";
-import { useAuth } from "./useAuth";
 
-// ---- クエリ ----
-export function usePlotList(params?: { tag?: string; limit?: number; offset?: number }) {
-  return useQuery({
-    queryKey: queryKeys.plots.list(params),
-    queryFn: () => plotRepository.list(params),
-  });
-}
-
+// クエリ例
 export function usePlotDetail(id: string) {
   return useQuery({
     queryKey: queryKeys.plots.detail(id),
@@ -643,128 +750,39 @@ export function usePlotDetail(id: string) {
   });
 }
 
-export function useTrendingPlots(limit = 5) {
-  return useQuery({
-    queryKey: queryKeys.plots.trending(limit),
-    queryFn: () => plotRepository.trending(limit),
-  });
-}
-
-export function usePopularPlots(limit = 5) {
-  return useQuery({
-    queryKey: queryKeys.plots.popular(limit),
-    queryFn: () => plotRepository.popular(limit),
-  });
-}
-
-export function useLatestPlots(limit = 5) {
-  return useQuery({
-    queryKey: queryKeys.plots.latest(limit),
-    queryFn: () => plotRepository.latest(limit),
-  });
-}
-
-// ---- ミューテーション ----
+// ミューテーション例 (楽観的更新 + invalidateQueries)
 export function useCreatePlot() {
   const queryClient = useQueryClient();
   const { session } = useAuth();
-
   return useMutation({
-    mutationFn: (data: Parameters<typeof plotRepository.create>[0]) =>
-      plotRepository.create(data, session?.access_token ?? ""),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.plots.all });
-    },
-  });
-}
-
-export function useDeletePlot() {
-  const queryClient = useQueryClient();
-  const { session } = useAuth();
-
-  return useMutation({
-    mutationFn: (id: string) =>
-      plotRepository.delete(id, session?.access_token ?? ""),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.plots.all });
-    },
+    mutationFn: (data) => plotRepository.create(data, session?.access_token),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.plots.all }),
   });
 }
 ```
 
-**5. Query Key 定義 — `lib/query-keys.ts`**
+**5. Query Key 定義 — `lib/query-keys.ts`** (階層構造で管理)
 
 ```typescript
 export const queryKeys = {
   plots: {
     all: ["plots"] as const,
-    list: (params?: Record<string, unknown>) => ["plots", "list", params] as const,
     detail: (id: string) => ["plots", "detail", id] as const,
-    trending: (limit?: number) => ["plots", "trending", limit] as const,
-    popular: (limit?: number) => ["plots", "popular", limit] as const,
-    latest: (limit?: number) => ["plots", "latest", limit] as const,
+    // ... trending, list など
   },
-  sections: {
-    all: ["sections"] as const,
-    list: (plotId: string) => ["sections", "list", plotId] as const,
-    detail: (id: string) => ["sections", "detail", id] as const,
-  },
-  history: {
-    list: (sectionId: string) => ["history", sectionId] as const,
-    diff: (sectionId: string, from: number, to: number) =>
-      ["history", "diff", sectionId, from, to] as const,
-  },
-  search: {
-    results: (q: string, limit?: number, offset?: number) =>
-      ["search", q, limit, offset] as const,
-  },
-  stars: {
-    list: (plotId: string) => ["stars", plotId] as const,
-  },
-  comments: {
-    list: (threadId: string) => ["comments", threadId] as const,
-  },
-  users: {
-    profile: (username: string) => ["users", username] as const,
-    plots: (username: string) => ["users", username, "plots"] as const,
-    contributions: (username: string) => ["users", username, "contributions"] as const,
-  },
+  sections: { ... },
+  // 他のリソースも同様
 } as const;
 ```
 
-**6. コンポーネントでの使用例**
+**6. コンポーネントでの使用例** (Client Component で hook 呼び出すだけ)
 
 ```tsx
-// app/page.tsx (トップページ)
-import { PlotList } from "@/components/plot/PlotList/PlotList";
-import { useTrendingPlots, usePopularPlots, useLatestPlots } from "@/hooks/usePlots";
-
-export default function TopPage() {
-  // Server Component なので直接リポジトリを呼ぶか、
-  // Client Component にデータフェッチを委譲する
-  return (
-    <main>
-      <TrendingSection />
-      <PopularSection />
-      <LatestSection />
-    </main>
-  );
-}
-
-// Client Component
 "use client";
 function TrendingSection() {
-  const { data, isLoading, error } = useTrendingPlots(5);
-
-  if (isLoading) return <PlotListSkeleton />;
-  if (error) return <ErrorMessage message="読み込みに失敗しました" />;
-
-  return (
-    <section>
-      <h2>🔥 急上昇</h2>
-      <PlotList items={data?.items ?? []} />
-    </section>
-  );
+  const { data, isLoading } = useTrendingPlots(5);
+  if (isLoading) return <Skeleton />;
+  return <PlotList items={data?.items ?? []} />;
 }
 ```
 
@@ -772,31 +790,73 @@ function TrendingSection() {
 
 ### C.2 スタイリング戦略
 
+#### 基本方針：SCSS ファースト、Tailwind は shadcn/ui のため
+
+**🎯 Tailwind CSS は shadcn/ui のために導入しているだけ。自前のスタイルは SCSS Module で書く。**
+
+shadcn/ui は Tailwind CSS に依存しているため、導入は必須だが、以下の方針で使い分ける：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Tailwind CSS の使用は以下の 2 つに限定する：               │
+│                                                               │
+│  1. shadcn/ui コンポーネントのカスタマイズ（className prop）│
+│  2. 簡単なユーティリティクラス（p-4, flex, gap-2 等）      │
+│                                                               │
+│  それ以外の自前スタイル実装は SCSS Module を使う。          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**理由:**
+- Tailwind の長いクラス名の羅列は可読性が低く、メンテナンスしづらい
+- 複雑なアニメーション、疑似要素、ネストセレクタは SCSS の方が圧倒的に書きやすい
+- チームメンバーが CSS/SCSS に慣れている場合、学習コストが低い
+- SCSS 変数・Mixin による再利用性が高い
+
 #### Tailwind と SCSS の使い分けルール
 
-| 用途 | 使用技術 | 例 |
-|------|---------|-----|
-| スペーシング・マージン・パディング | Tailwind | `className="p-4 mt-2 mb-6"` |
-| Flexbox / Grid レイアウト | Tailwind | `className="flex items-center gap-3"` |
-| 基本的な色・背景 | Tailwind (shadcn CSS 変数) | `className="text-primary bg-muted"` |
-| シンプルなレスポンシブ切り替え | Tailwind | `className="grid-cols-1 md:grid-cols-2"` |
-| shadcn/ui コンポーネントへの追加 | Tailwind | `<Button className="w-full">` |
-| **複雑なアニメーション・トランジション** | **SCSS Module** | `@keyframes`, 複数プロパティ transition |
-| **疑似要素 (::before, ::after)** | **SCSS Module** | デコレーションライン、バッジ装飾 |
-| **ネストされた複雑なセレクタ** | **SCSS Module** | `.card:hover .title { ... }` |
-| **Tiptap エディタの内部スタイル** | **SCSS Module** | `.ProseMirror` のスタイルオーバーライド |
-| **コンポーネント固有の複雑なレイアウト** | **SCSS Module** | 5 つ以上の Tailwind クラスが必要になる場合 |
-| **メディアクエリ + 複雑なロジック** | **SCSS Mixin** | カスタムブレイクポイント |
+| 用途 | 使用技術 | 例 | 備考 |
+|------|---------|-----|------|
+| **shadcn/ui コンポーネントのカスタマイズ** | **Tailwind** | `<Button className="w-full">` | **Tailwind の主用途。これがあるから導入している** |
+| スペーシング・マージン・パディング | Tailwind | `className="p-4 mt-2 mb-6"` | 簡単なユーティリティのみ。3〜4個以上なら SCSS へ |
+| Flexbox / Grid レイアウト（シンプル） | Tailwind | `className="flex items-center gap-3"` | シンプルなものだけ |
+| 基本的な色・背景（shadcn 変数） | Tailwind | `className="text-primary bg-muted"` | shadcn のテーマ変数を使う場合のみ |
+| シンプルなレスポンシブ切り替え | Tailwind | `className="grid-cols-1 md:grid-cols-2"` | ブレイクポイント 1〜2 個程度 |
+| **コンポーネント固有のスタイル** | **SCSS Module** | `.card { ... }` | **自前実装のメインスタイル** |
+| **複雑なアニメーション・トランジション** | **SCSS Module** | `@keyframes`, 複数プロパティ transition | Tailwind では表現困難 |
+| **疑似要素 (::before, ::after)** | **SCSS Module** | デコレーションライン、バッジ装飾 | Tailwind では書きにくい |
+| **ネストされた複雑なセレクタ** | **SCSS Module** | `.card:hover .title { ... }` | 可読性が段違い |
+| **Tiptap エディタの内部スタイル** | **SCSS Module** | `.ProseMirror` のスタイルオーバーライド | Editor 固有の複雑なスタイル |
+| **複雑なレイアウト** | **SCSS Module** | Tailwind 5 個以上必要な場合 | SCSS で名前をつけて管理 |
+| **メディアクエリ + 複雑なロジック** | **SCSS Mixin** | カスタムブレイクポイント、条件分岐 | Mixin で再利用 |
+
+**原則:** Tailwind は「shadcn/ui のカスタマイズ」と「p-4, flex 等の簡単なユーティリティ」だけ。それ以外は SCSS Module。
 
 #### 判断基準フローチャート
 
 ```
-スタイルを書く必要がある
-  ├─ shadcn/ui のコンポーネントで実現可能？ → そのまま使う
-  ├─ Tailwind クラス 3〜4 個以下で表現可能？ → Tailwind
-  ├─ 疑似要素・複雑なアニメーション・ネストセレクタが必要？ → SCSS Module
-  └─ 迷ったら → Tailwind で書いて、複雑化したら SCSS Module に切り出す
+コンポーネントを実装する必要がある
+  ├─ 1. shadcn/ui にそのままのコンポーネントがある？
+  │     → YES: そのまま使う（最優先）+ className で Tailwind カスタマイズ
+  │     → NO: 2 へ
+  │
+  ├─ 2. shadcn/ui の複数コンポーネントを組み合わせれば実現できる？
+  │     → YES: Button + Card + Badge 等を組み合わせる + className で Tailwind カスタマイズ
+  │     → NO: 3 へ（ここから自前実装）
+  │
+  └─ 3. 自前実装：スタイルはどう書く？
+        ├─ 簡単なユーティリティ（p-4, flex 等）だけで済む？ → Tailwind（稀）
+        ├─ コンポーネント固有のスタイルが必要？ → SCSS Module（通常はこれ）
+        │   - アニメーション、疑似要素、ネストセレクタ → 必ず SCSS
+        │   - 複雑なレイアウト（Tailwind 5 個以上） → 必ず SCSS
+        │   - 再利用可能なスタイル → 必ず SCSS（変数・Mixin 活用）
+        └─ 迷ったら → SCSS Module で書く（Tailwind は後から追加できる）
 ```
+
+**重要:** 
+1. **まず shadcn/ui で解決できないか考える**（ゼロから作るのは最後の手段）
+2. **自前実装の場合、基本は SCSS Module**（Tailwind はあくまで補助）
+3. **Tailwind は shadcn/ui のカスタマイズと簡単なユーティリティのみ**
 
 #### `cn()` ユーティリティで Tailwind + SCSS を合成
 
@@ -913,6 +973,88 @@ export default nextConfig;
 
 > **重要:** SCSS Module 内でも shadcn の CSS 変数 (`hsl(var(--primary))` 等) を参照することで、テーマの一貫性を保つ。
 
+#### レスポンシブデザイン戦略
+
+##### ブレイクポイント定義
+
+本プロジェクトでは以下の3段階のブレイクポイントを使用する：
+
+| デバイス | ブレイクポイント | 用途 |
+|---------|----------------|------|
+| **モバイル** | `〜767px` | スマートフォン |
+| **タブレット** | `768px〜1023px` | タブレット |
+| **デスクトップ** | `1024px〜` | PC・大画面 |
+
+##### レスポンシブ実装パターン
+
+**1. SCSS Mixin を使ったレスポンシブ対応（推奨）**
+
+```scss
+// components/plot/PlotCard/PlotCard.module.scss
+@use "mixins" as *;
+
+.card {
+  padding: 1rem;
+  grid-template-columns: 1fr;
+  
+  @include respond-to(md) {
+    padding: 1.5rem;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @include respond-to(lg) {
+    padding: 2rem;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+```
+
+**2. Tailwind でのシンプルなレスポンシブ（shadcn/ui カスタマイズ時）**
+
+```tsx
+<Card className="p-4 md:p-6 lg:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {/* ... */}
+</Card>
+```
+
+##### レスポンシブデザインチェックリスト
+
+各コンポーネント実装時、以下を確認する：
+
+- [ ] **タッチターゲットサイズ:** ボタン・リンクは最小 44×44px
+- [ ] **フォントサイズ:** 本文は最小 16px
+- [ ] **余白:** 小さい画面では左右に十分な余白を確保
+- [ ] **ナビゲーション:** 狭い画面ではハンバーガーメニューに折りたたむ
+- [ ] **画像:** `max-width: 100%` で親要素からはみ出さないようにする
+- [ ] **テーブル:** 狭い画面では横スクロールまたはカード表示に切り替え
+- [ ] **フォーム:** 入力欄は画面幅に応じて適切なサイズに調整
+
+##### 動作確認方法
+
+**開発中の確認:**
+```bash
+# 開発サーバー起動
+task frontend:dev
+
+# ブラウザの DevTools でデバイスエミュレーション
+# - iPhone SE (375px)
+# - iPad (768px)
+# - Desktop (1280px)
+```
+
+**実機確認:**
+- 実機での動作確認が望ましい場合は、同一ネットワーク内で `http://localhost:3000` にアクセス
+
+##### よくあるレスポンシブ対応パターン
+
+| 要素 | モバイル | タブレット | デスクトップ |
+|------|---------|-----------|-------------|
+| **ヘッダー** | ロゴ + ハンバーガーメニュー | ロゴ + 横並びメニュー | 同左 + 検索バー拡張 |
+| **Plot一覧** | 1カラム | 2カラム | 3カラム |
+| **Plot詳細** | 縦積み（メタ情報 → 本文） | 同左 | 横並び（サイドバー + 本文） |
+| **エディタ** | 全画面 | 最大幅 800px 中央寄せ | 同左 |
+| **フォーム** | 縦積み | 2カラム（ラベル左、入力右） | 同左 |
+
 ---
 
 ### C.3 テスト戦略
@@ -946,6 +1088,55 @@ export default nextConfig;
 - **Hook テスト:** `@tanstack/react-query` の `QueryClient` をテスト用に作成、Repository をモック
 - **E2E:** 実際の（またはステージング）バックエンドに接続。不安定な場合は API Route による proxy mock を検討
 
+#### 実装順番とテスト戦略
+
+開発時は**機能の性質に応じてアプローチを使い分ける**：
+
+| 機能の性質 | 開発アプローチ | 理由 |
+|-----------|--------------|------|
+| **ロジック層（複雑な計算・通信）** | **TDD（テスト駆動開発）** | `lib/api/client.ts`, Repository, カスタム Hook 等は**先にテストを書いてから実装**する。ロジックの正確性を保証し、リファクタリングしやすくなる。API 仕様変更時の影響範囲も明確になる。 |
+| **UI層（見た目・インタラクション）** | **プレビュー駆動開発** | コンポーネントは**実際にブラウザで表示を確認しながら実装**する。デザイン調整・レスポンシブ対応・アニメーションは目で見て判断する方が速い。テストは後から追加（または省略）。 |
+
+**具体例：**
+
+```
+✅ TDD を使う（テスト → 実装）：
+  - lib/api/client.ts の apiClient 関数
+  - lib/api/plots.ts の plotRepository
+  - hooks/usePlots.ts の楽観的更新ロジック
+  - lib/utils.ts のヘルパー関数
+
+✅ プレビュー駆動（実装 → プレビュー確認 → 調整）：
+  - components/plot/PlotCard/PlotCard.tsx のレイアウト
+  - components/layout/Header/Header.tsx のレスポンシブ対応
+  - PlotCard.module.scss のホバーアニメーション
+  - 色・余白・フォントサイズ等の調整
+```
+
+**ワークフロー例（PlotCard 実装の場合）：**
+
+1. **ロジック層を TDD で実装**
+   ```bash
+   # 1. テストを書く
+   touch src/hooks/usePlots.test.ts
+   # 2. テストを実行（Red）
+   task frontend:test
+   # 3. 実装する（Green）
+   # 4. リファクタリング
+   ```
+
+2. **UI層をプレビュー駆動で実装**
+   ```bash
+   # 1. コンポーネントを作る
+   touch src/components/plot/PlotCard/PlotCard.tsx
+   # 2. 開発サーバーで確認しながら実装
+   task frontend:dev
+   # 3. ブラウザで見た目を確認・調整
+   # 4. 動作確認できたらコミット
+   ```
+
+**重要:** UI テストは時間がかかるため、ハッカソンでは優先度を下げる。ロジックテストに集中し、UI は目視確認で十分。
+
 ---
 
 ## D. 開発ステップとタスク割り当て
@@ -969,41 +1160,190 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 | **ファイル所有権** | 同一ファイルへの同時編集を避ける。各 Issue で明記されたファイルのみ触る。 |
 | **共通ファイル更新のタイミング** | `lib/api/types.ts`, `lib/query-keys.ts` 等は Step 1 で Dev A が雛形を作成し、以降は必要に応じて各自が **自分の担当型のみ** 追加する。 |
 | **re-export の追加** | `lib/api/index.ts` 等への行追加は自分が担当するリポジトリのみ。 |
-| **コミット粒度** | 1 機能 = 1 コミット以上。大きな Issue は機能単位で分割コミット。 |
+| **コミット粒度** | **必ず細かく、頻繁にコミットする。** 1 機能 = 1 コミット以上。大きな Issue は機能単位で分割コミット（例: ファイル作成 → ロジック実装 → スタイル追加 → テスト追加で 4 コミット）。動作確認できる単位でコミットし、問題発生時のロールバックを容易にする。 |
+| **Taskfile の使用** | 開発サーバー起動・ビルド・テスト等は必ず Taskfile のコマンドを使う（`task frontend:dev`, `task frontend:test` 等）。環境変数や実行オプションが統一され、トラブルシューティングが容易になる。 |
+
+---
+
+### 🔄 開発フローの重要な注意点
+
+**Issue #2 で作る「仮トップページ」について:**
+
+Issue #2 では、プロジェクトが起動することを確認するため、**シンプルな仮トップページ** (`src/app/page.tsx`) を作成します。この時点では以下のみ実装：
+- タイトル「Plot Platform」表示
+- shadcn/ui の `<Button>` と `<Card>` を使った動作確認用UI
+- 「プロジェクト基盤構築中...」というメッセージ
+
+**Issue #6 で本実装に置き換え:**
+
+Day 2 の Issue #6 で、この仮ページを**完全に書き直し**、以下の本実装に置き換えます：
+- 「急上昇」「人気」「新着」の3セクション表示
+- PlotCard コンポーネントによるランキング表示
+- SearchBar の注入
+
+このアプローチにより、Day 1 終了時点で**必ずブラウザで動作確認できる状態**を維持しつつ、段階的に機能を実装できます。
 
 ---
 
 ### Step 1: プロジェクト基盤構築（Day 1）
 
-> **Day 1 の負荷分散:** 旧 Issue #1 は 25 ファイル以上あり 1 人で完遂するのは厳しいため、#1A / #1B / #1C の 3 つに分割する。#1A → #1B は直列、#1C は Dev B が Issue #2 と並行して着手する。
+> **Day 1 の負荷分散:** プロジェクト基盤は 4 つの Issue に分割する。Issue #1（環境構築）→ Issue #2（API基盤）→ Issue #3（リポジトリ）は直列、Issue #4（Auth）は Dev B が Issue #5（デザイン基盤）と並行して着手する。
 
 ---
 
-#### Issue #1A
+#### Issue #1
 
-**タイトル:** [Infra] HTTP クライアント・型定義基盤・共通設定
+**タイトル:** [Infra] 環境構築・プロジェクト設定
+
+**担当:** Dev A
+
+**内容:**
+
+> **⚠️ 重要:** このIssueは「既にファイルが完璧に実装されている場合はスキップ可能」です。不足しているファイルや、このドキュメントの記載と差異がある場合のみ実装してください。
+
+##### 実装するファイル
+
+**🔴 プロジェクト設定ファイル**
+- `package.json` — 依存関係定義 (Next.js, React, TanStack Query, shadcn/ui用, Biome 等)
+- `next.config.ts` — Next.js設定 (SCSS パス解決、standalone出力等)
+- `tsconfig.json` — TypeScript設定 (paths alias `@/*` 設定)
+- `components.json` — shadcn/ui設定 (New York style, TypeScript, Tailwind CSS)
+- `biome.json` — Biome設定 (ESLint + Prettier代替)
+- `vitest.config.ts` — Vitest設定 (単体テスト用)
+- `playwright.config.ts` — Playwright設定 (E2E テスト用)
+- `.gitignore` — Git除外設定
+
+**🟡 任意：静的ファイル**
+- `public/favicon.ico` — ファビコン（なくてもプロジェクトは動作するが、ブラウザ警告が出る）
+
+##### 満たすべき要件
+
+**プロジェクト設定:**
+- `package.json`:
+  - 必要なライブラリをすべて含む: 
+    - **Core:** `next@16.x`, `react@19.x`, `react-dom@19.x`, `typescript@5.x`
+    - **State Management:** `@tanstack/react-query@5.x`, `@tanstack/react-query-devtools@5.x`
+    - **Form & Validation:** `react-hook-form`, `@hookform/resolvers`, `zod`
+    - **UI & Style:** `clsx`, `tailwind-merge`, `tailwindcss@4.x`, `sass@1.x`, `lucide-react`, `sonner`, `date-fns`
+    - **Auth:** `@supabase/ssr`, `@supabase/supabase-js`
+    - **Editor:** `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-placeholder`
+    - **Linter & Test:** `@biomejs/biome@2.x`, `vitest`, `@testing-library/react`, `@vitejs/plugin-react`, `@playwright/test`
+  - scripts: `"dev"`, `"build"`, `"start"`, `"lint"`, `"test"`, `"test:e2e"`
+- `next.config.ts`:
+  - `output: "standalone"` 設定
+  - SCSS パス解決: `sassOptions.loadPaths: [path.join(process.cwd(), "src/styles")]`
+- `tsconfig.json`:
+  - `paths` で `@/*` を `./src/*` にマッピング
+  - `strict: true`, `esModuleInterop: true`
+- `components.json`:
+  - shadcn/ui 設定: `style: "new-york"`, `tailwind.css`, `typescript: true`
+- `biome.json`:
+  - linter, formatter 有効化、React ルール設定
+- `vitest.config.ts`:
+  - `@testing-library/react` との統合設定
+- `playwright.config.ts`:
+  - ブラウザ設定 (chromium, firefox, webkit)
+  - baseURL 設定
+  - スクリーンショット・動画記録設定
+
+**ライブラリインストール:**
+```bash
+# プロジェクトルートで実行（frontendディレクトリ内で）
+cd frontend
+pnpm install  # package.json の依存関係をインストール
+```
+
+##### テスト観点
+- `package.json` の依存関係が全て正しくインストールされる
+- `task frontend:dev` でエラーが出ない（ただしページはまだ表示されない）
+- 設定ファイルに構文エラーがない
+
+##### 依存関係
+- なし（最初のタスク）
+- **ブロック:** Issue #2（この Issue が完了しないと次に進めない）
+
+##### 備考
+- このIssueは「環境準備」のみ。実際にブラウザでページが表示されるのは Issue #2 完了後
+- 既に完璧に実装されている場合は、このIssueをスキップして Issue #2 から着手してOK
+
+---
+
+#### Issue #2
+
+**タイトル:** [Infra] HTTP クライアント・型定義基盤・最低限のページ・Provider
 
 **担当:** Dev A
 
 **内容:**
 
 ##### 実装するファイル
-- `src/lib/api/client.ts` — HTTP クライアント (fetch ラッパー, ApiError, apiClient, apiUpload)
-- `src/lib/api/types.ts` — 全API型定義（初期版。各 Step で担当者が型を追加）
-- `src/lib/api/index.ts` — 全リポジトリの re-export（雛形。#1B で各リポジトリを追加）
-- `src/lib/query-keys.ts` — TanStack Query キー定義
-- `src/lib/constants.ts` — 定数定義 (PAGE_SIZE, MAX_TITLE_LENGTH, etc.)
-- `src/providers/QueryProvider.tsx` — TanStack Query Provider
-- `src/providers/Providers.tsx` — 全 Provider を統合するラッパー（AuthProvider のスロットは #1C で注入）
+
+**🔴 必須：最低限のページ（これがないとWebページが表示されない）**
+- `src/app/page.tsx` — **仮トップページ**（"Plot Platform - Coming Soon"的なシンプルなページ。Issue #6で本実装）
 - `src/app/layout.tsx` — ルートレイアウト (Providers 適用, metadata 設定)
 - `src/app/globals.css` — Tailwind v4 ディレクティブ + shadcn CSS 変数
 - `src/app/loading.tsx` — グローバルローディング UI
 - `src/app/not-found.tsx` — 404 ページ
 - `src/app/error.tsx` — グローバルエラーバウンダリ
+
+**🟢 ライブラリ基盤**
+- `src/lib/utils.ts` — **shadcn/ui の `cn()` ユーティリティ（必須）**
+- `src/lib/api/client.ts` — HTTP クライアント (fetch ラッパー, ApiError, apiClient, apiUpload)
+- `src/lib/api/types.ts` — 全API型定義（初期版。各 Step で担当者が型を追加）
+- `src/lib/api/index.ts` — 全リポジトリの re-export（雛形。Issue #3 で各リポジトリを追加）
+- `src/lib/query-keys.ts` — TanStack Query キー定義
+- `src/lib/constants.ts` — 定数定義 (PAGE_SIZE, MAX_TITLE_LENGTH, etc.)
+
+**🟢 Providers**
+- `src/providers/QueryProvider.tsx` — TanStack Query Provider
+- `src/providers/Providers.tsx` — 全 Provider を統合するラッパー（AuthProvider のスロットは Issue #4 で注入）
+
+**🟢 共通型**
 - `src/types/index.ts` — 共通型 (存在すれば)
-- `.env.local` — 環境変数テンプレート
+
+**🟡 任意：静的ファイル（あると警告が消える）**
+- `public/favicon.ico` — ファビコン（なくてもプロジェクトは動作するが、ブラウザ警告が出る）
 
 ##### 満たすべき要件
+
+**プロジェクト設定:**
+- `package.json`:
+  - 必要なライブラリをすべて含む: 
+    - **Core:** `next@16.x`, `react@19.x`, `react-dom@19.x`, `typescript@5.x`
+    - **State Management:** `@tanstack/react-query@5.x`, `@tanstack/react-query-devtools@5.x`
+    - **Form & Validation:** `react-hook-form`, `@hookform/resolvers`, `zod`
+    - **UI & Style:** `clsx`, `tailwind-merge`, `tailwindcss@4.x`, `sass@1.x`, `lucide-react`, `sonner`, `date-fns`
+    - **Auth:** `@supabase/ssr`, `@supabase/supabase-js`
+    - **Linter & Test:** `@biomejs/biome@2.x`, `vitest`, `@testing-library/react`, `@vitejs/plugin-react`
+  - scripts: `"dev"`, `"build"`, `"start"`, `"lint"`, `"test"`
+- `next.config.ts`:
+  - `output: "standalone"` 設定
+  - SCSS パス解決: `sassOptions.loadPaths: [path.join(process.cwd(), "src/styles")]`
+- `tsconfig.json`:
+  - `paths` で `@/*` を `./src/*` にマッピング
+  - `strict: true`, `esModuleInterop: true`
+- `components.json`:
+  - shadcn/ui 設定: `style: "new-york"`, `tailwind.css`, `typescript: true`
+- `biome.json`:
+  - linter, formatter 有効化、React ルール設定
+- `vitest.config.ts`:
+  - `@testing-library/react` との統合設定
+
+**必須ページ:**
+- `src/app/page.tsx`:
+  - **シンプルな仮トップページ** を実装（本実装は Issue #6）
+  - 最低限の内容: タイトル「Plot Platform」、サブタイトル「プロジェクト基盤構築中...」、shadcn/ui の `<Card>` と `<Button>` を使って動作確認
+  - `"use client"` は不要（Server Component でOK）
+  - 目的: `task frontend:dev` で開発サーバーが起動し、ブラウザで表示確認できること
+- `src/app/layout.tsx`:
+  - `<html lang="ja">` 設定
+  - `<Providers>` でラップ
+  - `metadata` でタイトル・description 設定
+
+**API 基盤:**
+- `src/lib/utils.ts`:
+  - shadcn/ui の `cn()` 関数を実装（`clsx` + `tailwind-merge`）
+  - これがないと shadcn/ui コンポーネントが動作しない
 - `apiClient<T>()` は以下を満たす:
   - `process.env.NEXT_PUBLIC_API_URL` から Base URL を読み取る (デフォルト: `/api/v1`)
   - 401 / 403 / 404 / 409 等のステータスを `ApiError` に変換
@@ -1011,27 +1351,117 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
   - 204 レスポンスを正しくハンドリング
 - `types.ts` は Section C.1 に記載の全型を定義
 - `query-keys.ts` は Section C.1 に記載の構造
-- `Providers.tsx` は `QueryProvider` をラップ（AuthProvider は #1C 完了後に追加）
-- `layout.tsx` はルートに `<Providers>` を適用。`<html lang="ja">` を設定
-- pnpm install で追加ライブラリを導入（TanStack Query, zod, sonner, date-fns, @supabase/ssr, react-hook-form）
+- `Providers.tsx` は `QueryProvider` をラップ（AuthProvider は Issue #4 完了後に追加）
+
+**環境変数:**
+- `infisical`:
+  ```
+  NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+  NEXT_PUBLIC_USE_MOCK=true
+  NEXT_PUBLIC_SUPABASE_URL=（Issue #4 で追加）
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=（Issue #4 で追加）
+  ```
+
+**ライブラリインストール:**
+```bash
+# プロジェクトルートで実行（frontendディレクトリ内で）
+cd frontend
+pnpm install  # package.json の依存関係をインストール
+
+# shadcn/ui の初期セットアップ
+pnpm dlx shadcn@latest init  # components.json があれば自動設定
+
+# 最低限必要な shadcn/ui コンポーネントを追加（動作確認用）
+pnpm dlx shadcn@latest add button card
+```
 
 ##### テスト観点
-- `apiClient` の正常系/異常系テスト (`lib/api/client.test.ts`)
-  - 200 → JSON パース
-  - 204 → undefined 返却
-  - 4xx → ApiError throw
+- **プロジェクト起動確認:**
+  - `task frontend:dev` で開発サーバーが起動すること
+  - `http://localhost:3000` にアクセスして仮トップページが表示されること
+  - コンソールにエラーが出ないこと
+- **shadcn/ui 動作確認:**
+  - 仮トップページで `<Button>` と `<Card>` が正しく表示されること
+  - Tailwind の className が適用されていること
+- **API クライアント テスト:**
+  - `apiClient` の正常系/異常系テスト (`lib/api/client.test.ts`)
+    - 200 → JSON パース
+    - 204 → undefined 返却
+    - 4xx → ApiError throw
+  - `task frontend:test` でテストが通ること
 
 ##### 依存関係
 - なし（最初のタスク）
-- **ブロック:** Issue #1B, #1C
+- **ブロック:** Issue #3, Issue #4
+
+##### コード例
+
+**仮トップページ — `src/app/page.tsx`**
+
+```tsx
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function HomePage() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <Card className="w-full max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-4xl">Plot Platform</CardTitle>
+          <CardDescription className="text-xl">
+            「架空の欲しいもの」をみんなで作り上げる Wiki 共同編集プラットフォーム
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            🚧 プロジェクト基盤構築中...
+          </p>
+          <div className="flex gap-2">
+            <Button variant="default">開発サーバー起動確認 OK ✓</Button>
+            <Button variant="outline">shadcn/ui 動作確認 OK ✓</Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Issue #6 でランキング表示等の本実装を行います。
+          </p>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+```
+
+**`cn()` ユーティリティ — `src/lib/utils.ts`**
+
+```typescript
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+**環境変数（Infisical で設定）**
+
+```bash
+# API Base URL
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+
+# Mock モード（バックエンド未完成時は true）
+NEXT_PUBLIC_USE_MOCK=true
+
+# Supabase（Issue #4 で追加）
+# NEXT_PUBLIC_SUPABASE_URL=（Infisical で設定）
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=（Infisical で設定）
+```
 
 ---
 
-#### Issue #1B
+#### Issue #3
 
 **タイトル:** [Infra] リポジトリ実装 + Mock データ
 
-**担当:** Dev A（#1A 完了後に着手）
+**担当:** Dev A（Issue #2 完了後に着手）
 
 **内容:**
 
@@ -1049,7 +1479,7 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 - 各リポジトリは `docs/api.md` のエンドポイントに対応する関数を持つ
 - **🔴 Mock 設定（必須）:** `authRepository` **以外の**各リポジトリに `NEXT_PUBLIC_USE_MOCK=true` 時にモックデータを返す分岐を実装する（付録E 参照）
 - **🟢 認証は Mock しない:** `authRepository` は最初から Supabase SDK（`@supabase/ssr`）の実 API を呼ぶ。認証フロー（ログイン→リダイレクト→セッション保持）を Mock で再現するのは困難でバグの温床になるため。「本物のログイン状態で、モックデータを表示する」開発スタイルにする
-- `.env.local` に `NEXT_PUBLIC_USE_MOCK=true` を設定した状態でコミット
+- Infisical で `NEXT_PUBLIC_USE_MOCK=true` を設定（Day 1〜6 の開発期間中）
 - `plotRepository.list` のクエリパラメータ生成テスト
 
 ##### テスト観点
@@ -1057,16 +1487,16 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 - Mock モードで各リポジトリが正しくモックデータを返すこと
 
 ##### 依存関係
-- Issue #1A (HTTP クライアント, 型定義)
-- **ブロック:** Issue #3, #7, #8, #9, #10, #11
+- Issue #2 (HTTP クライアント, 型定義)
+- **ブロック:** Issue #6, #10, #11, #12, #13, #14
 
 ---
 
-#### Issue #1C
+#### Issue #4
 
 **タイトル:** [Infra] Auth Provider・Supabase クライアント・Middleware
 
-**担当:** Dev B（Issue #2 と並行して着手。#1A の `types.ts` / `client.ts` が merge されたら開始）
+**担当:** Dev B（Issue #5 と並行して着手。Issue #2 の `types.ts` / `client.ts` が merge されたら開始）
 
 **内容:**
 
@@ -1091,12 +1521,12 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 - `middleware.ts`: 保護ルートへの未認証アクセスでリダイレクト
 
 ##### 依存関係
-- Issue #1A (Providers.tsx の雛形)
-- **ブロック:** Issue #5 (認証フロー UI)
+- Issue #2 (Providers.tsx の雛形)
+- **ブロック:** Issue #8 (認証フロー UI)
 
 ---
 
-#### Issue #2
+#### Issue #5
 
 **タイトル:** [UI] デザインシステム基盤・共通レイアウト・共有コンポーネント構築
 
@@ -1156,7 +1586,7 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 
 ##### 依存関係
 - なし（最初のタスク。Dev A と並行作業）
-- **ブロック:** Issue #3, #4, #8, #10
+- **ブロック:** Issue #6, #7, #11, #13
 
 ---
 
@@ -1164,7 +1594,7 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 
 ---
 
-#### Issue #3
+#### Issue #6
 
 **タイトル:** [UI] トップページ — ランキング 3 セクション + PlotCard + SearchBar
 
@@ -1180,7 +1610,7 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 - `src/components/search/SearchBar/SearchBar.tsx` — 検索バー
 - `src/components/search/SearchBar/SearchBar.module.scss` — SearchBar SCSS
 - `src/hooks/usePlots.ts` — useTrendingPlots, usePopularPlots, useLatestPlots, usePlotList
-- `src/app/page.tsx` — トップページ
+- **`src/app/page.tsx` — トップページ（本実装）** ← Issue #2 で作成した仮ページを置き換える
 - `src/app/page.module.scss` — トップページ SCSS
 - Header への SearchBar 注入（渡し方を Dev B と合意）
 
@@ -1216,12 +1646,12 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 - `GET /plots/new?limit=5`
 
 ##### 依存関係
-- Issue #1A / #1B (API 基盤, hooks)
-- Issue #2 (Header, TagBadge, Skeleton)
+- Issue #2 / #3 (API 基盤, hooks)
+- Issue #5 (Header, TagBadge, Skeleton)
 
 ---
 
-#### Issue #4
+#### Issue #7
 
 **タイトル:** [UI] Plot 詳細ページ — セクション閲覧 + メタ情報表示
 
@@ -1269,8 +1699,8 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 - `GET /plots/{plotId}` → `PlotDetailResponse`
 
 ##### 依存関係
-- Issue #1A / #1B (API 基盤, hooks)
-- Issue #2 (Header/Footer レイアウト, TagBadge, Avatar)
+- Issue #2 / #3 (API 基盤, hooks)
+- Issue #5 (Header/Footer レイアウト, TagBadge, Avatar)
 
 ---
 
@@ -1278,7 +1708,7 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 
 ---
 
-#### Issue #5
+#### Issue #8
 
 **タイトル:** [Logic/UI] 認証フロー — OAuth ログイン・コールバック・ユーザーメニュー
 
@@ -1325,12 +1755,12 @@ Step 7 (Day 7)   : API 繋ぎ込み・バグ修正・最終調整（余裕があ
 - `AuthGuard`: 未認証時にリダイレクトされる
 
 ##### 依存関係
-- Issue #1C (AuthProvider, Supabase クライアント)
-- Issue #2 (Header の slot 構造)
+- Issue #4 (AuthProvider, Supabase クライアント)
+- Issue #5 (Header の slot 構造)
 
 ---
 
-#### Issue #6
+#### Issue #9
 
 **タイトル:** [UI] Tiptap エディタ統合 — セクション編集・ツールバー・Y.js 準備
 
@@ -1416,9 +1846,9 @@ pnpm add @tiptap/extension-placeholder
 - `DELETE /sections/{sectionId}` — セクション削除
 
 ##### 依存関係
-- Issue #1A / #1B (API 基盤)
-- Issue #2 (_typography.scss)
-- Issue #4 (SectionViewer を参考に、editable 版を構築)
+- Issue #2 / #3 (API 基盤)
+- Issue #5 (_typography.scss)
+- Issue #7 (SectionViewer を参考に、editable 版を構築)
 
 ---
 
@@ -1426,7 +1856,7 @@ pnpm add @tiptap/extension-placeholder
 
 ---
 
-#### Issue #7
+#### Issue #10
 
 **タイトル:** [UI/Logic] 検索結果ページ + Plot 一覧ページ + Plot 作成/編集フォーム
 
@@ -1491,13 +1921,13 @@ pnpm add @tiptap/extension-placeholder
 - `PUT /plots/{plotId}` — Plot 更新
 
 ##### 依存関係
-- Issue #1B (searchRepository, plotRepository)
-- Issue #2 (Pagination, EmptyState)
-- Issue #3 (PlotCard, PlotList, SearchBar)
+- Issue #3 (searchRepository, plotRepository)
+- Issue #5 (Pagination, EmptyState)
+- Issue #6 (PlotCard, PlotList, SearchBar)
 
 ---
 
-#### Issue #8
+#### Issue #11
 
 **タイトル:** [UI] SNS 機能 — StarButton / ForkButton / CommentThread
 
@@ -1558,9 +1988,9 @@ pnpm add @tiptap/extension-placeholder
 - `POST /threads/{threadId}/comments` — コメント投稿
 
 ##### 依存関係
-- Issue #1B (snsRepository)
-- Issue #4 (PlotDetail に StarButton/ForkButton を配置)
-- Issue #5 (useAuth — ログイン状態判定)
+- Issue #3 (snsRepository)
+- Issue #7 (PlotDetail に StarButton/ForkButton を配置)
+- Issue #8 (useAuth — ログイン状態判定)
 
 ---
 
@@ -1568,7 +1998,7 @@ pnpm add @tiptap/extension-placeholder
 
 ---
 
-#### Issue #9
+#### Issue #12
 
 **タイトル:** [UI] ユーザープロフィールページ
 
@@ -1607,12 +2037,12 @@ pnpm add @tiptap/extension-placeholder
 - `GET /auth/users/{username}/contributions`
 
 ##### 依存関係
-- Issue #1B (authRepository)
-- Issue #3 (PlotList コンポーネント)
+- Issue #3 (authRepository)
+- Issue #6 (PlotList コンポーネント)
 
 ---
 
-#### Issue #10
+#### Issue #13
 
 **タイトル:** [UI] 履歴一覧 + 差分表示 + ロールバック
 
@@ -1660,8 +2090,8 @@ pnpm add @tiptap/extension-placeholder
 - `POST /sections/{sectionId}/rollback/{version}`
 
 ##### 依存関係
-- Issue #1B (historyRepository)
-- Issue #4 (Plot 詳細ページから「履歴」リンク)
+- Issue #3 (historyRepository)
+- Issue #7 (Plot 詳細ページから「履歴」リンク)
 
 ---
 
@@ -1669,7 +2099,7 @@ pnpm add @tiptap/extension-placeholder
 
 ---
 
-#### Issue #11
+#### Issue #14
 
 **タイトル:** [UI] 画像アップロード + モバイル対応仕上げ
 
@@ -1712,12 +2142,12 @@ pnpm add @tiptap/extension-placeholder
 - `POST /images` (multipart/form-data)
 
 ##### 依存関係
-- Issue #6 (EditorToolbar の画像ダイアログ)
-- Issue #1B (imageRepository)
+- Issue #9 (EditorToolbar の画像ダイアログ)
+- Issue #3 (imageRepository)
 
 ---
 
-#### Issue #12
+#### Issue #15
 
 **タイトル:** [UI] エラーハンドリング強化・ローディング状態・トースト通知統合
 
@@ -1757,7 +2187,7 @@ pnpm add @tiptap/extension-placeholder
 - エラーメッセージマッピングが正しい (401 → "ログインが必要です")
 
 ##### 依存関係
-- Issue #1A 〜 #10 の全コンポーネントが対象
+- Issue #2 〜 #14 の全コンポーネントが対象
 - sonner の `<Toaster />` が layout.tsx に配置済みであること
 
 ---
@@ -1766,7 +2196,7 @@ pnpm add @tiptap/extension-placeholder
 
 ---
 
-#### Issue #13
+#### Issue #16
 
 **タイトル:** [Infra] Mock → 実 API 繋ぎ込み + バグ修正 + 最終調整
 
@@ -1779,7 +2209,7 @@ pnpm add @tiptap/extension-placeholder
 ##### やること（優先順位順）
 
 **1. API 繋ぎ込み（最優先・午前中に完了）:**
-- `.env.local` の `NEXT_PUBLIC_USE_MOCK=true` → `false` に変更 (Dev A)
+- Infisical で `NEXT_PUBLIC_USE_MOCK=true` → `false` に変更 (Dev A)
 - 各リポジトリ関数が実 API と通信できることを確認 (Dev A & Dev B で分担)
 - レスポンスのフィールド名差異（camelCase / snake_case）を修正 (Dev A)
 - 認証トークンが API に正しく渡されることを確認 (Dev A)
@@ -1795,6 +2225,7 @@ pnpm add @tiptap/extension-placeholder
 - デモシナリオの通し確認: トップ → Plot 詳細 → 編集 → 保存 → スター
 
 **4. 余裕があれば — E2E テスト:**
+- 'playwright.config.ts' - 設定ファイル
 - `e2e/top-page.spec.ts` — トップページ表示テスト
 - `e2e/full-journey.spec.ts` — Plot 作成 → 編集 → スター → コメント
 
@@ -1807,7 +2238,7 @@ pnpm add @tiptap/extension-placeholder
 - [ ] トースト通知が成功/失敗時に表示される
 
 ##### 依存関係
-- 全 Issue (#1 〜 #12)
+- 全 Issue (#1 〜 #15)
 
 ---
 
@@ -1831,8 +2262,10 @@ scope: api | auth | plot | section | editor | sns | search | history | user | la
 
 ### B. 環境変数
 
+> **環境変数は Infisical で管理します。** 以下は設定すべき変数の一覧です。
+
 ```env
-# .env.local
+# Infisical で設定する環境変数
 NEXT_PUBLIC_API_URL=/api/v1
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
@@ -1842,24 +2275,24 @@ NEXT_PUBLIC_USE_MOCK=true  # Day 1〜6: true / Day 7（API繋ぎ込み）: false
 ### C. Issue 依存関係図
 
 ```
-Issue #1A (HTTP Client/型) ──▶ Issue #1B (リポジトリ/Mock) ──┬──▶ Issue #3 (トップページ) ──▶ Issue #7 (検索・作成)
-         │                                                    │                                      │
-         └──▶ Issue #1C (Auth/Supabase) ─────────────────┐    │
-                                                          │    │
-Issue #2 (デザイン基盤) ──────────────────────────────────┼────┼──▶ Issue #4 (Plot詳細) ──────▶ Issue #10 (履歴)
-                                                          │    │                                      │
-                                                          └────┼──▶ Issue #5 (認証) ──────────▶ Issue #9 (プロフィール)
-                                                               │                                      │
-                                                               └──▶ Issue #6 (エディタ) ──────▶ Issue #8 (SNS)
-                                                                           │
-                                                                           └──────────────────▶ Issue #11 (画像・モバイル)
+Issue #1 (環境構築・設定) ──▶ Issue #2 (HTTP Client/型) ──▶ Issue #3 (リポジトリ/Mock) ──┬──▶ Issue #6 (トップページ) ──▶ Issue #10 (検索・作成)
+         │                          │                                                        │                                      │
+         └──────────────────────────┴──▶ Issue #4 (Auth/Supabase) ─────────────────────┐    │
+                                                                                         │    │
+Issue #5 (デザイン基盤) ──────────────────────────────────────────────────────────────┼────┼──▶ Issue #7 (Plot詳細) ──────▶ Issue #13 (履歴)
+                                                                                         │    │                                      │
+                                                                                         └────┼──▶ Issue #8 (認証) ──────────▶ Issue #12 (プロフィール)
+                                                                                              │                                      │
+                                                                                              └──▶ Issue #9 (エディタ) ──────▶ Issue #11 (SNS)
+                                                                                                          │
+                                                                                                          └──────────────────▶ Issue #14 (画像・モバイル)
 
-Issue #12 (エラー/ローディング) は全 Issue の改善として並行可能
-Issue #13 (API繋ぎ込み) は全 Issue 完了後の Day 7
+Issue #15 (エラー/ローディング) は全 Issue の改善として並行可能
+Issue #16 (API繋ぎ込み) は全 Issue 完了後の Day 7
 
 Day 1 の並行作業:
-  Dev A: #1A(午前) → #1B(午後)
-  Dev B: #2 + #1C(#1A merge 後に着手)
+  Dev A: #1(確認) → #2(午前) → #3(午後)
+  Dev B: #5 + #4(#2 merge 後に着手)
 ```
 
 ### D. shadcn/ui で最初にインストールすべきコンポーネント一覧
@@ -1881,23 +2314,57 @@ pnpm dlx shadcn@latest add \
 
 > **🟢 例外: `authRepository` は Mock しない。** 認証フロー（ログイン→リダイレクト→セッション保持）を Mock で再現するのは困難でバグの温床になるため、**Supabase Auth だけは最初から実物を使う**。こうすると「本物のログイン状態で、モックデータを表示する」開発ができ、本番結合時のトラブルが激減する。
 
-| リポジトリ | Mock 対象？ | 理由 |
-|-----------|:-----------:|------|
-| `plotRepository` | ✅ Mock | データ系。バックエンド API を待たない |
-| `sectionRepository` | ✅ Mock | 同上 |
-| `searchRepository` | ✅ Mock | 同上 |
-| `snsRepository` | ✅ Mock | 同上 |
-| `imageRepository` | ✅ Mock | 同上 |
-| `historyRepository` | ✅ Mock | 同上 |
-| **`authRepository`** | **❌ 実物** | **認証フローの Mock は危険。Supabase SDK を直接呼ぶ** |
+#### E.1 環境変数設定
+
+プロジェクトルートに `.env.local` を作成し、以下の環境変数を設定する：
+
+```bash
+# ===== Mock モード設定 =====
+# true: モックデータを使用（開発初期 Day 1-6）
+# false: 実際のバックエンドAPIを使用（Day 7〜）
+NEXT_PUBLIC_USE_MOCK=true
+
+# ===== バックエンドAPI URL =====
+# バックエンドが完成したら設定（Day 7〜）
+# 開発環境（ローカル）
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+# または本番・ステージング環境
+# NEXT_PUBLIC_API_URL=https://api.plot-platform.example.com/v1
+
+# ===== Supabase 認証設定（最初から必要） =====
+# Supabase プロジェクトの Settings > API から取得
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4eHh4eHh4eHh4eHgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwODAwMDAwMCwiZXhwIjoyMDIzNTc2MDAwfQ.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**取得手順:**
+
+1. **Supabase プロジェクト作成:**
+   - https://supabase.com/ にアクセス
+   - "New Project" でプロジェクト作成
+   - Project Settings > API から `URL` と `anon public` キーをコピー
+
+2. **OAuth プロバイダ設定（GitHub / Google）:**
+   - Supabase Dashboard > Authentication > Providers
+   - GitHub / Google を有効化し、OAuth アプリを作成
+   - Callback URL: `https://<your-supabase-project>.supabase.co/auth/v1/callback`
+
+3. **`.env.local` に記載後、Git にコミットしない:**
+   ```bash
+   # .gitignore に .env.local が含まれていることを確認
+   git status  # .env.local が表示されないことを確認
+   ```
+
+#### E.2 Mock データ実装パターン
+
+**パターン1: Repository 層で直接分岐（推奨）**
 
 ```typescript
-// lib/api/plots.ts — API 未完成時の暫定実装例
-
+// lib/api/plots.ts
 import { apiClient } from "./client";
-import type { PlotListResponse } from "./types";
+import type { PlotListResponse, PlotDetailResponse } from "./types";
 
-// モックデータ
+// 🎭 モックデータ定義
 const MOCK_PLOTS: PlotListResponse = {
   items: [
     {
@@ -1913,25 +2380,228 @@ const MOCK_PLOTS: PlotListResponse = {
       createdAt: "2026-02-10T00:00:00Z",
       updatedAt: "2026-02-15T00:00:00Z",
     },
-    // ... 追加のモックデータ
+    {
+      id: "mock-2",
+      title: "話せる猫耳",
+      description: "猫の言葉が人間語に翻訳される魔法の耳飾り。",
+      tags: ["動物", "魔法"],
+      ownerId: "user-2",
+      starCount: 128,
+      isStarred: true,
+      isPaused: false,
+      editingUsers: ["user-3"],
+      createdAt: "2026-01-28T09:00:00Z",
+      updatedAt: "2026-02-15T12:00:00Z",
+    },
   ],
-  total: 1,
+  total: 2,
   limit: 20,
   offset: 0,
 };
+
+// 🔀 環境変数で分岐
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+export const plotRepository = {
+  trending(limit = 5) {
+    if (USE_MOCK) {
+      return Promise.resolve({ items: MOCK_PLOTS.items.slice(0, limit), ... });
+    }
+    return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`);
+  },
+
+  /** Plot 詳細取得 */
+  detail(id: string) {
+    if (USE_MOCK) {
+      const item = MOCK_PLOTS.items.find((p) => p.id === id);
+      if (!item) throw new Error("Plot not found");
+      return Promise.resolve({
+        ...item,
+        sections: [
+          {
+            id: "section-1",
+            plotId: id,
+            title: "概要",
+            content: "<p>これは架空のプロダクトです。</p>",
+            order: 0,
+            createdBy: "user-1",
+            createdAt: "2026-02-10T00:00:00Z",
+            updatedAt: "2026-02-10T00:00:00Z",
+          },
+        ],
+        owner: {
+          id: "user-1",
+          username: "taro",
+          displayName: "太郎",
+          avatarUrl: null,
+        },
+      } as PlotDetailResponse);
+    }
+    return apiClient<PlotDetailResponse>(`/plots/${id}`);
+  },
+
+  /** Plot 作成 */
+  create(data: { title: string; description?: string; tags?: string[] }) {
+    if (USE_MOCK) {
+      const newPlot = {
+        id: `mock-${Date.now()}`,
+        ...data,
+        description: data.description ?? "",
+        tags: data.tags ?? [],
+        ownerId: "user-1",
+        starCount: 0,
+        isStarred: false,
+        isPaused: false,
+        editingUsers: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return Promise.resolve(newPlot);
+    }
+    return apiClient<PlotItem>("/plots", { method: "POST", body: data });
+  },
+};
+```
+
+##### パターン2: 共通 Mock データファイル（オプション）
+
+複数のリポジトリで同じデータを使いたい場合、`lib/mock/data.ts` に一元化する。
+
+```typescript
+// lib/mock/data.ts
+import type { PlotItem, UserBrief } from "@/lib/api/types";
+
+export const mockUsers: Record<string, UserBrief> = {
+  "user-1": {
+    id: "user-1",
+    username: "taro",
+    displayName: "太郎",
+    avatarUrl: null,
+  },
+  "user-2": {
+    id: "user-2",
+    username: "hanako",
+    displayName: "花子",
+    avatarUrl: "https://i.pravatar.cc/150?u=hanako",
+  },
+};
+
+export const mockPlots: PlotItem[] = [
+  {
+    id: "mock-1",
+    title: "空飛ぶ自動販売機",
+    description: "ドローン搭載の自販機。どこでも好きな場所に飲み物を届けてくれる。",
+    tags: ["テクノロジー", "飲料"],
+    ownerId: "user-1",
+    starCount: 42,
+    isStarred: false,
+    isPaused: false,
+    editingUsers: [],
+    createdAt: "2026-02-10T00:00:00Z",
+    updatedAt: "2026-02-15T00:00:00Z",
+  },
+  // ... 他のモックデータ
+];
+```
+
+```typescript
+// lib/api/plots.ts での使用例
+import { mockPlots } from "@/lib/mock/data";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 export const plotRepository = {
   trending(limit = 5) {
-    if (USE_MOCK) return Promise.resolve(MOCK_PLOTS);
+    if (USE_MOCK) {
+      return Promise.resolve({
+        items: mockPlots.slice(0, limit),
+        total: mockPlots.length,
+        limit,
+        offset: 0,
+      });
+    }
     return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`);
   },
-  // ...
 };
 ```
 
-`.env.local` に `NEXT_PUBLIC_USE_MOCK=true` を設定すれば、API なしで開発可能。API が完成したら `false` に切り替える。
+#### E.3 認証フロー実装パターン（Supabase Auth）
+
+認証は **Mock を使わず、最初から実物の Supabase Auth を使う**。
+
+**必要なファイル:**
+- `lib/supabase/client.ts` — `createBrowserClient` でブラウザ用クライアント作成
+- `app/auth/callback/route.ts` — OAuth コールバック処理 (`exchangeCodeForSession`)
+- `hooks/useAuth.ts` — `useAuth()` hook (セッション取得, `onAuthStateChange` 監視, `signIn`, `signOut`)
+- `app/auth/login/page.tsx` — ログインページ (GitHub/Google ボタン)
+
+詳細は Issue #4, #8 を参照。
+
+#### E.4 Mock ⇄ 実API 切り替えフロー
+
+**Day 1-6: Mock モードで開発**
+
+```bash
+# .env.local
+NEXT_PUBLIC_USE_MOCK=true
+
+# この状態で開発サーバー起動
+task frontend:dev
+```
+
+すべての Repository が Mock データを返す → UI をサクサク実装できる
+
+**Day 7: 実 API に切り替え**
+
+```bash
+# .env.local
+NEXT_PUBLIC_USE_MOCK=false
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1  # バックエンドのURL
+
+# 開発サーバー再起動
+task frontend:dev
+```
+
+すべての Repository が実 API を呼ぶ → バックエンドと統合テスト
+
+**トラブルシューティング:**
+
+- **API エラーが出る:** バックエンドが起動しているか確認 (`http://localhost:8000/docs` で Swagger UI が開くか)
+- **CORS エラー:** バックエンドの CORS 設定を確認（`http://localhost:3000` を許可する）
+- **型が合わない:** `lib/api/types.ts` と実際のレスポンスを比較、必要に応じて型を修正
+
+#### E.5 Mock データの追加ルール
+
+**各自が担当するリポジトリのモックデータは各自が追加する。**
+
+| 担当者 | 追加するモックデータ |
+|--------|-------------------|
+| Dev A | `plotRepository`, `searchRepository` のモックデータ |
+| Dev B | `snsRepository`, `sectionRepository` のモックデータ |
+
+**共通ファイル（`lib/mock/data.ts`）の編集:**
+- 型定義（`PlotItem`, `UserBrief` 等）は Issue #2 で Dev A が雛形作成
+- 以降は各自が **自分の担当データのみ** 追加
+- コンフリクト回避のため、配列の末尾に追加する
+
+```typescript
+// ✅ 良い例: 配列の末尾に追加
+export const mockPlots: PlotItem[] = [
+  // ... 既存データ ...
+  {
+    id: "mock-3", // 新規追加
+    title: "あなたの追加データ",
+    // ...
+  },
+];
+
+// ❌ 悪い例: 既存データの間に挿入（コンフリクトの原因）
+export const mockPlots: PlotItem[] = [
+  { id: "mock-1", /* ... */ },
+  { id: "mock-new", /* ... */ }, // ← ここに挿入すると他の人と衝突
+  { id: "mock-2", /* ... */ },
+];
+```
 
 ---
 
