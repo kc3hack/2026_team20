@@ -222,3 +222,4 @@ async def health() -> dict[str, str]:
         db_status = "error"
     overall = "ok" if db_status == "ok" else "degraded"
     return {"status": overall, "database": db_status}
+
