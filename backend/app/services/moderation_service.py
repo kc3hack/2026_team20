@@ -1,5 +1,5 @@
 
-"""Moderation service - BAN, pause, and diff logic."""
+"""モデレーションサービス - BAN、一時停止、および差分ロジック。"""
 
 from uuid import UUID
 
@@ -15,9 +15,9 @@ def ban_user(
     user_id: UUID,
     reason: str | None = None,
 ) -> PlotBan:
-    """Ban a user from a specific plot.
+    """特定のプロットからユーザーをBANする。
 
-    Raises ValueError if plot not found or user already banned.
+    プロットが見つからない、またはユーザーが既にBANされている場合はValueErrorを発生させる。
     """
     plot = db.query(Plot).filter(Plot.id == plot_id).first()
     if not plot:
@@ -43,9 +43,9 @@ def unban_user(
     plot_id: UUID,
     user_id: UUID,
 ) -> None:
-    """Remove a ban for a user on a specific plot.
+    """特定のプロットのユーザーのBANを解除する。
 
-    Raises ValueError if ban not found.
+    BANが見つからない場合はValueErrorを発生させる。
     """
     ban = (
         db.query(PlotBan)
@@ -60,7 +60,7 @@ def unban_user(
 
 
 def is_user_banned(db: Session, plot_id: UUID, user_id: UUID) -> bool:
-    """Check if a user is banned from a plot."""
+    """ユーザーがプロットからBANされているかをチェックする。"""
     ban = (
         db.query(PlotBan)
         .filter(PlotBan.plot_id == plot_id, PlotBan.user_id == user_id)
@@ -74,9 +74,9 @@ def pause_plot(
     plot_id: UUID,
     reason: str | None = None,
 ) -> Plot:
-    """Pause editing on a plot.
+    """プロットの編集を一時停止する。
 
-    Raises ValueError if plot not found or already paused.
+    プロットが見つからない、または既に一時停止されている場合はValueErrorを発生させる。
     """
     plot = db.query(Plot).filter(Plot.id == plot_id).first()
     if not plot:
@@ -96,9 +96,9 @@ def resume_plot(
     db: Session,
     plot_id: UUID,
 ) -> Plot:
-    """Resume editing on a paused plot.
+    """一時停止されたプロットの編集を再開する。
 
-    Raises ValueError if plot not found or not paused.
+    プロットが見つからない、または一時停止されていない場合はValueErrorを発生させる。
     """
     plot = db.query(Plot).filter(Plot.id == plot_id).first()
     if not plot:
@@ -119,16 +119,16 @@ def get_section_diff(
     section_id: UUID,
     version: int,
 ) -> dict:
-    """Get diff between the specified version and the version before it.
+    """指定されたバージョンとその前のバージョンの差分を取得する。
 
-    Compares version N with version N-1 (or empty if N is the first).
-    Returns additions/deletions format.
+    バージョンNをバージョンN-1と比較する（Nが最初の場合は空と比較）。
+    追加/削除形式で返す。
     """
     section = db.query(Section).filter(Section.id == section_id).first()
     if not section:
         raise ValueError("Section not found")
 
-    # Get target snapshot
+    # 対象のスナップショットを取得
     target_snapshot = (
         db.query(ColdSnapshot)
         .filter(
@@ -140,7 +140,7 @@ def get_section_diff(
     if not target_snapshot:
         raise ValueError("Version not found")
 
-    # Get the previous snapshot (highest version < target)
+    # 前のスナップショットを取得（target未満の最大バージョン）
     prev_snapshot = (
         db.query(ColdSnapshot)
         .filter(

@@ -1,7 +1,7 @@
-"""History service - 2-layer storage business logic.
+"""履歴サービス - 2層ストレージのビジネスロジック。
 
-Phase 1 (Hot): Operation logs in hot_operations (72h TTL)
-Phase 2 (Cold): Snapshots in cold_snapshots (permanent)
+フェーズ1（ホット）: hot_operationsの操作ログ（72時間のTTL）
+フェーズ2（コールド）: cold_snapshotsのスナップショット（永続的）
 """
 
 import difflib
@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.models import ColdSnapshot, HotOperation, Section, User
 
 
-# TTL for hot operations (72 hours)
+# ホット操作のTTL（72時間）
 HOT_OPERATION_TTL_HOURS = 72
 
 
@@ -26,22 +26,22 @@ def record_operation(
     operation_type: str,
     payload: dict | None = None,
 ) -> HotOperation:
-    """Record an operation in hot_operations and create a cold snapshot.
+    """hot_operationsに操作を記録し、コールドスナップショットを作成する。
 
-    1. Increment section version (atomic SQL-level update)
-    2. Save operation log (Phase 1 - hot, 72h)
-    3. Save content snapshot (Phase 2 - cold, permanent)
+    1. セクションのバージョンをインクリメント（アトミックなSQLレベル更新）
+    2. 操作ログを保存（フェーズ1 - ホット、72時間）
+    3. コンテンツスナップショットを保存（フェーズ2 - コールド、永続的）
     """
     section = db.query(Section).filter(Section.id == section_id).first()
     if not section:
         raise ValueError("Section not found")
 
-    # Validate user exists
+    # ユーザーの存在を検証
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise ValueError("User not found")
 
-    # Atomic version increment at SQL level (no row lock required)
+    # SQLレベルでのアトミックなバージョンインクリメント（行ロック不要）
     db.execute(
         sa_update(Section)
         .where(Section.id == section_id)
@@ -51,7 +51,7 @@ def record_operation(
     db.refresh(section)
     new_version = section.version
 
-    # Phase 1: Record hot operation
+    # フェーズ1: ホット操作を記録
     operation = HotOperation(
         section_id=section_id,
         operation_type=operation_type,
@@ -61,7 +61,7 @@ def record_operation(
     )
     db.add(operation)
 
-    # Phase 2: Create cold snapshot of current content
+    # フェーズ2: 現在のコンテンツのコールドスナップショットを作成
     snapshot = ColdSnapshot(
         section_id=section_id,
         content=section.content,
@@ -80,10 +80,10 @@ def get_history(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    """Get operation history for a section (72h window only).
+    """セクションの操作履歴を取得する（72時間のウィンドウのみ）。
 
-    Returns list of history items with user info, and total count.
-    Uses JOIN to avoid N+1 query problem.
+    ユーザー情報を含む履歴項目のリストと総数を返す。
+    N+1クエリ問題を回避するためにJOINを使用。
     """
     cutoff = datetime.now(timezone.utc) - timedelta(hours=HOT_OPERATION_TTL_HOURS)
 
@@ -99,7 +99,7 @@ def get_history(
     total = query.count()
     operations = query.offset(offset).limit(limit).all()
 
-    # Batch-load user data: collect unique user_ids and query once
+    # ユーザーデータを一括読み込み: 一意のuser_idを収集して一度だけクエリ
     user_ids = {op.user_id for op in operations}
     users = db.query(User).filter(User.id.in_(user_ids)).all()
     user_map = {u.id: u for u in users}
@@ -134,17 +134,17 @@ def rollback_to_version(
     version: int,
     user_id: UUID | None = None,
 ) -> Section:
-    """Rollback a section to a specific version.
+    """セクションを特定のバージョンにロールバックする。
 
-    Only allowed if version is within the 72h hot operation window.
-    Version always increments forward (content is restored, not the version number).
-    The rollback operation itself is recorded in history.
+    バージョンが72時間のホット操作ウィンドウ内にある場合のみ許可される。
+    バージョンは常に前方にインクリメントされる（コンテンツが復元され、バージョン番号は復元されない）。
+    ロールバック操作自体が履歴に記録される。
     """
     section = db.query(Section).filter(Section.id == section_id).first()
     if not section:
         raise ValueError("Section not found")
 
-    # Check the operation at that version is within 72h
+    # そのバージョンの操作が72時間以内であることを確認
     cutoff = datetime.now(timezone.utc) - timedelta(hours=HOT_OPERATION_TTL_HOURS)
     operation = (
         db.query(HotOperation)
@@ -159,7 +159,7 @@ def rollback_to_version(
     if not operation:
         raise ValueError("Version not found or outside 72-hour rollback window")
 
-    # Get the cold snapshot for the target version
+    # 対象バージョンのコールドスナップショットを取得
     snapshot = (
         db.query(ColdSnapshot)
         .filter(
@@ -172,7 +172,7 @@ def rollback_to_version(
     if not snapshot:
         raise ValueError("Snapshot not found for this version")
 
-    # Restore content from snapshot, but increment version forward (never go backwards)
+    # スナップショットからコンテンツを復元するが、バージョンは前方にインクリメント（決して後戻りしない）
     db.execute(
         sa_update(Section)
         .where(Section.id == section_id)
@@ -181,7 +181,7 @@ def rollback_to_version(
     db.flush()
     db.refresh(section)
 
-    # Record the rollback as an operation so history is not broken
+    # 履歴が壊れないようにロールバックを操作として記録
     rollback_op = HotOperation(
         section_id=section_id,
         operation_type="rollback",
@@ -209,9 +209,9 @@ def get_diff(
     from_version: int,
     to_version: int,
 ) -> dict:
-    """Compute diff between two snapshot versions.
+    """2つのスナップショットバージョン間の差分を計算する。
 
-    Uses difflib for line-level unified diff comparison.
+    行レベルの統一差分比較にdifflibを使用。
     """
     from_snapshot = (
         db.query(ColdSnapshot)
@@ -234,7 +234,7 @@ def get_diff(
     if not from_snapshot or not to_snapshot:
         raise ValueError("Snapshot not found for one or both versions")
 
-    # Extract text content from Tiptap JSON
+    # Tiptap JSONからテキストコンテンツを抽出
     from_text = extract_text(from_snapshot.content)
     to_text = extract_text(to_snapshot.content)
 
@@ -249,10 +249,10 @@ def get_diff(
 
 
 def extract_text(content: dict | None) -> str:
-    """Extract plain text from Tiptap JSON content.
+    """Tiptap JSONコンテンツからプレーンテキストを抽出する。
 
-    Recursively walks the Tiptap document tree and extracts text nodes.
-    Falls back to json.dumps if the structure is unrecognized.
+    Tiptapドキュメントツリーを再帰的に走査してテキストノードを抽出する。
+    構造が認識できない場合はjson.dumpsにフォールバックする。
     """
     if not content:
         return ""
@@ -266,10 +266,10 @@ def extract_text(content: dict | None) -> str:
             return
         if not isinstance(node, dict):
             return
-        # Tiptap text nodes have a "text" field
+        # Tiptapのテキストノードは"text"フィールドを持つ
         if "text" in node:
             texts.append(node["text"])
-        # Recurse into "content" array (Tiptap block structure)
+        # "content"配列に再帰（Tiptapブロック構造）
         if "content" in node:
             _walk(node["content"])
 
@@ -277,14 +277,14 @@ def extract_text(content: dict | None) -> str:
 
     if texts:
         return "\n".join(texts)
-    # Fallback: serialize as JSON for non-Tiptap content
+    # フォールバック: Tiptap以外のコンテンツはJSONとしてシリアライズ
     return json.dumps(content, ensure_ascii=False, sort_keys=True)
 
 
 def compute_diff(from_text: str, to_text: str) -> tuple[list[dict], list[dict]]:
-    """Compute line-level diff between two strings using difflib.
+    """difflibを使用して2つの文字列間の行レベル差分を計算する。
 
-    Returns (additions, deletions) where each item has line number and text.
+    各項目が行番号とテキストを持つ(追加, 削除)のタプルを返す。
     """
     additions: list[dict] = []
     deletions: list[dict] = []
