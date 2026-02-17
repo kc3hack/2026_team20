@@ -68,6 +68,29 @@ tasks:
     desc: Lintのみ実行
     cmd: pnpm biome lint .
 
+  test:
+    desc: Unitテスト実行 (Vitest)
+    deps: [install]
+    cmd: "{{.INFISICAL_RUN}} pnpm vitest run"
+
+  e2e:
+    desc: E2Eテスト実行 (Playwright)
+    deps: [install]
+    cmd: "{{.INFISICAL_RUN}} pnpm playwright test"
+
+  vr:
+    desc: 視覚回帰テスト (Playwright)
+    deps: [install]
+    cmd: "{{.INFISICAL_RUN}} pnpm playwright test"
+
+  ci:
+    desc: CI一括実行 (build/check/test/vr)
+    cmds:
+      - task: build
+      - task: check
+      - task: test
+      - task: vr
+
   # ----------------------------------------------------------------
   # 型生成 (FastAPI連携)
   # ----------------------------------------------------------------

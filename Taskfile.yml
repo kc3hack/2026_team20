@@ -66,6 +66,6 @@ tasks:
   sync:
     desc: Infisical の値をローカルの .env に書き出し (エディタ用)
     cmds:
-      - infisical export --env=dev --format=env > .env
-      - cd frontend && infisical export --env=dev --format=env > .env
-      - cd backend && infisical export --env=dev --format=env > .env
+      - infisical export --env=dev --format=dotenv > .env
+      - cd frontend && infisical export --env=dev --format=dotenv > .env
+      - cd backend && infisical export --env=dev --format=dotenv > .env
