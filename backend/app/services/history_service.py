@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from app.models import ColdSnapshot, HotOperation, Section, User
 
-
 # ホット操作のTTL（72時間）
 HOT_OPERATION_TTL_HOURS = 72
 
@@ -42,14 +41,14 @@ def record_operation(
         raise ValueError("User not found")
 
     # SQLレベルでのアトミックなバージョンインクリメント（行ロック不要）
-    db.execute(
+    stmt = (
         sa_update(Section)
         .where(Section.id == section_id)
         .values(version=Section.version + 1)
+        .returning(Section.version)
     )
-    db.flush()
-    db.refresh(section)
-    new_version = section.version
+    result = db.execute(stmt)
+    new_version = result.scalar_one()
 
     # フェーズ1: ホット操作を記録
     operation = HotOperation(
@@ -69,9 +68,15 @@ def record_operation(
     )
     db.add(snapshot)
 
-    db.commit()
-    db.refresh(operation)
-    return operation
+    try:
+        db.add(operation)
+        db.add(snapshot)
+        db.commit()
+        db.refresh(operation)
+        return operation
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise
 
 
 def get_history(
@@ -140,7 +145,12 @@ def rollback_to_version(
     バージョンは常に前方にインクリメントされる（コンテンツが復元され、バージョン番号は復元されない）。
     ロールバック操作自体が履歴に記録される。
     """
-    section = db.query(Section).filter(Section.id == section_id).first()
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id)
+        .with_for_update()
+        .first()
+    )
     if not section:
         raise ValueError("Section not found")
 
@@ -198,9 +208,19 @@ def rollback_to_version(
     )
     db.add(rollback_snapshot)
 
-    db.commit()
-    db.refresh(section)
-    return section
+    try:
+        section = db.query(Section).filter(...).with_for_update().first()
+        # ... 検証処理 ...
+        db.execute(sa_update(Section).where(...))
+        db.flush()
+        db.add(rollback_op)
+        db.add(rollback_snapshot)
+        db.commit()
+        db.refresh(section)
+        return section
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise
 
 
 def get_diff(

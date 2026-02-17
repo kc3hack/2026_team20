@@ -1,8 +1,8 @@
-
 """モデレーションサービス - BAN、一時停止、および差分ロジック。"""
 
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models import ColdSnapshot, Plot, PlotBan, Section
@@ -31,11 +31,16 @@ def ban_user(
     if existing:
         raise ValueError("User is already banned from this plot")
 
-    ban = PlotBan(plot_id=plot_id, user_id=user_id, reason=reason)
-    db.add(ban)
-    db.commit()
-    db.refresh(ban)
-    return ban
+    try:
+        ban = PlotBan(plot_id=plot_id, user_id=user_id, reason=reason)
+        db.add(ban)
+        db.commit()
+        db.refresh(ban)
+        return ban
+
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("User is already banned from this plot")
 
 
 def unban_user(
@@ -55,8 +60,12 @@ def unban_user(
     if not ban:
         raise ValueError("Ban not found")
 
-    db.delete(ban)
-    db.commit()
+    try:
+        db.delete(ban)
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise
 
 
 def is_user_banned(db: Session, plot_id: UUID, user_id: UUID) -> bool:
@@ -78,18 +87,22 @@ def pause_plot(
 
     プロットが見つからない、または既に一時停止されている場合はValueErrorを発生させる。
     """
-    plot = db.query(Plot).filter(Plot.id == plot_id).first()
-    if not plot:
-        raise ValueError("Plot not found")
+    try:
+        plot = db.query(Plot).filter(Plot.id == plot_id).with_for_update().first()
+        if not plot:
+            raise ValueError("Plot not found")
 
-    if plot.is_paused:
-        raise ValueError("Plot is already paused")
+        if plot.is_paused:
+            raise ValueError("Plot is already paused")
 
-    plot.is_paused = True
-    plot.pause_reason = reason
-    db.commit()
-    db.refresh(plot)
-    return plot
+        plot.is_paused = True
+        plot.pause_reason = reason
+        db.commit()
+        db.refresh(plot)
+        return plot
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def resume_plot(
@@ -100,18 +113,22 @@ def resume_plot(
 
     プロットが見つからない、または一時停止されていない場合はValueErrorを発生させる。
     """
-    plot = db.query(Plot).filter(Plot.id == plot_id).first()
-    if not plot:
-        raise ValueError("Plot not found")
+    try:
+        plot = db.query(Plot).filter(Plot.id == plot_id).with_for_update().first()
+        if not plot:
+            raise ValueError("Plot not found")
 
-    if not plot.is_paused:
-        raise ValueError("Plot is not paused")
+        if not plot.is_paused:
+            raise ValueError("Plot is not paused")
 
-    plot.is_paused = False
-    plot.pause_reason = None
-    db.commit()
-    db.refresh(plot)
-    return plot
+        plot.is_paused = False
+        plot.pause_reason = None
+        db.commit()
+        db.refresh(plot)
+        return plot
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def get_section_diff(
