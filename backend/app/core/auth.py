@@ -2,9 +2,15 @@ import logging
 from typing import Annotated
 
 import httpx
-import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import (
+    ExpiredSignatureError,
+    InvalidTokenError,
+    PyJWK,
+    PyJWKClient,
+    decode,
+)
 
 from app.core.config import get_settings
 from app.schemas import CurrentUser
@@ -23,14 +29,14 @@ class JWKSKeyManager:
 
     def __init__(self, jwks_url: str):
         self._jwks_url = jwks_url
-        self._jwks_client = jwt.PyJWKClient(
+        self._jwks_client = PyJWKClient(
             jwks_url,
             cache_keys=True,  # キーをメモリにキャッシュ
             lifespan=600,  # 10分間キャッシュ（Supabase側と同じ）
             headers={"User-Agent": "plot-platform-api/1.0"},
         )
 
-    def get_signing_key(self, token: str) -> jwt.PyJWK:
+    def get_signing_key(self, token: str) -> PyJWK:
         """JWTヘッダーの kid に基づいて対応する公開鍵を取得。"""
         return self._jwks_client.get_signing_key_from_jwt(token)
 
@@ -53,7 +59,7 @@ def _verify_jwks(token: str) -> dict:
     """New: JWKS + ES256（非対称鍵）で検証。"""
     manager = _get_jwks_manager()
     signing_key = manager.get_signing_key(token)
-    return jwt.decode(
+    return decode(
         token,
         signing_key.key,
         algorithms=["ES256"],
@@ -63,7 +69,7 @@ def _verify_jwks(token: str) -> dict:
 
 
 # ─── FastAPI Dependencies ────────────────────────────────────
-async def get_current_user(
+def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ) -> CurrentUser:
     """
@@ -85,12 +91,12 @@ async def get_current_user(
             email=payload.get("email"),
             role=payload.get("role"),
         )
-    except jwt.ExpiredSignatureError as e:
+    except ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
         ) from e
-    except jwt.InvalidTokenError as e:
+    except InvalidTokenError as e:
         logger.warning("Invalid token: %s", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -104,7 +110,7 @@ async def get_current_user(
         ) from e
 
 
-async def get_optional_user(
+def get_optional_user(
     credentials: Annotated[
         HTTPAuthorizationCredentials | None,
         Depends(HTTPBearer(auto_error=False)),
@@ -112,4 +118,4 @@ async def get_optional_user(
 ) -> CurrentUser | None:
     if credentials is None:
         return None
-    return await get_current_user(credentials)
+    return get_current_user(credentials)
