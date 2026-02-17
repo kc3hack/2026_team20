@@ -12,6 +12,7 @@ from fastapi import APIRouter
 #     stars,
 # )
 
+# 追加し次第コメントアウトを解除
 api_router = APIRouter()
 # api_router.include_router(plots.router, prefix="/plots", tags=["plots"])
 # api_router.include_router(sections.router, tags=["sections"])

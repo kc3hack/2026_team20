@@ -33,9 +33,3 @@ def get_supabase_client() -> Client:
             persist_session=False,
         ),
     )
-
-
-def __getattr__(name: str):
-    if name == "supabase_client":
-        return get_supabase_client()
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

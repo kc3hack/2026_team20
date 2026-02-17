@@ -16,6 +16,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.api import api_router
 from app.core.config import get_settings
 from app.core.database import get_engine, get_session_local
+from app.core.supabase import get_supabase_client
 
 settings = get_settings()
 
@@ -74,7 +75,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         )
 
     yield
+
+    # --- shutdown ---
     get_engine().dispose()
+    get_engine.cache_clear()
+    get_session_local.cache_clear()
+    get_supabase_client.cache_clear()
     logger.info("Shutdown complete – DB connections disposed")
 
 
@@ -202,7 +208,7 @@ app.mount("/api/v1/images", StaticFiles(directory=str(_images_dir)), name="image
 #  Health check
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 @app.get("/health", tags=["system"])
-def health() -> dict[str, str]:
+async def health() -> dict[str, str]:
     """アプリケーションと DB の死活確認。
     - status: "ok" or "degraded"
     - database: "ok" or "error"
