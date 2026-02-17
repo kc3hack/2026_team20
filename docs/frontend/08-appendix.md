@@ -24,7 +24,8 @@ scope: api | auth | plot | section | editor | sns | search | history | user | la
 # Infisical で設定する環境変数
 NEXT_PUBLIC_API_URL=/api/v1
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
+SUPABASE_SECRET_KEY=eyJ...
 NEXT_PUBLIC_USE_MOCK=true  # Day 1〜6: true / Day 7（API繋ぎ込み）: false
 ```
 

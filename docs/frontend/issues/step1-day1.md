@@ -174,7 +174,8 @@ pnpm install  # package.json の依存関係をインストール
   NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
   NEXT_PUBLIC_USE_MOCK=true
   NEXT_PUBLIC_SUPABASE_URL=（Issue #4 で追加）
-  NEXT_PUBLIC_SUPABASE_ANON_KEY=（Issue #4 で追加）
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=（Issue #4 で追加）
+  SUPABASE_SECRET_KEY=（Issue #4 で追加）
   ```
 
 **ライブラリインストール:**
@@ -267,7 +268,8 @@ NEXT_PUBLIC_USE_MOCK=true
 
 # Supabase（Issue #4 で追加）
 # NEXT_PUBLIC_SUPABASE_URL=（Infisical で設定）
-# NEXT_PUBLIC_SUPABASE_ANON_KEY=（Infisical で設定）
+# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=（Infisical で設定）
+# SUPABASE_SECRET_KEY=（Infisical で設定）
 ```
 
 ---

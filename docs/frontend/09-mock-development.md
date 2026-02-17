@@ -28,7 +28,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 # ===== Supabase 認証設定（最初から必要） =====
 # Supabase プロジェクトの Settings > API から取得
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4eHh4eHh4eHh4eHgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwODAwMDAwMCwiZXhwIjoyMDIzNTc2MDAwfQ.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4eHh4eHh4eHh4eHgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwODAwMDAwMCwiZXhwIjoyMDIzNTc2MDAwfQ.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SUPABASE_SECRET_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4eHh4eHh4eHh4eHgiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzA4MDAwMDAwLCJleHAiOjIwMjM1NzYwMDB9.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 **取得手順:**
@@ -36,7 +37,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 1. **Supabase プロジェクト作成:**
    - https://supabase.com/ にアクセス
    - "New Project" でプロジェクト作成
-   - Project Settings > API から `URL` と `anon public` キーをコピー
+   - Project Settings > API から `URL`、`anon public` キー（PUBLISHABLE_KEY）、`service_role` キー（SECRET_KEY）をコピー
 
 2. **OAuth プロバイダ設定（GitHub / Google）:**
    - Supabase Dashboard > Authentication > Providers
