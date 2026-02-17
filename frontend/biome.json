@@ -7,13 +7,30 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!**/*.scss",
+      "!playwright-report",
+      "!test-results",
+      "!tests/visual/*.png",
+      "!tests/visual/**/screenshot-*.png",
+      "!tests/visual/**/test-failed-*.png"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 100
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   },
   "linter": {
     "enabled": true,
@@ -31,5 +48,23 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/components/ui/**"],
+      "formatter": {
+        "enabled": false
+      },
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "actions": {
+          "source": {
+            "organizeImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }
