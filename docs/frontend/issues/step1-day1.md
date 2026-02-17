@@ -2,7 +2,7 @@
 
 > [← 開発タイムライン](../07-development-timeline.md) | [Step 2 →](./step2-day2.md)
 
-> **Day 1 の負荷分散:** プロジェクト基盤は 4 つの Issue に分割する。Issue #1（環境構築）→ Issue #2（API基盤）→ Issue #3（リポジトリ）は直列、Issue #4（Auth）は Dev B が Issue #5（デザイン基盤）と並行して着手する。
+> **Day 1 の負荷分散（改訂版）:** Issue #1（環境構築）→ Issue #2A（API基盤コア）を午前中に完了させ、午後からIssue #2B（ページ）とIssue #3（リポジトリ）を**並行実行**。Issue #4（Auth）はDev Bが Issue #5（デザイン基盤）と並行して着手する。
 
 ---
 
@@ -83,13 +83,93 @@ pnpm install  # package.json の依存関係をインストール
 
 ---
 
-#### Issue #2
+#### Issue #2A
 
-**タイトル:** [Infra] HTTP クライアント・型定義基盤・最低限のページ・Provider
+**タイトル:** [Infra] HTTP クライアント・型定義 — Issue #3の前提条件
 
 **担当:** Dev A
 
+**優先度:** 🔴 最優先（午前中に必ず完了）
+
 **内容:**
+
+> **⚠️ 重要:** このIssueは午前中に完了させること。Issue #3がこれに依存しており、午後から並行作業を開始するため。
+
+##### 実装するファイル
+
+**🔴 Issue #3に必須**
+- `src/lib/utils.ts` — **shadcn/ui の `cn()` ユーティリティ（必須）**
+- `src/lib/api/client.ts` — HTTP クライアント (fetch ラッパー, ApiError, apiClient, apiUpload)
+- `src/lib/api/client.test.ts` — HTTP クライアントのテスト
+- `src/lib/api/types.ts` — **全API型定義（最重要・30-40個）**
+- `src/lib/api/index.ts` — 全リポジトリの re-export（雛形のみ）
+
+##### 満たすべき要件
+
+**API 基盤:**
+- `src/lib/utils.ts`:
+  - shadcn/ui の `cn()` 関数を実装（`clsx` + `tailwind-merge`）
+- `apiClient<T>()` は以下を満たす:
+  - `process.env.NEXT_PUBLIC_API_URL` から Base URL を読み取る (デフォルト: `/api/v1`)
+  - 401 / 403 / 404 / 409 等のステータスを `ApiError` に変換
+  - `Authorization: Bearer <token>` ヘッダーを任意で付与
+  - 204 レスポンスを正しくハンドリング
+  - ジェネリクス型パラメータで型安全な戻り値
+- `types.ts` は `docs/api.md` の全レスポンス型を定義:
+  - PlotResponse, PlotDetailResponse, PlotListResponse
+  - SectionResponse, SectionListResponse
+  - UserBrief, UserProfile, UserProfileResponse
+  - HistoryEntry, HistoryListResponse, DiffResponse
+  - ImageUploadResponse
+  - StarListResponse, ThreadResponse, CommentResponse, CommentListResponse
+  - SearchResponse
+  - CreatePlotRequest, UpdatePlotRequest
+  - CreateSectionRequest, UpdateSectionRequest
+  - ...等、30-40個の型定義
+
+**ライブラリインストール:**
+```bash
+cd frontend
+pnpm install  # 既にIssue #1で完了している場合はスキップ
+```
+
+##### テスト観点
+- **API クライアント テスト:**
+  - `apiClient` の正常系/異常系テスト (`lib/api/client.test.ts`)
+    - 200 → JSON パース
+    - 204 → undefined 返却
+    - 4xx → ApiError throw
+  - `task frontend:test` でテストが通ること
+
+##### 完了条件
+- [ ] `lib/api/client.ts` が実装され、テストがPASS
+- [ ] `lib/api/types.ts` に全30-40個の型が定義されている
+- [ ] 型にコンパイルエラーがない
+- [ ] **12:00までにコミット・マージ完了**（午後のIssue #3開始のため）
+
+##### 依存関係
+- Issue #1（環境構築）
+- **ブロック:** Issue #3（リポジトリ）← これが午後から開始
+
+##### 備考
+- このIssueは**量が多いが機械的**な作業
+- `docs/api.md` を見ながら、JSON例をTypeScript interfaceに変換
+- オプショナル（`?`）とnullable（`| null`）の判断が必要
+- 集中力を保ち、ミスなく完成させること
+
+---
+
+#### Issue #2B
+
+**タイトル:** [Infra] 最低限のページ・Provider — Issue #3と並行可能
+
+**担当:** Dev A（Issue #3と並行して実施）
+
+**優先度:** 🟡 中（Issue #2A完了後、Issue #3と並行）
+
+**内容:**
+
+> **注:** このIssueはIssue #3（リポジトリ実装）と並行して進められる。Dev Aが交互に作業するか、Dev Bに一部を依頼してもよい。
 
 ##### 実装するファイル
 
@@ -101,48 +181,18 @@ pnpm install  # package.json の依存関係をインストール
 - `src/app/not-found.tsx` — 404 ページ
 - `src/app/error.tsx` — グローバルエラーバウンダリ
 
-**🟢 ライブラリ基盤**
-- `src/lib/utils.ts` — **shadcn/ui の `cn()` ユーティリティ（必須）**
-- `src/lib/api/client.ts` — HTTP クライアント (fetch ラッパー, ApiError, apiClient, apiUpload)
-- `src/lib/api/types.ts` — 全API型定義（初期版。各 Step で担当者が型を追加）
-- `src/lib/api/index.ts` — 全リポジトリの re-export（雛形。Issue #3 で各リポジトリを追加）
-- `src/lib/query-keys.ts` — TanStack Query キー定義
-- `src/lib/constants.ts` — 定数定義 (PAGE_SIZE, MAX_TITLE_LENGTH, etc.)
-
 **🟢 Providers**
 - `src/providers/QueryProvider.tsx` — TanStack Query Provider
 - `src/providers/Providers.tsx` — 全 Provider を統合するラッパー（AuthProvider のスロットは Issue #4 で注入）
 
-**🟢 共通型**
-- `src/types/index.ts` — 共通型 (存在すれば)
+**🟢 定数・Query Keys**
+- `src/lib/query-keys.ts` — TanStack Query キー定義
+- `src/lib/constants.ts` — 定数定義 (PAGE_SIZE, MAX_TITLE_LENGTH, etc.)
 
 **🟡 任意：静的ファイル（あると警告が消える）**
 - `public/favicon.ico` — ファビコン（なくてもプロジェクトは動作するが、ブラウザ警告が出る）
 
 ##### 満たすべき要件
-
-**プロジェクト設定:**
-- `package.json`:
-  - 必要なライブラリをすべて含む: 
-    - **Core:** `next@16.x`, `react@19.x`, `react-dom@19.x`, `typescript@5.x`
-    - **State Management:** `@tanstack/react-query@5.x`, `@tanstack/react-query-devtools@5.x`
-    - **Form & Validation:** `react-hook-form`, `@hookform/resolvers`, `zod`
-    - **UI & Style:** `clsx`, `tailwind-merge`, `tailwindcss@4.x`, `sass@1.x`, `lucide-react`, `sonner`, `date-fns`
-    - **Auth:** `@supabase/ssr`, `@supabase/supabase-js`
-    - **Linter & Test:** `@biomejs/biome@2.x`, `vitest`, `@testing-library/react`, `@vitejs/plugin-react`
-  - scripts: `"dev"`, `"build"`, `"start"`, `"lint"`, `"test"`
-- `next.config.ts`:
-  - `output: "standalone"` 設定
-  - SCSS パス解決: `sassOptions.loadPaths: [path.join(process.cwd(), "src/styles")]`
-- `tsconfig.json`:
-  - `paths` で `@/*` を `./src/*` にマッピング
-  - `strict: true`, `esModuleInterop: true`
-- `components.json`:
-  - shadcn/ui 設定: `style: "new-york"`, `tailwind.css`, `typescript: true`
-- `biome.json`:
-  - linter, formatter 有効化、React ルール設定
-- `vitest.config.ts`:
-  - `@testing-library/react` との統合設定
 
 **必須ページ:**
 - `src/app/page.tsx`:
@@ -155,35 +205,12 @@ pnpm install  # package.json の依存関係をインストール
   - `<Providers>` でラップ
   - `metadata` でタイトル・description 設定
 
-**API 基盤:**
-- `src/lib/utils.ts`:
-  - shadcn/ui の `cn()` 関数を実装（`clsx` + `tailwind-merge`）
-  - これがないと shadcn/ui コンポーネントが動作しない
-- `apiClient<T>()` は以下を満たす:
-  - `process.env.NEXT_PUBLIC_API_URL` から Base URL を読み取る (デフォルト: `/api/v1`)
-  - 401 / 403 / 404 / 409 等のステータスを `ApiError` に変換
-  - `Authorization: Bearer <token>` ヘッダーを任意で付与
-  - 204 レスポンスを正しくハンドリング
-- `types.ts` は Section C.1 に記載の全型を定義
-- `query-keys.ts` は Section C.1 に記載の構造
-- `Providers.tsx` は `QueryProvider` をラップ（AuthProvider は Issue #4 完了後に追加）
+**Providers:**
+- `QueryProvider.tsx`: TanStack Query の設定（staleTime, cacheTime等）
+- `Providers.tsx`: `QueryProvider` をラップ（AuthProvider は Issue #4 完了後に追加）
 
-**環境変数:**
-- `infisical`:
-  ```
-  NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-  NEXT_PUBLIC_USE_MOCK=true
-  NEXT_PUBLIC_SUPABASE_URL=（Issue #4 で追加）
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=（Issue #4 で追加）
-  SUPABASE_SECRET_KEY=（Issue #4 で追加）
-  ```
-
-**ライブラリインストール:**
+**shadcn/ui セットアップ:**
 ```bash
-# プロジェクトルートで実行（frontendディレクトリ内で）
-cd frontend
-pnpm install  # package.json の依存関係をインストール
-
 # shadcn/ui の初期セットアップ
 pnpm dlx shadcn@latest init  # components.json があれば自動設定
 
@@ -199,16 +226,19 @@ pnpm dlx shadcn@latest add button card
 - **shadcn/ui 動作確認:**
   - 仮トップページで `<Button>` と `<Card>` が正しく表示されること
   - Tailwind の className が適用されていること
-- **API クライアント テスト:**
-  - `apiClient` の正常系/異常系テスト (`lib/api/client.test.ts`)
-    - 200 → JSON パース
-    - 204 → undefined 返却
-    - 4xx → ApiError throw
-  - `task frontend:test` でテストが通ること
+
+##### 完了条件
+- [ ] 開発サーバーが起動し、ブラウザでページが表示される
+- [ ] shadcn/ui コンポーネントが正しく表示される
+- [ ] コンソールにエラーがない
 
 ##### 依存関係
-- なし（最初のタスク）
-- **ブロック:** Issue #3, Issue #4
+- Issue #2A（apiClient, types.ts）
+- **並行可能:** Issue #3（リポジトリ）
+
+##### 備考
+- このIssueは優先度が低いため、Issue #3の進捗を優先してよい
+- 開発サーバーの起動確認は**1日の終わりまでに完了すればOK**
 
 ##### コード例
 
@@ -246,39 +276,13 @@ export default function HomePage() {
 }
 ```
 
-**`cn()` ユーティリティ — `src/lib/utils.ts`**
-
-```typescript
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-```
-
-**環境変数（Infisical で設定）**
-
-```bash
-# API Base URL
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-
-# Mock モード（バックエンド未完成時は true）
-NEXT_PUBLIC_USE_MOCK=true
-
-# Supabase（Issue #4 で追加）
-# NEXT_PUBLIC_SUPABASE_URL=（Infisical で設定）
-# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=（Infisical で設定）
-# SUPABASE_SECRET_KEY=（Infisical で設定）
-```
-
----
+------
 
 #### Issue #3
 
 **タイトル:** [Infra] リポジトリ実装 + Mock データ
 
-**担当:** Dev A（Issue #2 完了後に着手）
+**担当:** Dev A（Issue #2A 完了後、Issue #2Bと並行して着手）
 
 **内容:**
 
@@ -304,7 +308,8 @@ NEXT_PUBLIC_USE_MOCK=true
 - Mock モードで各リポジトリが正しくモックデータを返すこと
 
 ##### 依存関係
-- Issue #2 (HTTP クライアント, 型定義)
+- Issue #2A (HTTP クライアント, 型定義) ← **これが完了後に開始**
+- **並行可能:** Issue #2B（ページ・Providers）
 - **ブロック:** Issue #6, #10, #11, #12, #13, #14
 
 ---
@@ -313,7 +318,7 @@ NEXT_PUBLIC_USE_MOCK=true
 
 **タイトル:** [Infra] Auth Provider・Supabase クライアント・Middleware
 
-**担当:** Dev B（Issue #5 と並行して着手。Issue #2 の `types.ts` / `client.ts` が merge されたら開始）
+**担当:** Dev B（Issue #5 と並行して着手。Issue #2B の `Providers.tsx` が merge されたら開始）
 
 **内容:**
 
@@ -338,7 +343,7 @@ NEXT_PUBLIC_USE_MOCK=true
 - `middleware.ts`: 保護ルートへの未認証アクセスでリダイレクト
 
 ##### 依存関係
-- Issue #2 (Providers.tsx の雛形)
+- Issue #2B (Providers.tsx の雛形)
 - **ブロック:** Issue #8 (認証フロー UI)
 
 ---
