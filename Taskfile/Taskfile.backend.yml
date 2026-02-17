@@ -18,9 +18,9 @@ tasks:
   dev:
     desc: FastAPIサーバーの起動
     cmds:
-      - "{{.INFISICAL_RUN}} uv run fastapi dev main.py"
+      - "{{.INFISICAL_RUN}} uv run fastapi dev app/main.py"
 
   gen-types:
     desc: (内部用) サーバーを起動してOpenAPIを公開
     cmds:
-      - "{{.INFISICAL_RUN}} uv run fastapi dev main.py --port 8000"
+      - "{{.INFISICAL_RUN}} uv run fastapi dev app/main.py --port 8000"

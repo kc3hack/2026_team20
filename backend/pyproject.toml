@@ -10,6 +10,10 @@ dependencies = [
     "supabase",
     "PyJWT[crypto]",
     "httpx",
+    "fastapi[standard]",
+    "sqlalchemy",
+    "uvicorn[standard]",
+    "psycopg2-binary",
 ]
 
 

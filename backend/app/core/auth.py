@@ -33,7 +33,7 @@ class JWKSKeyManager:
             jwks_url,
             cache_keys=True,  # キーをメモリにキャッシュ
             lifespan=600,  # 10分間キャッシュ（Supabase側と同じ）
-            headers={"User-Agent": "plot-platform-api/1.0"},
+            headers={"User-Agent": settings.app_name},
         )
 
     def get_signing_key(self, token: str) -> PyJWK:
