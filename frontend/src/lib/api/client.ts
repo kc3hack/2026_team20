@@ -54,7 +54,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     let detail = "An error occurred";
     if (isJson) {
       const errorData = (await response.json()) as ApiErrorResponse;
-      detail = errorData.detail || detail;
+      detail = errorData.error?.detail || errorData.error?.message || detail;
     } else {
       detail = await response.text();
     }

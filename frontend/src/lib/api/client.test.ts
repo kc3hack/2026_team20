@@ -42,7 +42,7 @@ describe("apiClient", () => {
   });
 
   it("should throw ApiError on 4xx response with JSON detail", async () => {
-    const errorData = { detail: "Not Found" };
+    const errorData = { error: { code: "NOT_FOUND", message: "Not Found" } };
     fetchMock.mockResolvedValue({
       ok: false,
       status: 404,
