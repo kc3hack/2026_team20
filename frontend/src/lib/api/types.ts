@@ -5,7 +5,7 @@ export type Content = JSONContent;
 export type PlotResponse = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   tags: string[];
   ownerId: string;
   starCount: number;
@@ -15,7 +15,7 @@ export type PlotResponse = {
     id: string;
     displayName: string;
     avatarUrl: string | null;
-    sectionId: string;
+    sectionId: string | null;
   }[];
   createdAt: string;
   updatedAt: string;
@@ -27,7 +27,7 @@ export type PlotDetailResponse = PlotResponse & {
     id: string;
     displayName: string;
     avatarUrl: string | null;
-  };
+  } | null;
 };
 
 export type PlotListResponse = {
@@ -41,7 +41,7 @@ export type SectionResponse = {
   id: string;
   plotId: string;
   title: string;
-  content: Content;
+  content: Content | null;
   orderIndex: number;
   version: number;
   createdAt: string;
@@ -63,7 +63,7 @@ export type HistoryEntry = {
   id: string;
   sectionId: string;
   operationType: "insert" | "delete" | "update";
-  payload: OperationPayload;
+  payload: OperationPayload | null;
   user: {
     id: string;
     displayName: string;
@@ -115,7 +115,7 @@ export type StarListResponse = {
 export type ThreadResponse = {
   id: string;
   plotId: string;
-  sectionId?: string;
+  sectionId: string | null;
   commentCount: number;
   createdAt: string;
 };
@@ -124,7 +124,7 @@ export type CommentResponse = {
   id: string;
   threadId: string;
   content: string;
-  parentCommentId?: string;
+  parentCommentId: string | null;
   user: {
     id: string;
     displayName: string;
@@ -165,8 +165,8 @@ export type UserProfileResponse = {
 
 export type CreatePlotRequest = {
   title: string;
-  description: string;
-  tags: string[];
+  description?: string;
+  tags?: string[];
 };
 
 export type UpdatePlotRequest = {
@@ -177,7 +177,7 @@ export type UpdatePlotRequest = {
 
 export type CreateSectionRequest = {
   title: string;
-  content: Content;
+  content?: Content;
 };
 
 export type UpdateSectionRequest = {
@@ -191,9 +191,9 @@ export type ReorderSectionRequest = {
 
 export type SaveOperationRequest = {
   operationType: "insert" | "delete" | "update";
-  position: number;
-  content: string;
-  length: number;
+  position?: number;
+  content?: string;
+  length?: number;
 };
 
 export type ForkPlotRequest = {
@@ -213,7 +213,7 @@ export type CreateCommentRequest = {
 export type BanUserRequest = {
   plotId: string;
   userId: string;
-  reason: string;
+  reason?: string;
 };
 
 export type UnbanUserRequest = {
@@ -222,7 +222,7 @@ export type UnbanUserRequest = {
 };
 
 export type PausePlotRequest = {
-  reason: string;
+  reason?: string;
 };
 
 // Error Response
