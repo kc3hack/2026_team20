@@ -19,6 +19,13 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function getBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
 function mapSupabaseUser(user: User): UserResponse {
   return {
     id: user.id,
@@ -58,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGitHub = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "github",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${getBaseUrl()}/auth/callback` },
     });
     if (error) toast.error(`GitHub ログインに失敗しました: ${error.message}`);
   }, [supabase]);
@@ -66,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${getBaseUrl()}/auth/callback` },
     });
     if (error) toast.error(`Google ログインに失敗しました: ${error.message}`);
   }, [supabase]);

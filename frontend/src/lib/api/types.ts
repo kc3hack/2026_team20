@@ -14,7 +14,7 @@ export type PlotResponse = {
   editingUsers: {
     id: string;
     displayName: string;
-    avatarUrl: string;
+    avatarUrl: string | null;
     sectionId: string;
   }[];
   createdAt: string;
@@ -26,7 +26,7 @@ export type PlotDetailResponse = PlotResponse & {
   owner: {
     id: string;
     displayName: string;
-    avatarUrl: string;
+    avatarUrl: string | null;
   };
 };
 
@@ -67,7 +67,7 @@ export type HistoryEntry = {
   user: {
     id: string;
     displayName: string;
-    avatarUrl: string;
+    avatarUrl: string | null;
   };
   version: number;
   createdAt: string;
@@ -105,7 +105,7 @@ export type StarListResponse = {
     user: {
       id: string;
       displayName: string;
-      avatarUrl: string;
+      avatarUrl: string | null;
     };
     createdAt: string;
   }[];
@@ -128,7 +128,7 @@ export type CommentResponse = {
   user: {
     id: string;
     displayName: string;
-    avatarUrl: string;
+    avatarUrl: string | null;
   };
   createdAt: string;
 };
@@ -155,7 +155,7 @@ export type UserResponse = {
 export type UserProfileResponse = {
   id: string;
   displayName: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   plotCount: number;
   contributionCount: number;
   createdAt: string;

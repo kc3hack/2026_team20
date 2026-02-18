@@ -54,12 +54,12 @@ describe("middleware", () => {
     const mockResponse = NextResponse.next();
     mockUpdateSession.mockResolvedValue({ response: mockResponse, user: null });
 
-    const request = createMockRequest("/plots/abc-123/edit");
+    const request = createMockRequest("/plots/550e8400-e29b-41d4-a716-446655440000/edit");
     const result = await middleware(request);
 
     expect(result.status).toBe(307);
     const location = result.headers.get("location");
-    expect(location).toContain("redirect=%2Fplots%2Fabc-123%2Fedit");
+    expect(location).toContain("redirect=%2Fplots%2F550e8400-e29b-41d4-a716-446655440000%2Fedit");
   });
 
   it("non-protected routes pass through regardless of auth status", async () => {

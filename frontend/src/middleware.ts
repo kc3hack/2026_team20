@@ -1,13 +1,16 @@
 import { updateSession } from "@/lib/supabase/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 
-const PROTECTED_ROUTES = ["/plots/new", "/plots/:id/edit"];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_ROUTES.some((route) => {
-    const pattern = route.replace(/:[\w]+/g, "[^/]+");
-    return new RegExp(`^${pattern}$`).test(pathname);
-  });
+  if (pathname === "/plots/new") return true;
+
+  const match = pathname.match(/^\/plots\/([^/]+)\/edit$/);
+  if (!match) return false;
+
+  const id = match[1];
+  return UUID_REGEX.test(id);
 }
 
 export async function middleware(request: NextRequest) {

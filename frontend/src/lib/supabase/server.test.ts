@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCreateServerClient = vi.fn().mockReturnValue({ auth: {} });
 const mockCookieStore = {
@@ -19,12 +19,17 @@ import { createClient } from "./server";
 describe("Supabase Server Client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "test-anon-key";
+  });
+
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   });
 
   it("creates server client with correct env vars and cookie handlers", async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "test-anon-key";
-
     await createClient();
 
     expect(mockCreateServerClient).toHaveBeenCalledWith(
@@ -57,5 +62,18 @@ describe("Supabase Server Client", () => {
       { name: "sb-token", value: "xyz", options: { path: "/" } },
     ]);
     expect(mockCookieStore.set).toHaveBeenCalledWith("sb-token", "xyz", { path: "/" });
+  });
+
+  it("throws when NEXT_PUBLIC_SUPABASE_URL is missing", async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    await expect(createClient()).rejects.toThrow("NEXT_PUBLIC_SUPABASE_URL is required");
+  });
+
+  it("throws when both key env vars are missing", async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    await expect(createClient()).rejects.toThrow(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY must be set",
+    );
   });
 });
