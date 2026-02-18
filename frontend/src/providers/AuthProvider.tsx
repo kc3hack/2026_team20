@@ -1,10 +1,10 @@
 "use client";
 
-import type { UserResponse } from "@/lib/api/types";
-import { createClient } from "@/lib/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { UserResponse } from "@/lib/api/types";
+import { createClient } from "@/lib/supabase/client";
 
 type AuthContextValue = {
   user: UserResponse | null;
@@ -14,7 +14,7 @@ type AuthContextValue = {
   signInWithGitHub: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  handleUnauthorized: () => void;
+  handleUnauthorized: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -45,12 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ? mapSupabaseUser(currentSession.user) : null);
-      setIsLoading(false);
-    });
-
+    // onAuthStateChange はマウント時に INITIAL_SESSION イベントを発火するため、
+    // getSession() は不要。二重 state 更新を防ぐために onAuthStateChange のみで管理する。
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -83,11 +79,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) toast.error(`ログアウトに失敗しました: ${error.message}`);
   }, [supabase]);
 
-  const handleUnauthorized = useCallback(() => {
+  const handleUnauthorized = useCallback(async () => {
     toast.error("セッションが切れました。再度ログインしてください。");
+
+    // React state だけでなくブラウザのセッション(cookie/localStorage)もクリアする
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error(`ログアウト処理に失敗しました: ${error.message}`);
+      }
+    } catch (_e) {
+      // signOut 自体が例外を投げた場合
+      toast.error("ログアウト処理中にエラーが発生しました");
+    }
+
+    // state は常にクリア（安全側）
     setSession(null);
     setUser(null);
-  }, []);
+  }, [supabase]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

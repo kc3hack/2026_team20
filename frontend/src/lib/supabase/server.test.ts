@@ -58,9 +58,7 @@ describe("Supabase Server Client", () => {
     await createClient();
 
     const cookieOptions = mockCreateServerClient.mock.calls[0][2].cookies;
-    cookieOptions.setAll([
-      { name: "sb-token", value: "xyz", options: { path: "/" } },
-    ]);
+    cookieOptions.setAll([{ name: "sb-token", value: "xyz", options: { path: "/" } }]);
     expect(mockCookieStore.set).toHaveBeenCalledWith("sb-token", "xyz", { path: "/" });
   });
 

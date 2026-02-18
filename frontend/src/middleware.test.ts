@@ -81,4 +81,14 @@ describe("middleware", () => {
 
     expect(result).toBe(mockResponse);
   });
+
+  it("/auth/callback passes through for unauthenticated users (OAuth callback)", async () => {
+    const mockResponse = NextResponse.next();
+    mockUpdateSession.mockResolvedValue({ response: mockResponse, user: null });
+
+    const request = createMockRequest("/auth/callback");
+    const result = await middleware(request);
+
+    expect(result).toBe(mockResponse);
+  });
 });

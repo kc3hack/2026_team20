@@ -14,5 +14,8 @@ export function getSupabaseConfig() {
     );
   }
 
-  return { supabaseUrl, supabaseKey };
+  return {
+    supabaseUrl: supabaseUrl.trim(),
+    supabaseKey: supabaseKey.trim(),
+  };
 }

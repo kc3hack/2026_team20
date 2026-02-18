@@ -54,12 +54,9 @@ describe("AuthProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockGetSession.mockResolvedValue({
-      data: { session: null },
-    });
-
     mockOnAuthStateChange.mockImplementation((callback: typeof authStateCallback) => {
       authStateCallback = callback;
+      callback("INITIAL_SESSION", null);
       return { data: { subscription: { unsubscribe: vi.fn() } } };
     });
 
@@ -72,7 +69,10 @@ describe("AuthProvider", () => {
   });
 
   it("renders with isLoading: true initially", () => {
-    mockGetSession.mockReturnValue(new Promise(() => {}));
+    mockOnAuthStateChange.mockImplementation((callback: typeof authStateCallback) => {
+      authStateCallback = callback;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
 
     render(
       <AuthProvider>
@@ -160,18 +160,18 @@ describe("AuthProvider", () => {
   });
 
   it("signOut clears session", async () => {
-    mockGetSession.mockResolvedValue({
-      data: {
-        session: {
-          user: {
-            id: "user-1",
-            email: "taro@example.com",
-            user_metadata: { full_name: "太郎" },
-            created_at: "2026-01-01T00:00:00Z",
-          },
-          access_token: "token",
+    mockOnAuthStateChange.mockImplementation((callback: typeof authStateCallback) => {
+      authStateCallback = callback;
+      callback("INITIAL_SESSION", {
+        user: {
+          id: "user-1",
+          email: "taro@example.com",
+          user_metadata: { full_name: "太郎" },
+          created_at: "2026-01-01T00:00:00Z",
         },
-      },
+        access_token: "token",
+      });
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
     });
 
     render(
@@ -192,18 +192,18 @@ describe("AuthProvider", () => {
   });
 
   it("401 callback triggers toast and clears session", async () => {
-    mockGetSession.mockResolvedValue({
-      data: {
-        session: {
-          user: {
-            id: "user-1",
-            email: "taro@example.com",
-            user_metadata: { full_name: "太郎" },
-            created_at: "2026-01-01T00:00:00Z",
-          },
-          access_token: "token",
+    mockOnAuthStateChange.mockImplementation((callback: typeof authStateCallback) => {
+      authStateCallback = callback;
+      callback("INITIAL_SESSION", {
+        user: {
+          id: "user-1",
+          email: "taro@example.com",
+          user_metadata: { full_name: "太郎" },
+          created_at: "2026-01-01T00:00:00Z",
         },
-      },
+        access_token: "token",
+      });
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
     });
 
     render(
@@ -216,7 +216,7 @@ describe("AuthProvider", () => {
       expect(screen.getByTestId("authenticated").textContent).toBe("true");
     });
 
-    act(() => {
+    await act(async () => {
       screen.getByTestId("unauthorized-btn").click();
     });
 
@@ -224,6 +224,7 @@ describe("AuthProvider", () => {
       expect(mockToastError).toHaveBeenCalledWith(
         "セッションが切れました。再度ログインしてください。",
       );
+      expect(mockSignOut).toHaveBeenCalled();
       expect(screen.getByTestId("authenticated").textContent).toBe("false");
       expect(screen.getByTestId("user").textContent).toBe("null");
     });
@@ -231,9 +232,7 @@ describe("AuthProvider", () => {
 
   it("throws error when useAuth is used outside AuthProvider", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(() => render(<TestConsumer />)).toThrow(
-      "useAuth must be used within an AuthProvider",
-    );
+    expect(() => render(<TestConsumer />)).toThrow("useAuth must be used within an AuthProvider");
     consoleError.mockRestore();
   });
 
@@ -255,9 +254,109 @@ describe("AuthProvider", () => {
     screen.getByTestId("github-btn").click();
 
     await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("GitHub ログインに失敗しました: OAuth error");
+    });
+  });
+
+  it("signInWithGoogle shows toast on error", async () => {
+    mockSignInWithOAuth.mockResolvedValue({
+      error: { message: "OAuth error" },
+    });
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading").textContent).toBe("false");
+    });
+
+    screen.getByTestId("google-btn").click();
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("Google ログインに失敗しました: OAuth error");
+    });
+  });
+
+  it("handleUnauthorized shows additional toast when signOut fails", async () => {
+    mockOnAuthStateChange.mockImplementation((callback: typeof authStateCallback) => {
+      authStateCallback = callback;
+      callback("INITIAL_SESSION", {
+        user: {
+          id: "user-1",
+          email: "taro@example.com",
+          user_metadata: { full_name: "太郎" },
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        access_token: "token",
+      });
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+
+    mockSignOut.mockResolvedValue({ error: { message: "Sign out failed" } });
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    });
+
+    await act(async () => {
+      screen.getByTestId("unauthorized-btn").click();
+    });
+
+    await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith(
-        "GitHub ログインに失敗しました: OAuth error",
+        "セッションが切れました。再度ログインしてください。",
       );
+      expect(mockToastError).toHaveBeenCalledWith("ログアウト処理に失敗しました: Sign out failed");
+    });
+  });
+
+  it("handleUnauthorized shows toast when signOut throws exception", async () => {
+    mockOnAuthStateChange.mockImplementation((callback: typeof authStateCallback) => {
+      authStateCallback = callback;
+      callback("INITIAL_SESSION", {
+        user: {
+          id: "user-1",
+          email: "taro@example.com",
+          user_metadata: { full_name: "太郎" },
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        access_token: "token",
+      });
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+
+    mockSignOut.mockRejectedValue(new Error("Network failure"));
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    });
+
+    await act(async () => {
+      screen.getByTestId("unauthorized-btn").click();
+    });
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith(
+        "セッションが切れました。再度ログインしてください。",
+      );
+      expect(mockToastError).toHaveBeenCalledWith("ログアウト処理中にエラーが発生しました");
+      expect(screen.getByTestId("authenticated").textContent).toBe("false");
+      expect(screen.getByTestId("user").textContent).toBe("null");
     });
   });
 });
