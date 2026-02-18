@@ -21,6 +21,7 @@
 | 6 | **Taskfile でコマンド実行を統一** | 開発サーバー起動、ビルド、テスト実行は必ず `task` コマンドを使う（例: `task frontend:dev`, `task frontend:build`）。直接 `pnpm` や `npm` を叩かない。環境差異を防ぎ、チーム全体で同じ手順を共有する。 |
 | 7 | **コミットは細かく、こまめに行う** | 1 機能実装 = 1 コミット以上。ファイル追加、機能実装、テスト追加を分けてコミット。コミットメッセージは具体的に（例: `feat: PlotCard コンポーネント実装`, `test: PlotCard の表示テスト追加`）。大きな変更を一度にコミットしない。 |
 | 8 | **レスポンシブデザインを考慮** | すべてのコンポーネントは **レスポンシブデザイン** に対応する。スマートフォン（320px〜）、タブレット（768px〜）、デスクトップ（1024px〜）の各画面サイズで動作確認。SCSS Mixin (`@include respond-to(md)`) を活用し、ブレイクポイントを統一する。 |
+| 9 | **自前スタイルは SCSS Module で書く** | Tailwind は shadcn/ui の `className` カスタマイズと簡単なユーティリティ（`p-4`, `flex` 等）のみ。自前のコンポーネントスタイル、アニメーション、疑似要素、複雑なレイアウトは **必ず SCSS Module (`.module.scss`)** で書く。`src/styles/` の Mixin を `@use` でインポートして使用する。→ [スタイリング戦略](#c2-スタイリング戦略) 参照 |
 
 ---
 
@@ -119,8 +120,6 @@ frontend/
 │   │   │   └── [id]/
 │   │   │       ├── page.tsx             #     Plot 詳細ページ
 │   │   │       ├── page.module.scss     #     Plot 詳細用 SCSS
-│   │   │       ├── edit/
-│   │   │       │   └── page.tsx         #     Plot 編集ページ (認証必须)
 │   │   │       └── history/
 │   │   │           └── page.tsx         #     履歴・復元ページ
 │   │   │
@@ -341,14 +340,14 @@ frontend/
 
 | ファイル | 用途 | 具体例 |
 |---------|------|--------|
-| **`lib/api/types.ts`** | **API リクエスト/レスポンスの型定義** | `PlotItem`, `UserBrief`, `PlotListResponse`, `CreatePlotRequest` 等。バックエンド API とやり取りする際の型をすべてここに集約。 |
+| **`lib/api/types.ts`** | **API リクエスト/レスポンスの型定義** | `PlotResponse`, `UserBrief`, `PlotListResponse`, `CreatePlotRequest` 等。バックエンド API とやり取りする際の型をすべてここに集約。 |
 | **`types/index.ts`** | **ドメイン横断の共通型・ユーティリティ型** | `Nullable<T>`, `DeepPartial<T>`, アプリ固有の定数型、列挙型など。複数のドメインで使われる汎用的な型。 |
 
 **使い分けの判断基準：**
 
 ```typescript
 // ✅ lib/api/types.ts に配置すべき型
-export interface PlotItem { /* API レスポンス */ }
+export interface PlotResponse { /* API レスポンス */ }
 export interface CreatePlotRequest { /* API リクエスト */ }
 
 // ✅ types/index.ts に配置すべき型
@@ -365,6 +364,8 @@ export type Theme = "light" | "dark" | "system";
 ## C. 共通設計方針
 
 ### C.0 コンポーネント設計戦略
+
+> ⚠️ **スタイリング重要ルール:** 自前のコンポーネントスタイルは **SCSS Module** で書いてください。Tailwind は shadcn/ui の `className` カスタマイズのみに使用します。詳細は [スタイリング戦略](#c2-スタイリング戦略) を参照。
 
 #### shadcn/ui ファーストの原則
 
@@ -589,7 +590,7 @@ export interface UserBrief {
 }
 
 // ---- Plot ----
-export interface PlotItem {
+export interface PlotResponse {
   id: string;
   title: string;
   description: string;
@@ -598,20 +599,20 @@ export interface PlotItem {
   starCount: number;
   isStarred: boolean;
   isPaused: boolean;
-  editingUsers: { id: string; displayName: string; avatarUrl: string; sectionId: string }[];
+
   createdAt: string;
   updatedAt: string;
 }
 
 export interface PlotListResponse {
-  items: PlotItem[];
+  items: PlotResponse[];
   total: number;
   limit: number;
   offset: number;
 }
 
-export interface PlotDetailResponse extends PlotItem {
-  sections: SectionItem[];
+export interface PlotDetailResponse extends PlotResponse {
+  sections: SectionResponse[];
   owner: UserBrief;
 }
 
@@ -628,7 +629,7 @@ export interface UpdatePlotRequest {
 }
 
 // ---- Section ----
-export interface SectionItem {
+export interface SectionResponse {
   id: string;
   plotId: string;
   title: string;
@@ -640,7 +641,7 @@ export interface SectionItem {
 }
 
 export interface SectionListResponse {
-  items: SectionItem[];
+  items: SectionResponse[];
   total: number;
 }
 
@@ -689,7 +690,7 @@ export interface ThreadResponse {
   createdAt: string;
 }
 
-export interface CommentItem {
+export interface CommentResponse {
   id: string;
   threadId: string;
   content: string;
@@ -699,13 +700,13 @@ export interface CommentItem {
 }
 
 export interface CommentListResponse {
-  items: CommentItem[];
+  items: CommentResponse[];
   total: number;
 }
 
 // ---- Search ----
 export interface SearchResponse {
-  items: PlotItem[];
+  items: PlotResponse[];
   total: number;
   query: string;
 }
@@ -729,7 +730,7 @@ import { apiClient } from "./client";
 export const plotRepository = {
   list(params) { return apiClient<PlotListResponse>(`/plots?${query}`) },
   get(id) { return apiClient<PlotDetailResponse>(`/plots/${id}`) },
-  create(data, token) { return apiClient<PlotItem>("/plots", { method: "POST", body: data, token }) },
+  create(data, token) { return apiClient<PlotResponse>("/plots", { method: "POST", body: data, token }) },
   trending(limit = 5) { return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`) },
   // ... popular, latest など同様
 };
@@ -790,7 +791,7 @@ function TrendingSection() {
 
 ### C.2 スタイリング戦略
 
-#### 基本方針：SCSS ファースト、Tailwind は shadcn/ui のため
+#### 🎯 基本方針：SCSS ファースト、Tailwind は shadcn/ui のためだけ
 
 **🎯 Tailwind CSS は shadcn/ui のために導入しているだけ。自前のスタイルは SCSS Module で書く。**
 
@@ -1618,12 +1619,12 @@ NEXT_PUBLIC_USE_MOCK=true
 
 ##### 満たすべき要件
 - **PlotCard:**
-  - Props: `plot: PlotItem`
+  - Props: `plot: PlotResponse`
   - 表示項目: タイトル、説明文 (2 行で省略)、タグ (TagBadge)、スター数、作成日 (date-fns `formatDistanceToNow`)
   - カード全体がクリッカブル → `/plots/{id}` へ遷移 (Next.js `<Link>`)
   - ホバー時に浮き上がりアニメーション (SCSS Module)
 - **PlotList:**
-  - Props: `items: PlotItem[]`, `isLoading?: boolean`
+  - Props: `items: PlotResponse[]`, `isLoading?: boolean`
   - 1 列のリスト表示
   - `isLoading` 時は `<Skeleton>` を 3 つ表示
 - **SearchBar:**
@@ -1678,12 +1679,12 @@ NEXT_PUBLIC_USE_MOCK=true
   - 「編集する」ボタン（ログイン中 → `/plots/{id}/edit` へリンク。未ログイン → ログインページ）
   - `isPaused === true` の場合、「⚠️ 編集一時停止中」バナーを表示
 - **SectionViewer:**
-  - Props: `section: SectionItem`
+  - Props: `section: SectionResponse`
   - Tiptap の content (JSON) を読み取り専用で描画
   - Tiptap エディタを `editable: false` で初期化し、content を `setContent()` で注入
   - タイポグラフィは `_typography.scss` を適用 (見出し, リスト, リンク等が正しくスタイルされる)
 - **SectionList:**
-  - Props: `sections: SectionItem[]`
+  - Props: `sections: SectionResponse[]`
   - `orderIndex` 順にソートして表示
   - 各セクションのタイトルをクリックでそのセクションまでスクロール (id アンカー)
 - **Plot 詳細ページ (`/plots/[id]`):**
@@ -1778,7 +1779,7 @@ NEXT_PUBLIC_USE_MOCK=true
 - `src/components/section/SectionEditor/SectionEditor.tsx` — セクション編集コンポーネント (タイトル + TiptapEditor)
 - `src/components/section/SectionEditor/SectionEditor.module.scss`
 - `src/hooks/useSections.ts` — useSectionList, useUpdateSection, useCreateSection, useDeleteSection
-- `src/app/plots/[id]/edit/page.tsx` — Plot 編集ページ
+
 - `src/styles/_typography.scss` の拡充（Tiptap コンテンツのスタイル: h1-h3, p, ul, ol, a, blockquote, code 等）
 
 > **⚠️ ハッカソン注意: エディタは沼。** まず「文字が打てて保存できる」だけを実現する。ツールバー装飾は後。
@@ -1793,6 +1794,7 @@ NEXT_PUBLIC_USE_MOCK=true
       content?: Record<string, unknown>;  // 初期コンテンツ (Tiptap JSON)
       editable?: boolean;                 // デフォルト true
       onChange?: (json: Record<string, unknown>) => void;
+      onDirtyChange?: (isDirty: boolean) => void;  // 未保存変更状態の通知
       className?: string;
     }
     ```
@@ -1801,6 +1803,11 @@ NEXT_PUBLIC_USE_MOCK=true
     - `Placeholder` (`@tiptap/extension-placeholder`) — プレースホルダーテキスト
   - `onChange` は `onUpdate` イベントで `editor.getJSON()` を返す
   - Y.js 対応は **このIssueでは骨格のみ（コメントアウトで準備）**。実際の接続は後続 Issue
+- **未保存変更の警告（重要）:**
+  - エディタで未保存の変更がある場合、ブラウザバック/リロード/タブクローズ時に `beforeunload` イベントで警告を表示
+  - `useEffect` で `editor.isEditable && hasUnsavedChanges` を監視
+  - 保存成功後は警告を解除
+  - Next.js の `<Link>` 遷移時も警告が必要な場合、カスタム確認ダイアログを実装
 - **EditorToolbar（MVP版）:**
   - **最低限のボタンのみ:** Bold, Italic, H1, H2, H3, BulletList, OrderedList, Undo, Redo
   - 各ボタンはアクティブ状態を `editor.isActive()` で判定し、ハイライト表示
@@ -1808,7 +1815,7 @@ NEXT_PUBLIC_USE_MOCK=true
   - Props:
     ```typescript
     interface SectionEditorProps {
-      section: SectionItem;
+      section: SectionResponse;
       onSave: (title: string, content: Record<string, unknown>) => void;
     }
     ```
@@ -2435,7 +2442,6 @@ export const plotRepository = {
         ],
         owner: {
           id: "user-1",
-          username: "taro",
           displayName: "太郎",
           avatarUrl: null,
         },
@@ -2462,7 +2468,7 @@ export const plotRepository = {
       };
       return Promise.resolve(newPlot);
     }
-    return apiClient<PlotItem>("/plots", { method: "POST", body: data });
+    return apiClient<PlotResponse>("/plots", { method: "POST", body: data });
   },
 };
 ```
@@ -2473,24 +2479,22 @@ export const plotRepository = {
 
 ```typescript
 // lib/mock/data.ts
-import type { PlotItem, UserBrief } from "@/lib/api/types";
+import type { PlotResponse, UserBrief } from "@/lib/api/types";
 
 export const mockUsers: Record<string, UserBrief> = {
   "user-1": {
     id: "user-1",
-    username: "taro",
     displayName: "太郎",
     avatarUrl: null,
   },
   "user-2": {
     id: "user-2",
-    username: "hanako",
     displayName: "花子",
     avatarUrl: "https://i.pravatar.cc/150?u=hanako",
   },
 };
 
-export const mockPlots: PlotItem[] = [
+export const mockPlots: PlotResponse[] = [
   {
     id: "mock-1",
     title: "空飛ぶ自動販売機",
@@ -2584,13 +2588,13 @@ task frontend:dev
 | Dev B | `snsRepository`, `sectionRepository` のモックデータ |
 
 **共通ファイル（`lib/mock/data.ts`）の編集:**
-- 型定義（`PlotItem`, `UserBrief` 等）は Issue #2 で Dev A が雛形作成
+- 型定義（`PlotResponse`, `UserBrief` 等）は Issue #2 で Dev A が雛形作成
 - 以降は各自が **自分の担当データのみ** 追加
 - コンフリクト回避のため、配列の末尾に追加する
 
 ```typescript
 // ✅ 良い例: 配列の末尾に追加
-export const mockPlots: PlotItem[] = [
+export const mockPlots: PlotResponse[] = [
   // ... 既存データ ...
   {
     id: "mock-3", // 新規追加
@@ -2600,7 +2604,7 @@ export const mockPlots: PlotItem[] = [
 ];
 
 // ❌ 悪い例: 既存データの間に挿入（コンフリクトの原因）
-export const mockPlots: PlotItem[] = [
+export const mockPlots: PlotResponse[] = [
   { id: "mock-1", /* ... */ },
   { id: "mock-new", /* ... */ }, // ← ここに挿入すると他の人と衝突
   { id: "mock-2", /* ... */ },

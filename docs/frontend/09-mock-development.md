@@ -86,7 +86,7 @@ const MOCK_PLOTS: PlotListResponse = {
       starCount: 128,
       isStarred: true,
       isPaused: false,
-      editingUsers: ["user-3"],
+      editingUsers: [{ id: "user-3", displayName: "次郎", avatarUrl: null, sectionId: "section-1" }],
       createdAt: "2026-01-28T09:00:00Z",
       updatedAt: "2026-02-15T12:00:00Z",
     },
@@ -128,7 +128,6 @@ export const plotRepository = {
         ],
         owner: {
           id: "user-1",
-          username: "taro",
           displayName: "太郎",
           avatarUrl: null,
         },
@@ -155,7 +154,7 @@ export const plotRepository = {
       };
       return Promise.resolve(newPlot);
     }
-    return apiClient<PlotItem>("/plots", { method: "POST", body: data });
+    return apiClient<PlotResponse>("/plots", { method: "POST", body: data });
   },
 };
 ```
@@ -166,24 +165,22 @@ export const plotRepository = {
 
 ```typescript
 // lib/mock/data.ts
-import type { PlotItem, UserBrief } from "@/lib/api/types";
+import type { PlotResponse, UserBrief } from "@/lib/api/types";
 
 export const mockUsers: Record<string, UserBrief> = {
   "user-1": {
     id: "user-1",
-    username: "taro",
     displayName: "太郎",
     avatarUrl: null,
   },
   "user-2": {
     id: "user-2",
-    username: "hanako",
     displayName: "花子",
     avatarUrl: "https://i.pravatar.cc/150?u=hanako",
   },
 };
 
-export const mockPlots: PlotItem[] = [
+export const mockPlots: PlotResponse[] = [
   {
     id: "mock-1",
     title: "空飛ぶ自動販売機",
@@ -283,13 +280,13 @@ task frontend:dev
 | Dev B | `snsRepository`, `sectionRepository` のモックデータ |
 
 **共通ファイル（`lib/mock/data.ts`）の編集:**
-- 型定義（`PlotItem`, `UserBrief` 等）は Issue #2 で Dev A が雛形作成
+- 型定義（`PlotResponse`, `UserBrief` 等）は Issue #2 で Dev A が雛形作成
 - 以降は各自が **自分の担当データのみ** 追加
 - コンフリクト回避のため、配列の末尾に追加する
 
 ```typescript
 // ✅ 良い例: 配列の末尾に追加
-export const mockPlots: PlotItem[] = [
+export const mockPlots: PlotResponse[] = [
   // ... 既存データ ...
   {
     id: "mock-3", // 新規追加
@@ -299,9 +296,84 @@ export const mockPlots: PlotItem[] = [
 ];
 
 // ❌ 悪い例: 既存データの間に挿入（コンフリクトの原因）
-export const mockPlots: PlotItem[] = [
+export const mockPlots: PlotResponse[] = [
   { id: "mock-1", /* ... */ },
   { id: "mock-new", /* ... */ }, // ← ここに挿入すると他の人と衝突
   { id: "mock-2", /* ... */ },
 ];
 ```
+
+---
+
+## E.6 リアルタイム系 Hook の Mock
+
+`NEXT_PUBLIC_USE_MOCK=true` のとき、Supabase Realtime / Y.js への接続は行わない。以下のように各 Hook をローカル state のみで動作させる。
+
+### `useSectionLock` — ローカル state のみ
+
+Mock モードでは Y.js Awareness を使わず、**コンポーネントのローカル state だけでロック状態を管理**する。
+
+```typescript
+// hooks/useSectionLock.ts の Mock 分岐例
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+export function useSectionLock(sectionId: string) {
+  const [lockState, setLockState] = useState<"unlocked" | "locked-by-me" | "locked-by-other">("unlocked");
+
+  if (USE_MOCK) {
+    return {
+      lockState,
+      lockedBy: null,
+      acquireLock: () => {
+        setLockState("locked-by-me");
+        return true; // Mock では常に成功
+      },
+      releaseLock: () => {
+        setLockState("unlocked");
+      },
+    };
+  }
+
+  // 実装: Y.js Awareness ベースのロジック
+  // ...
+}
+```
+
+**ポイント:**
+- 他ユーザーによるロック（`locked-by-other`）は Mock では発生しない
+- `acquireLock()` は常に `true` を返す（競合シミュレーションは不要）
+- UI の状態遷移（`unlocked` → `locked-by-me` → `unlocked`）は確認できる
+
+### `useRealtimeSection` — no-op
+
+Mock モードではリアルタイム同期を行わない。**何もしない（no-op）フック**を返す。
+
+```typescript
+// hooks/useRealtimeSection.ts の Mock 分岐例
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+export function useRealtimeSection(sectionId: string, enabled: boolean) {
+  if (USE_MOCK || !enabled) {
+    return {
+      liveContent: null,        // リアルタイム更新なし
+      connectionStatus: "disconnected" as const,
+    };
+  }
+
+  // 実装: Y.js + Supabase Realtime Broadcast ベースのロジック
+  // ...
+}
+```
+
+**ポイント:**
+- `liveContent` は常に `null` → コンポーネントは REST API から取得した初期データのみで表示
+- `connectionStatus` は `"disconnected"` → リアルタイム接続の UI 表示がある場合、適切にフォールバック
+- Supabase に接続できない環境（CI、オフライン開発）でも安全に動作する
+
+### Mock モード ↔ 実動作の対応表
+
+| Hook | Mock モード | 実動作 |
+|------|-----------|--------|
+| `useSectionLock` | ローカル state のみ。常に成功 | Y.js Awareness で他ユーザーと同期 |
+| `useRealtimeSection` | no-op (`liveContent: null`) | Y.js + Broadcast で差分同期 |
+

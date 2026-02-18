@@ -335,7 +335,7 @@ export default function HomePage() {
 - Supabase クライアントは `@supabase/ssr` の `createBrowserClient` / `createServerClient` を使用
 - `AuthProvider` は Supabase セッションを監視し、`user`, `session`, `isLoading`, `signInWithGitHub`, `signInWithGoogle`, `signOut` を提供
 - `Providers.tsx` に `AuthProvider` をネストして追加
-- `middleware.ts` は `/plots/new`, `/plots/[id]/edit` を保護ルートとする
+- `middleware.ts` は `/plots/new` を保護ルートとする
 - **認証は実動作する状態**にすること（Mock ではなく実際の Supabase プロジェクトに接続）
 
 ##### テスト観点

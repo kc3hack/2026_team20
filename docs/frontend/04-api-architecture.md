@@ -9,11 +9,12 @@
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  Component (page.tsx / *.tsx)                                 │
-│    └─ hooks (usePlots, useSections, ...)を呼ぶだけ           │
+│    └─ hooks (usePlots, useSections, ...)               │
 ├──────────────────────────────────────────────────────────────┤
 │  Hooks Layer (hooks/*.ts)                                    │
 │    └─ TanStack Query でキャッシュ/ローディング管理           │
 │    └─ Repository の関数を queryFn / mutationFn に渡す        │
+│    └─ useSectionLock / useRealtimeSection (Y.js Awareness)   │
 ├──────────────────────────────────────────────────────────────┤
 │  Repository Layer (lib/api/*.ts)                             │
 │    └─ 薄い関数群。HTTP リクエスト ⇄ 型変換のみ              │
@@ -21,8 +22,14 @@
 ├──────────────────────────────────────────────────────────────┤
 │  HTTP Client (lib/api/client.ts)                             │
 │    └─ fetch ラッパー。Base URL, Authorization, エラー変換    │
+├──────────────────────────────────────────────────────────────┤
+│  Realtime Layer (lib/realtime/*.ts) ← セクション編集専用          │
+│    └─ Y.js Awareness (ロック状態管理) + Broadcast (差分配信) │
+│    └─ REST API は使わない。すべて WebSocket 経由              │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+> 📘 Realtime Layer の詳細は [10-realtime-editing.md](./10-realtime-editing.md) を参照。ロック管理は Y.js Awareness で行い、REST API のロックエンドポイントは存在しない。
 
 **API が変わったとき:**
 - エンドポイント URL 変更 → `lib/api/{resource}.ts` のみ修正
@@ -118,7 +125,7 @@ export interface UserBrief {
 }
 
 // ---- Plot ----
-export interface PlotItem {
+export interface PlotResponse {
   id: string;
   title: string;
   description: string;
@@ -133,14 +140,14 @@ export interface PlotItem {
 }
 
 export interface PlotListResponse {
-  items: PlotItem[];
+  items: PlotResponse[];
   total: number;
   limit: number;
   offset: number;
 }
 
-export interface PlotDetailResponse extends PlotItem {
-  sections: SectionItem[];
+export interface PlotDetailResponse extends PlotResponse {
+  sections: SectionResponse[];
   owner: UserBrief;
 }
 
@@ -157,7 +164,7 @@ export interface UpdatePlotRequest {
 }
 
 // ---- Section ----
-export interface SectionItem {
+export type SectionResponse = {
   id: string;
   plotId: string;
   title: string;
@@ -168,8 +175,8 @@ export interface SectionItem {
   updatedAt: string;
 }
 
-export interface SectionListResponse {
-  items: SectionItem[];
+export type SectionListResponse = {
+  items: SectionResponse[];
   total: number;
 }
 
@@ -218,7 +225,7 @@ export interface ThreadResponse {
   createdAt: string;
 }
 
-export interface CommentItem {
+export interface CommentResponse {
   id: string;
   threadId: string;
   content: string;
@@ -228,13 +235,13 @@ export interface CommentItem {
 }
 
 export interface CommentListResponse {
-  items: CommentItem[];
+  items: CommentResponse[];
   total: number;
 }
 
 // ---- Search ----
 export interface SearchResponse {
-  items: PlotItem[];
+  items: PlotResponse[];
   total: number;
   query: string;
 }
@@ -258,7 +265,7 @@ import { apiClient } from "./client";
 export const plotRepository = {
   list(params) { return apiClient<PlotListResponse>(`/plots?${query}`) },
   get(id) { return apiClient<PlotDetailResponse>(`/plots/${id}`) },
-  create(data, token) { return apiClient<PlotItem>("/plots", { method: "POST", body: data, token }) },
+  create(data, token) { return apiClient<PlotResponse>("/plots", { method: "POST", body: data, token }) },
   trending(limit = 5) { return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`) },
   // ... popular, latest など同様
 };

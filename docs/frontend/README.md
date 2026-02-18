@@ -25,6 +25,7 @@
 | [API 抽象化戦略](./04-api-architecture.md) | 3 層レイヤー設計・HTTP クライアント・型定義・リポジトリ・Hook のコード例 |
 | [スタイリング戦略](./05-styling-guide.md) | SCSS ファースト方針・Tailwind との使い分け・レスポンシブデザイン |
 | [テスト戦略](./06-testing-strategy.md) | テストピラミッド・TDD vs プレビュー駆動・Mock 戦略 |
+| [**リアルタイム編集仕様**](./10-realtime-editing.md) | **セクション単位ロック・Y.js リアルタイム同期・Supabase Realtime 通信設計・Hook/コンポーネント仕様** |
 
 ### 開発タイムライン・Issue
 

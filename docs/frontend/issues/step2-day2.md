@@ -26,12 +26,12 @@
 
 ##### 満たすべき要件
 - **PlotCard:**
-  - Props: `plot: PlotItem`
+  - Props: `plot: PlotResponse`
   - 表示項目: タイトル、説明文 (2 行で省略)、タグ (TagBadge)、スター数、作成日 (date-fns `formatDistanceToNow`)
   - カード全体がクリッカブル → `/plots/{id}` へ遷移 (Next.js `<Link>`)
   - ホバー時に浮き上がりアニメーション (SCSS Module)
 - **PlotList:**
-  - Props: `items: PlotItem[]`, `isLoading?: boolean`
+  - Props: `items: PlotResponse[]`, `isLoading?: boolean`
   - 1 列のリスト表示
   - `isLoading` 時は `<Skeleton>` を 3 つ表示
 - **SearchBar:**
@@ -72,9 +72,10 @@
 ##### 実装するファイル
 - `src/components/plot/PlotDetail/PlotDetail.tsx` — Plot 詳細表示 (メタ情報 + オーナー + タグ)
 - `src/components/plot/PlotDetail/PlotDetail.module.scss`
-- `src/components/section/SectionViewer/SectionViewer.tsx` — セクション閲覧 (Tiptap content を HTML 描画)
+- `src/components/section/SectionViewer/SectionViewer.tsx` — セクション閲覧 (Tiptap content を HTML 描画。**リアルタイム更新は TODO — Issue #9 完了後にバックフィル**)
 - `src/components/section/SectionViewer/SectionViewer.module.scss`
-- `src/components/section/SectionList/SectionList.tsx` — セクション一覧
+- `src/components/section/SectionList/SectionList.tsx` — セクション一覧 (ロック状態バッジ表示 — **初期値は「接続中...」**)
+- `src/components/section/SectionLockBadge/SectionLockBadge.tsx` — 「🔒 ○○が編集中」バッジ
 - `src/hooks/usePlots.ts` に `usePlotDetail` を追加 (Dev A が雛形を作成済み。型と hook を追記)
 - `src/app/plots/[id]/page.tsx` — Plot 詳細ページ
 - `src/app/plots/[id]/page.module.scss`
@@ -83,27 +84,40 @@
 - **PlotDetail:**
   - Props: `plot: PlotDetailResponse`
   - 表示: タイトル (h1)、説明文、タグ一覧 (TagBadge)、オーナー情報 (Avatar + 名前)、スター数、作成日
-  - 「編集する」ボタン（ログイン中 → `/plots/{id}/edit` へリンク。未ログイン → ログインページ）
+  - 「編集する」ボタン：未ログイン → キャンセルしてログインを促す（`toast.error("編集するにはログインが必要です")` + ログインページへ誘導）。ログイン済 → そのままインプレース編集状態へ（`/plots/[id]/edit` への遷移はしない）
   - `isPaused === true` の場合、「⚠️ 編集一時停止中」バナーを表示
 - **SectionViewer:**
-  - Props: `section: SectionItem`
+  - Props: `section: SectionResponse`, `enableRealtime?: boolean`, `isBeingEdited?: boolean`, `editedBy?: { id: string; displayName: string; avatarUrl: string | null } | null`
   - Tiptap の content (JSON) を読み取り専用で描画
   - Tiptap エディタを `editable: false` で初期化し、content を `setContent()` で注入
   - タイポグラフィは `_typography.scss` を適用 (見出し, リスト, リンク等が正しくスタイルされる)
+  - **リアルタイム更新対応:** `enableRealtime` / `isBeingEdited` / `editedBy` の Props は定義するが、**実際のリアルタイム処理は TODO — Issue #9 で `useRealtimeSection` が実装された後に統合**
+  - **編集中表示:** `isBeingEdited === true` の場合、セクション枠に微妙な青色アウトライン + `SectionLockBadge` を右上に表示
+- **SectionLockBadge:**
+  - Props: `lockedBy: { id: string; displayName: string; avatarUrl: string | null }`
+  - `<Avatar>` (小) + `<Badge variant="secondary">🔒 {displayName} が編集中</Badge>`
+  - パルスアニメーションで編集中を示唆
 - **SectionList:**
-  - Props: `sections: SectionItem[]`
+  - Props: `sections: SectionResponse[]`
   - `orderIndex` 順にソートして表示
   - 各セクションのタイトルをクリックでそのセクションまでスクロール (id アンカー)
+  - **ロック状態表示:** Awareness の同期を待ち、ロック中のセクションには「🔒 {displayName} が編集中」を表示。同期前は「⏳ 接続中...」等のインジケータを表示する
+  - **並び替え (Drag & Drop):** Phase 2 (Day 4以降、余裕があれば) に実装。まずは単純なリスト表示のみ行う
 - **Plot 詳細ページ (`/plots/[id]`):**
   - `usePlotDetail(id)` でデータ取得
-  - ローディング中は Skeleton 表示
-  - 左カラム: セクション一覧 (目次)、右/メイン: セクション本文
-  - モバイル: 1 カラム（目次は折りたたみ or 上部に配置）
+  - **ロック状態の初期表示:** Y.js Awareness 接続までは「接続中...」or 非活性状態。`PlotResponse.editingUsers` は廃止されたため使わない。
+  - **Awareness 接続後:** リアルタイムでロック状態が反映される（Issue #9 で実装。Day 2 時点ではモックまたはローディング表示で可）
+
+> 📘 リアルタイム編集の完全な技術仕様は [10-realtime-editing.md](../10-realtime-editing.md) を参照
+>
+> ⚠️ **TODO:** `useRealtimeSection` / `useSectionLock` は Issue #9 (Day 3) で実装。この Issue では Props インターフェースだけ先に定義し、リアルタイムの実処理は Issue #9 完了後にバックフィルする。
 
 ##### テスト観点
 - `PlotDetail`: `isPaused=true` で一時停止バナーが表示される
 - `SectionViewer`: Tiptap content が正しく描画される (基本的な heading, paragraph)
 - `SectionList`: `orderIndex` 順にソートされる
+- `SectionLockBadge`: `lockedBy` が存在するとき「🔒 ○○が編集中」が表示される
+- `SectionViewer` (`enableRealtime=true`): モックデータがリアルタイム反映される
 
 ##### 使用する API（仮）
 - `GET /plots/{plotId}` → `PlotDetailResponse`
