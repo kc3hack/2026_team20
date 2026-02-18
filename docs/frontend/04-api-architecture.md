@@ -114,54 +114,51 @@ export async function apiUpload<T>(
 
 ### 2. 型定義 — `lib/api/types.ts`
 
-API レスポンスの正規化型：
+API レスポンスの正規化型（抜粋）：
 
 ```typescript
-// ---- 共通 ----
-export interface UserBrief {
-  id: string;
-  displayName: string;
-  avatarUrl: string | null;
-}
-
 // ---- Plot ----
-export interface PlotResponse {
+export type PlotResponse = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   tags: string[];
   ownerId: string;
   starCount: number;
   isStarred: boolean;
   isPaused: boolean;
-  editingUsers: { id: string; displayName: string; avatarUrl: string; sectionId: string }[];
+  editingUsers: { id: string; displayName: string; avatarUrl: string | null; sectionId: string | null }[];
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface PlotListResponse {
+export type PlotListResponse = {
   items: PlotResponse[];
   total: number;
   limit: number;
   offset: number;
-}
+};
 
-export interface PlotDetailResponse extends PlotResponse {
+export type PlotDetailResponse = PlotResponse & {
   sections: SectionResponse[];
-  owner: UserBrief;
-}
+  owner: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  } | null;
+};
 
-export interface CreatePlotRequest {
+export type CreatePlotRequest = {
   title: string;
   description?: string;
   tags?: string[];
-}
+};
 
-export interface UpdatePlotRequest {
+export type UpdatePlotRequest = {
   title?: string;
   description?: string;
   tags?: string[];
-}
+};
 
 // ---- Section ----
 export type SectionResponse = {
@@ -173,99 +170,137 @@ export type SectionResponse = {
   version: number;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type SectionListResponse = {
   items: SectionResponse[];
   total: number;
-}
+};
 
 // ---- History ----
-export interface HistoryEntry {
+export type OperationPayload = {
+  position: number | null;
+  content: string | null;
+  length: number | null;
+};
+
+export type HistoryEntry = {
   id: string;
   sectionId: string;
-  operationType: string;
-  payload: Record<string, unknown> | null;
-  user: UserBrief;
+  operationType: "insert" | "delete" | "update";
+  payload: OperationPayload | null;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
   version: number;
   createdAt: string;
-}
+};
 
-export interface HistoryListResponse {
+export type HistoryListResponse = {
   items: HistoryEntry[];
   total: number;
-}
+};
 
-export interface DiffResponse {
+export type DiffResponse = {
   fromVersion: number;
   toVersion: number;
-  additions: { start: number; end: number; text: string }[];
-  deletions: { start: number; end: number; text: string }[];
-}
+  additions: {
+    start: number;
+    end: number;
+    text: string;
+  }[];
+  deletions: {
+    start: number;
+    end: number;
+    text: string;
+  }[];
+};
 
 // ---- Image ----
-export interface ImageUploadResponse {
+export type ImageUploadResponse = {
   url: string;
   filename: string;
   width: number;
   height: number;
-}
+};
 
 // ---- SNS ----
-export interface StarListResponse {
-  items: { user: UserBrief; createdAt: string }[];
+export type StarListResponse = {
+  items: {
+    user: {
+      id: string;
+      displayName: string;
+      avatarUrl: string | null;
+    };
+    createdAt: string;
+  }[];
   total: number;
-}
+};
 
-export interface ThreadResponse {
+export type ThreadResponse = {
   id: string;
   plotId: string;
   sectionId: string | null;
   commentCount: number;
   createdAt: string;
-}
+};
 
-export interface CommentResponse {
+export type CommentResponse = {
   id: string;
   threadId: string;
   content: string;
   parentCommentId: string | null;
-  user: UserBrief;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
   createdAt: string;
-}
+};
 
-export interface CommentListResponse {
+export type CommentListResponse = {
   items: CommentResponse[];
   total: number;
-}
+};
 
 // ---- Search ----
-export interface SearchResponse {
+export type SearchResponse = {
   items: PlotResponse[];
   total: number;
   query: string;
-}
+};
 
 // ---- User ----
-export interface UserProfile {
+export type UserResponse = {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+};
+
+export type UserProfileResponse = {
   id: string;
   displayName: string;
   avatarUrl: string | null;
   plotCount: number;
   contributionCount: number;
   createdAt: string;
-}
+};
 ```
 
 ### 3. リポジトリ例 — `lib/api/plots.ts`
 
 ```typescript
 import { apiClient } from "./client";
+import type { PlotListResponse, PlotDetailResponse, PlotResponse, CreatePlotRequest } from "./types";
 
 export const plotRepository = {
-  list(params) { return apiClient<PlotListResponse>(`/plots?${query}`) },
-  get(id) { return apiClient<PlotDetailResponse>(`/plots/${id}`) },
-  create(data, token) { return apiClient<PlotResponse>("/plots", { method: "POST", body: data, token }) },
+  list(query: string) { return apiClient<PlotListResponse>(`/plots?${query}`) },
+  get(id: string) { return apiClient<PlotDetailResponse>(`/plots/${id}`) },
+  create(data: CreatePlotRequest, token?: string) { return apiClient<PlotResponse>("/plots", { method: "POST", body: data, token }) },
   trending(limit = 5) { return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`) },
   // ... popular, latest など同様
 };

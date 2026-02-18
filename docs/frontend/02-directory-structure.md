@@ -259,15 +259,15 @@ frontend/
 
 | ファイル | 用途 | 具体例 |
 |---------|------|--------|
-| **`lib/api/types.ts`** | **API リクエスト/レスポンスの型定義** | `PlotResponse`, `UserBrief`, `PlotListResponse`, `CreatePlotRequest` 等。バックエンド API とやり取りする際の型をすべてここに集約。 |
+| **`lib/api/types.ts`** | **API リクエスト/レスポンスの型定義** | `PlotResponse`, `PlotListResponse`, `CreatePlotRequest`, `UserProfileResponse` 等。バックエンド API とやり取りする際の型をすべてここに集約。 |
 | **`types/index.ts`** | **ドメイン横断の共通型・ユーティリティ型** | `Nullable<T>`, `DeepPartial<T>`, アプリ固有の定数型、列挙型など。複数のドメインで使われる汎用的な型。 |
 
 **使い分けの判断基準：**
 
 ```typescript
 // ✅ lib/api/types.ts に配置すべき型
-export interface PlotResponse { /* API レスポンス */ }
-export interface CreatePlotRequest { /* API リクエスト */ }
+export type PlotResponse = { /* API レスポンス */ }
+export type CreatePlotRequest = { /* API リクエスト */ }
 
 // ✅ types/index.ts に配置すべき型
 export type Nullable<T> = T | null;

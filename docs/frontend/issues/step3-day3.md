@@ -146,7 +146,7 @@
   - Y.js Awareness のデフォルトタイムアウト（30秒）が切断時の自動解放を担う——ハートビートの自前実装は不要
   - 詳細は [10-realtime-editing.md](../10-realtime-editing.md) の `useSectionLock` セクション参照
 - **useRealtimeSection フック:**
-  - `section:{sectionId}` Broadcast チャネルを購読
+  - `plot:{plotId}` Broadcast チャネルを購読
   - Y.js 差分メッセージを受信 → ローカル Y.js Doc に適用 → Tiptap エディタに反映
   - 編集者側: `editor.on("update")` → Y.js 差分を Broadcast チャネルに送信
   - 詳細は [10-realtime-editing.md](../10-realtime-editing.md) の `useRealtimeSection` セクション参照
@@ -182,7 +182,8 @@
 ```bash
 # MVP
 pnpm add @tiptap/extension-placeholder
-pnpm add @tiptap/extension-collaboration    # Y.js ↔ Tiptap 統合
+pnpm add @tiptap/extension-collaboration @tiptap/extension-collaboration-cursor @tiptap/extension-collaboration-history @tiptap/extension-link @tiptap/extension-underline @tiptap/extension-bubble-menu
+# Y.js ↔ Tiptap 統合
 
 # Phase 2（余裕があれば）
 # pnpm add @tiptap/extension-underline @tiptap/extension-link @tiptap/extension-image

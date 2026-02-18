@@ -9,7 +9,7 @@
 | UI Library | shadcn/ui (New York) | latest | 基盤 UI コンポーネント |
 | Styling (primary) | SCSS Modules | sass 1.x | **自前スタイルのメイン実装** |
 | Styling (secondary) | Tailwind CSS | 4.x | **shadcn/ui のため & 簡単なユーティリティ** |
-| Editor | Tiptap | 2.x | リッチテキストエディタ |
+| Editor | Tiptap | 3.x | リッチテキストエディタ |
 | Realtime (CRDT) | Y.js + y-prosemirror | 13.x | エディタ内容のリアルタイム同期（CRDT ベース） |
 | Realtime (通信) | Supabase Realtime (WebSocket) | latest | Y.js 差分配信 (Broadcast) + セクションロック状態共有 (Y.js Awareness) |
 | Collaboration | @tiptap/extension-collaboration | 2.x | Tiptap ↔ Y.js 統合 (ProseMirror binding) |

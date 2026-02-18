@@ -43,7 +43,7 @@
 - 非対応形式 (.pdf 等) でバリデーションエラー
 - レスポンシブ表示テスト (E2E で viewport 切り替え)
 
-##### 使用する API（仮）
+##### 使用する API
 - `POST /images` (multipart/form-data)
 
 ##### 依存関係

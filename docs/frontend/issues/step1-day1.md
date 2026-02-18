@@ -118,7 +118,7 @@ pnpm install  # package.json の依存関係をインストール
 - `types.ts` は `docs/api.md` の全レスポンス型を定義:
   - PlotResponse, PlotDetailResponse, PlotListResponse
   - SectionResponse, SectionListResponse
-  - UserBrief, UserProfile, UserProfileResponse
+  - UserResponse, UserProfileResponse
   - HistoryEntry, HistoryListResponse, DiffResponse
   - ImageUploadResponse
   - StarListResponse, ThreadResponse, CommentResponse, CommentListResponse

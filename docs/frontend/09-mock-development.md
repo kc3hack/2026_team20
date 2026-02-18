@@ -86,7 +86,9 @@ const MOCK_PLOTS: PlotListResponse = {
       starCount: 128,
       isStarred: true,
       isPaused: false,
-      editingUsers: [{ id: "user-3", displayName: "次郎", avatarUrl: null, sectionId: "section-1" }],
+      editingUsers: [
+        { id: "user-3", displayName: "次郎", avatarUrl: null, sectionId: "section-1" },
+      ],
       createdAt: "2026-01-28T09:00:00Z",
       updatedAt: "2026-02-15T12:00:00Z",
     },
@@ -119,9 +121,9 @@ export const plotRepository = {
             id: "section-1",
             plotId: id,
             title: "概要",
-            content: "<p>これは架空のプロダクトです。</p>",
-            order: 0,
-            createdBy: "user-1",
+            content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "これは架空のプロダクトです。" }] }] },
+            orderIndex: 0,
+            version: 1,
             createdAt: "2026-02-10T00:00:00Z",
             updatedAt: "2026-02-10T00:00:00Z",
           },
@@ -142,7 +144,7 @@ export const plotRepository = {
       const newPlot = {
         id: `mock-${Date.now()}`,
         ...data,
-        description: data.description ?? "",
+        description: data.description ?? null,
         tags: data.tags ?? [],
         ownerId: "user-1",
         starCount: 0,
@@ -165,9 +167,9 @@ export const plotRepository = {
 
 ```typescript
 // lib/mock/data.ts
-import type { PlotResponse, UserBrief } from "@/lib/api/types";
+import type { PlotResponse } from "@/lib/api/types";
 
-export const mockUsers: Record<string, UserBrief> = {
+export const mockUsers: Record<string, { id: string; displayName: string; avatarUrl: string | null }> = {
   "user-1": {
     id: "user-1",
     displayName: "太郎",
@@ -280,7 +282,7 @@ task frontend:dev
 | Dev B | `snsRepository`, `sectionRepository` のモックデータ |
 
 **共通ファイル（`lib/mock/data.ts`）の編集:**
-- 型定義（`PlotResponse`, `UserBrief` 等）は Issue #2 で Dev A が雛形作成
+- 型定義（`PlotResponse` 等）は Issue #2 で Dev A が雛形作成
 - 以降は各自が **自分の担当データのみ** 追加
 - コンフリクト回避のため、配列の末尾に追加する
 

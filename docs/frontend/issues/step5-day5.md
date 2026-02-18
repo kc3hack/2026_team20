@@ -30,14 +30,14 @@
   - アバター (大きめ, `<Avatar>`)、表示名、加入日 (`date-fns format`)
   - 統計: Plot 数、コントリビューション数
 - **UserCard:**
-  - Props: `user: UserBrief`
+  - Props: `user: { id, displayName, avatarUrl }`
   - コンパクトなカード (アバター小 + 表示名)。クリック → プロフィールへ
 
 ##### テスト観点
 - `UserProfile`: プロフィール情報が正しく表示される
 - タブ切り替えで正しいデータが表示される
 
-##### 使用する API（仮）
+##### 使用する API
 - `GET /auth/users/{username}` → `UserProfileResponse`
 - `GET /auth/users/{username}/plots`
 - `GET /auth/users/{username}/contributions`
@@ -90,7 +90,7 @@
 - `DiffViewer`: additions が緑、deletions が赤で表示される
 - ロールバックの確認ダイアログが表示される
 
-##### 使用する API（仮）
+##### 使用する API
 - `GET /sections/{sectionId}/history?limit=50`
 - `GET /sections/{sectionId}/diff/{fromVersion}/{toVersion}`
 - `POST /sections/{sectionId}/rollback/{version}`

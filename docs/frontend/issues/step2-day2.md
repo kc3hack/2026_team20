@@ -50,7 +50,7 @@
 - `PlotList`: `isLoading=true` で Skeleton が表示される
 - `SearchBar`: Enter キーで onSearch コールバックが呼ばれる
 
-##### 使用する API（仮）
+##### 使用する API
 - `GET /plots/trending?limit=5`
 - `GET /plots/popular?limit=5`
 - `GET /plots/new?limit=5`
@@ -87,7 +87,7 @@
   - 「編集する」ボタン：未ログイン → キャンセルしてログインを促す（`toast.error("編集するにはログインが必要です")` + ログインページへ誘導）。ログイン済 → そのままインプレース編集状態へ（`/plots/[id]/edit` への遷移はしない）
   - `isPaused === true` の場合、「⚠️ 編集一時停止中」バナーを表示
 - **SectionViewer:**
-  - Props: `section: SectionResponse`, `enableRealtime?: boolean`, `isBeingEdited?: boolean`, `editedBy?: { id: string; displayName: string; avatarUrl: string | null } | null`
+  - Props: `section: SectionResponse`
   - Tiptap の content (JSON) を読み取り専用で描画
   - Tiptap エディタを `editable: false` で初期化し、content を `setContent()` で注入
   - タイポグラフィは `_typography.scss` を適用 (見出し, リスト, リンク等が正しくスタイルされる)
@@ -105,7 +105,7 @@
   - **並び替え (Drag & Drop):** Phase 2 (Day 4以降、余裕があれば) に実装。まずは単純なリスト表示のみ行う
 - **Plot 詳細ページ (`/plots/[id]`):**
   - `usePlotDetail(id)` でデータ取得
-  - **ロック状態の初期表示:** Y.js Awareness 接続までは「接続中...」or 非活性状態。`PlotResponse.editingUsers` は廃止されたため使わない。
+  - **ロック状態の初期表示:** Y.js Awareness 接続までは「接続中...」or 非活性状態。`PlotResponse.editingUsers` は使用しない。
   - **Awareness 接続後:** リアルタイムでロック状態が反映される（Issue #9 で実装。Day 2 時点ではモックまたはローディング表示で可）
 
 > 📘 リアルタイム編集の完全な技術仕様は [10-realtime-editing.md](../10-realtime-editing.md) を参照
@@ -119,7 +119,7 @@
 - `SectionLockBadge`: `lockedBy` が存在するとき「🔒 ○○が編集中」が表示される
 - `SectionViewer` (`enableRealtime=true`): モックデータがリアルタイム反映される
 
-##### 使用する API（仮）
+##### 使用する API
 - `GET /plots/{plotId}` → `PlotDetailResponse`
 
 ##### 依存関係
