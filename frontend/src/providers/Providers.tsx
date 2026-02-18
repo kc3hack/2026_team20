@@ -1,16 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Toaster } from "sonner";
+import { AuthProvider } from "./AuthProvider";
 import QueryProvider from "./QueryProvider";
-
-// TODO: Issue #4 で AuthProvider を統合
-// import AuthProvider from "./AuthProvider";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryProvider>
-      {/* TODO: Issue #4 で AuthProvider でラップする */}
-      {children}
+      <AuthProvider>
+        {children}
+        <Toaster />
+      </AuthProvider>
     </QueryProvider>
   );
 }
