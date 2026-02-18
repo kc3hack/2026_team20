@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
 import "./globals.css";
+import type { Metadata } from "next";
+import { MockDataProvider } from "@/mocks/context/MockDataProvider";
 
 export const metadata: Metadata = {
   title: "Plot Platform",
@@ -13,7 +14,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>
+        <MockDataProvider>
+          {children}
+        </MockDataProvider>
+      </body>
     </html>
   );
 }
