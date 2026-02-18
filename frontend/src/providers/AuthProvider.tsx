@@ -5,17 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { toast } from "sonner";
 import type { UserResponse } from "@/lib/api/types";
 import { createClient } from "@/lib/supabase/client";
-
-type AuthContextValue = {
-  user: UserResponse | null;
-  session: Session | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  signInWithGitHub: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
-  handleUnauthorized: () => Promise<void>;
-};
+import type { AuthContextValue } from "./types";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
