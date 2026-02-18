@@ -456,7 +456,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "title": "string",
-  "description": "string",
+  "description": "string | null",
   "tags": ["string"],
   "ownerId": "uuid",
   "starCount": 42,
@@ -466,8 +466,8 @@ BAN解除（要管理者権限）
     {
       "id": "uuid",
       "displayName": "string",
-      "avatarUrl": "string",
-      "sectionId": "uuid"
+      "avatarUrl": "string | null",
+      "sectionId": "uuid | null"
     }
   ],
   "createdAt": "2026-02-16T00:00:00Z",
@@ -483,8 +483,8 @@ BAN解除（要管理者権限）
   "owner": {
     "id": "uuid",
     "displayName": "string",
-    "avatarUrl": "string"
-  }
+    "avatarUrl": "string | null"
+  } | null
 }
 ```
 
@@ -504,7 +504,7 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "plotId": "uuid",
   "title": "string",
-  "content": { "type": "doc", "content": [...] },
+  "content": { "type": "doc", "content": [...] } | null,
   "orderIndex": 0,
   "version": 5,
   "createdAt": "2026-02-16T00:00:00Z",
@@ -528,8 +528,8 @@ BAN解除（要管理者権限）
       "id": "uuid",
       "sectionId": "uuid",
       "operationType": "insert",
-      "payload": {},
-      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+      "payload": {} | null,
+      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
       "version": 5,
       "createdAt": "2026-02-16T00:00:00Z"
     }
@@ -567,7 +567,7 @@ BAN解除（要管理者権限）
 {
   "items": [
     {
-      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
       "createdAt": "2026-02-16T00:00:00Z"
     }
   ],
@@ -580,7 +580,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "plotId": "uuid",
-  "sectionId": "uuid",
+  "sectionId": "uuid | null",
   "commentCount": 10,
   "createdAt": "2026-02-16T00:00:00Z"
 }
@@ -592,8 +592,8 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "threadId": "uuid",
   "content": "string",
-  "parentCommentId": "uuid",
-  "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+  "parentCommentId": "uuid | null",
+  "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
   "createdAt": "2026-02-16T00:00:00Z"
 }
 ```
@@ -621,7 +621,7 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "email": "string",
   "displayName": "string",
-  "avatarUrl": "string",
+  "avatarUrl": "string | null",
   "createdAt": "2026-02-16T00:00:00Z"
 }
 ```
@@ -631,7 +631,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "displayName": "string",
-  "avatarUrl": "string",
+  "avatarUrl": "string | null",
   "plotCount": 10,
   "contributionCount": 50,
   "createdAt": "2026-02-16T00:00:00Z"
