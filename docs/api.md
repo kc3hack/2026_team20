@@ -209,7 +209,7 @@ Plot削除（要認証・作成者のみ）
 ---
 
 #### GET /sections/{sectionId}/history
-履歴一覧取得（72時間以内のみ）
+履歴一覧取得
 
 **Query Parameters**:
 | Parameter | Type | Default |
@@ -222,11 +222,11 @@ Plot削除（要認証・作成者のみ）
 ---
 
 #### POST /sections/{sectionId}/rollback/{version}
-ロールバック（要認証・72時間以内のみ）
+ロールバック（要認証）
 
 **Response**: `200 OK` → `SectionResponse`
 
-**Error**: `400 Bad Request` - 72時間以上前のバージョンはロールバック不可
+**Error**: `400 Bad Request`
 
 ---
 
