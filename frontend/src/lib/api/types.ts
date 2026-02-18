@@ -1,8 +1,6 @@
-export type Content = {
-  type: string;
-  // biome-ignore lint/suspicious/noExplicitAny: Tiptap content can be complex
-  content?: any[];
-};
+import type { JSONContent } from "@tiptap/react";
+
+export type Content = JSONContent;
 
 export type PlotResponse = {
   id: string;
@@ -55,12 +53,17 @@ export type SectionListResponse = {
   total: number;
 };
 
+export type OperationPayload = {
+  position: number | null;
+  content: string | null;
+  length: number | null;
+};
+
 export type HistoryEntry = {
   id: string;
   sectionId: string;
   operationType: "insert" | "delete" | "update";
-  // biome-ignore lint/suspicious/noExplicitAny: Operation payload can be dynamic
-  payload: any;
+  payload: OperationPayload;
   user: {
     id: string;
     displayName: string;
@@ -145,7 +148,7 @@ export type UserResponse = {
   id: string;
   email: string;
   displayName: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   createdAt: string;
 };
 
