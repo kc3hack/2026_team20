@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-# from app.api.v1.endpoints import (
-#     admin,
-#     auth,
+from app.api.v1.endpoints import (
+    admin,
+    auth,
 #     history,
 #     images,
 #     plots,
@@ -10,7 +10,7 @@ from fastapi import APIRouter
 #     sections,
 #     social,
 #     stars,
-# )
+)
 
 # 追加し次第コメントアウトを解除
 api_router = APIRouter()
@@ -21,5 +21,5 @@ api_router = APIRouter()
 # api_router.include_router(stars.router, tags=["stars"])
 # api_router.include_router(social.router, tags=["social"])
 # api_router.include_router(search.router, prefix="/search", tags=["search"])
-# api_router.include_router(admin.router, tags=["admin"])
-# api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(admin.router, tags=["admin"])
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
