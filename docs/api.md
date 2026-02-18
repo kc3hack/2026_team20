@@ -41,8 +41,8 @@ Plot作成（要認証）
 ```json
 {
   "title": "string (max 200)",
-  "description": "string (max 2000)",
-  "tags": ["tag1", "tag2"]
+  "description": "string (max 2000) (省略可)",
+  "tags": ["tag1", "tag2"] (省略可)
 }
 ```
 
@@ -61,6 +61,13 @@ Plot詳細取得
 Plot更新（要認証・作成者のみ）
 
 **Request Body**: `UpdatePlotRequest`
+```json
+{
+  "title": "string (max 200) (省略可)",
+  "description": "string (max 2000) (省略可)",
+  "tags": ["tag1", "tag2"] (省略可)
+}
+```
 
 **Response**: `200 OK` → `PlotResponse`
 
@@ -125,7 +132,7 @@ Plot削除（要認証・作成者のみ）
 ```json
 {
   "title": "string (max 200)",
-  "content": { "type": "doc", "content": [...] }
+  "content": { "type": "doc", "content": [...] } (省略可)
 }
 ```
 
@@ -148,8 +155,8 @@ Plot削除（要認証・作成者のみ）
 **Request Body**:
 ```json
 {
-  "title": "string (max 200)",
-  "content": { "type": "doc", "content": [...] }
+  "title": "string (max 200) (省略可)",
+  "content": { "type": "doc", "content": [...] } (省略可)
 }
 ```
 
@@ -191,9 +198,9 @@ Plot削除（要認証・作成者のみ）
 ```json
 {
   "operationType": "insert | delete | update",
-  "position": 10,
-  "content": "追加されたテキスト",
-  "length": 5
+  "position": 10 (省略可),
+  "content": "追加されたテキスト (省略可)",
+  "length": 5 (省略可)
 }
 ```
 
@@ -375,7 +382,7 @@ Plot検索（PostgreSQL全文検索）
 {
   "plotId": "uuid",
   "userId": "uuid",
-  "reason": "string"
+  "reason": "string (省略可)"
 }
 ```
 
@@ -404,7 +411,7 @@ BAN解除（要管理者権限）
 **Request Body**:
 ```json
 {
-  "reason": "string"
+  "reason": "string (省略可)"
 }
 ```
 
@@ -456,7 +463,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "title": "string",
-  "description": "string",
+  "description": "string | null",
   "tags": ["string"],
   "ownerId": "uuid",
   "starCount": 42,
@@ -466,8 +473,8 @@ BAN解除（要管理者権限）
     {
       "id": "uuid",
       "displayName": "string",
-      "avatarUrl": "string",
-      "sectionId": "uuid"
+      "avatarUrl": "string | null",
+      "sectionId": "uuid | null"
     }
   ],
   "createdAt": "2026-02-16T00:00:00Z",
@@ -483,8 +490,8 @@ BAN解除（要管理者権限）
   "owner": {
     "id": "uuid",
     "displayName": "string",
-    "avatarUrl": "string"
-  }
+    "avatarUrl": "string | null"
+  } | null
 }
 ```
 
@@ -504,7 +511,7 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "plotId": "uuid",
   "title": "string",
-  "content": { "type": "doc", "content": [...] },
+  "content": { "type": "doc", "content": [...] } | null,
   "orderIndex": 0,
   "version": 5,
   "createdAt": "2026-02-16T00:00:00Z",
@@ -528,8 +535,8 @@ BAN解除（要管理者権限）
       "id": "uuid",
       "sectionId": "uuid",
       "operationType": "insert",
-      "payload": {},
-      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+      "payload": {} | null,
+      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
       "version": 5,
       "createdAt": "2026-02-16T00:00:00Z"
     }
@@ -567,7 +574,7 @@ BAN解除（要管理者権限）
 {
   "items": [
     {
-      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
       "createdAt": "2026-02-16T00:00:00Z"
     }
   ],
@@ -580,7 +587,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "plotId": "uuid",
-  "sectionId": "uuid",
+  "sectionId": "uuid | null",
   "commentCount": 10,
   "createdAt": "2026-02-16T00:00:00Z"
 }
@@ -592,8 +599,8 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "threadId": "uuid",
   "content": "string",
-  "parentCommentId": "uuid",
-  "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+  "parentCommentId": "uuid | null",
+  "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
   "createdAt": "2026-02-16T00:00:00Z"
 }
 ```
@@ -621,7 +628,7 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "email": "string",
   "displayName": "string",
-  "avatarUrl": "string",
+  "avatarUrl": "string | null",
   "createdAt": "2026-02-16T00:00:00Z"
 }
 ```
@@ -631,7 +638,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "displayName": "string",
-  "avatarUrl": "string",
+  "avatarUrl": "string | null",
   "plotCount": 10,
   "contributionCount": 50,
   "createdAt": "2026-02-16T00:00:00Z"
