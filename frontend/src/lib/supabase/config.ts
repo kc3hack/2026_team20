@@ -5,6 +5,14 @@ export function getSupabaseConfig() {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || supabaseUrl.trim().length === 0) {
+    // SSG/プリレンダリング時は環境変数が未設定のため、ダミー値を返して
+    // ビルドを通す。実行時にはクライアントサイドで正しい値が注入される。
+    if (typeof window === "undefined") {
+      return {
+        supabaseUrl: "https://placeholder.supabase.co",
+        supabaseKey: "placeholder-key",
+      };
+    }
     throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
   }
 

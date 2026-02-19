@@ -1,0 +1,16 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.link {
+    text-decoration: none;
+}
+
+.badge {
+    max-width: 10rem;
+    @include text-ellipsis(1);
+    transition: opacity 0.2s ease;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
