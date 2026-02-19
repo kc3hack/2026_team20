@@ -9,8 +9,11 @@ type TagBadgeProps = {
 };
 
 export function TagBadge({ tag, onClick }: TagBadgeProps) {
-  const handleClick = () => {
-    onClick?.(tag);
+  const handleClick = (e: React.MouseEvent) => {
+    if (onClick) {
+      e.preventDefault();
+      onClick(tag);
+    }
   };
 
   return (

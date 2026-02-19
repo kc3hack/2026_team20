@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import styles from "./Pagination.module.scss";
 
@@ -55,11 +56,20 @@ export function Pagination({ total, limit, offset, onPageChange }: PaginationPro
 
   return (
     <nav className={styles.container} aria-label="ページネーション">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => handlePageClick(currentPage - 1)}
+        disabled={currentPage === 1}
+        aria-label="前のページへ"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+
       {pageNumbers.map((page, position) => {
         if (page === "ellipsis") {
-          // position を使う理由: 省略記号は前方・後方の2箇所に出現しうるため、
-          // 位置ベースのキーで一意に識別する必要がある
-          const ellipsisKey = position < pageNumbers.length / 2 ? "ellipsis-start" : "ellipsis-end";
+          // position を使うことで、省略記号が複数あっても一意な key を保証する
+          const ellipsisKey = `ellipsis-${position}`;
           return (
             <span key={ellipsisKey} className={styles.ellipsis}>
               ...
@@ -82,6 +92,16 @@ export function Pagination({ total, limit, offset, onPageChange }: PaginationPro
           </Button>
         );
       })}
+
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => handlePageClick(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        aria-label="次のページへ"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
     </nav>
   );
 }

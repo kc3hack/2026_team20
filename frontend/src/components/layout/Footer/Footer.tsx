@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { APP_CONFIG } from "@/lib/constants";
 import styles from "./Footer.module.scss";
 
 function GithubIcon({ size = 20 }: { size?: number }) {
@@ -22,7 +23,7 @@ export function Footer() {
       <div className={styles.inner}>
         <p className={styles.copyright}>© 2026 Plot Platform. All rights reserved.</p>
         <Link
-          href="https://github.com/kc3hack/2026_team20"
+          href={APP_CONFIG.GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
           className={styles.githubLink}
