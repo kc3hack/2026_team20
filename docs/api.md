@@ -136,13 +136,16 @@ Plot削除（要認証・作成者のみ）
 ```json
 {
   "title": "string (max 200)",
-  "content": { "type": "doc", "content": [...] } (省略可)
+  "content": { "type": "doc", "content": [...] } (省略可),
+  "orderIndex": 1 (省略可・指定時はその位置に挿入し後続をシフト)
 }
 ```
 
 **Response**: `201 Created` → `SectionResponse`
 
-**Error**: `400 Bad Request` - セクション数が上限（255個）に達している
+**Error**:
+- `400 Bad Request` - セクション数が上限（255個）に達している
+- `403 Forbidden` - Plotが一時停止中
 
 ---
 
@@ -189,7 +192,11 @@ Plot削除（要認証・作成者のみ）
 }
 ```
 
-**Response**: `200 OK`
+**Response**: `200 OK` → `SectionResponse`
+
+**Error**: `403 Forbidden` - Plotが一時停止中
+
+> **Note (Pause ポリシー)**: セクションの編集操作（作成、更新、削除、並び替え）はすべて、Plotが一時停止中の場合は `403 Forbidden` となります。読み取り（一覧取得、詳細取得）のみ可能です。
 
 ---
 
@@ -440,7 +447,7 @@ Plot全体ロールバック（要認証）
 ### Search
 
 #### GET /search
-Plot検索（PostgreSQL全文検索）
+Plot検索（ILIKE部分一致検索、title / description 対象）
 
 **Query Parameters**:
 | Parameter | Type | Required | Default | Max |
