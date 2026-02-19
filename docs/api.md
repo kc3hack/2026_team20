@@ -440,7 +440,7 @@ Plot全体ロールバック（要認証）
 ### Search
 
 #### GET /search
-Plot検索（PostgreSQL全文検索）
+Plot検索（ILIKE部分一致検索、title / description 対象）
 
 **Query Parameters**:
 | Parameter | Type | Required | Default | Max |
