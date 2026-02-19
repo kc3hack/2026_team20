@@ -74,11 +74,7 @@ export function LoginButton({ provider, redirectTo, className }: LoginButtonProp
   const { label, Icon, variant, styleClass } = providerConfig[provider];
 
   const handleClick = () => {
-    if (provider === "github") {
-      signInWithGitHub(redirectTo);
-    } else {
-      signInWithGoogle(redirectTo);
-    }
+    void (provider === "github" ? signInWithGitHub(redirectTo) : signInWithGoogle(redirectTo));
   };
 
   return (

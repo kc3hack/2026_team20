@@ -29,9 +29,11 @@ function getInitials(displayName: string): string {
 export function UserMenu() {
   const { user, signOut } = useAuth();
 
-  const displayName = user?.displayName ?? "";
-  const email = user?.email ?? "";
-  const avatarUrl = user?.avatarUrl ?? undefined;
+  if (!user) return null;
+
+  const displayName = user.displayName ?? "";
+  const email = user.email ?? "";
+  const avatarUrl = user.avatarUrl ?? undefined;
 
   return (
     <DropdownMenu>

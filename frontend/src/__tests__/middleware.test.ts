@@ -82,6 +82,19 @@ describe("middleware", () => {
     expect(result).toBe(mockResponse);
   });
 
+  it("sub-path of protected route /plots/new/step2 is also protected", async () => {
+    const mockResponse = NextResponse.next();
+    mockUpdateSession.mockResolvedValue({ response: mockResponse, user: null });
+
+    const request = createMockRequest("/plots/new/step2");
+    const result = await middleware(request);
+
+    expect(result.status).toBe(307);
+    const location = result.headers.get("location");
+    expect(location).toContain("/auth/login");
+    expect(location).toContain("next=%2Fplots%2Fnew%2Fstep2");
+  });
+
   it("/auth/callback passes through for unauthenticated users (OAuth callback)", async () => {
     const mockResponse = NextResponse.next();
     mockUpdateSession.mockResolvedValue({ response: mockResponse, user: null });

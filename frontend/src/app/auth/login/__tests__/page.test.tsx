@@ -79,6 +79,15 @@ describe("LoginPage", () => {
     expect(githubBtn.getAttribute("data-redirect-to")).toBe("");
   });
 
+  it('next パラメータが "\\" を含む場合、無視される', () => {
+    mockSearchParams.set("next", "/\\evil.com");
+
+    render(<LoginPage />);
+
+    const githubBtn = screen.getByTestId("login-github");
+    expect(githubBtn.getAttribute("data-redirect-to")).toBe("");
+  });
+
   it("error パラメータがある場合、toast.error が呼ばれる", () => {
     mockSearchParams.set("error", "auth_callback_error");
 
@@ -93,6 +102,15 @@ describe("LoginPage", () => {
     render(<LoginPage />);
 
     expect(mockReplace).toHaveBeenCalledWith("/");
+  });
+
+  it("認証済みかつ next パラメータがある場合、next 先にリダイレクトされる", () => {
+    mockUseAuth.mockReturnValue({ isLoading: false, isAuthenticated: true });
+    mockSearchParams.set("next", "/plots/new");
+
+    render(<LoginPage />);
+
+    expect(mockReplace).toHaveBeenCalledWith("/plots/new");
   });
 
   it("isLoading 中はローディング UI が表示される", () => {
