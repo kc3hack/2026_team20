@@ -5,8 +5,7 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models import ColdSnapshot, Plot, PlotBan, Section
-from app.services.history_service import compute_diff, extract_text
+from app.models import Plot, PlotBan
 
 
 def ban_user(
@@ -129,53 +128,3 @@ def resume_plot(
     except SQLAlchemyError:
         db.rollback()
         raise
-
-
-def get_section_diff(
-    db: Session,
-    section_id: UUID,
-    version: int,
-) -> dict:
-    """指定されたバージョンとその前のバージョンの差分を取得する。
-
-    バージョンNをバージョンN-1と比較する（Nが最初の場合は空と比較）。
-    追加/削除形式で返す。
-    """
-    section = db.query(Section).filter(Section.id == section_id).first()
-    if not section:
-        raise ValueError("Section not found")
-
-    # 対象のスナップショットを取得
-    target_snapshot = (
-        db.query(ColdSnapshot)
-        .filter(
-            ColdSnapshot.section_id == section_id,
-            ColdSnapshot.version == version,
-        )
-        .first()
-    )
-    if not target_snapshot:
-        raise ValueError("Version not found")
-
-    # 前のスナップショットを取得（target未満の最大バージョン）
-    prev_snapshot = (
-        db.query(ColdSnapshot)
-        .filter(
-            ColdSnapshot.section_id == section_id,
-            ColdSnapshot.version < version,
-        )
-        .order_by(ColdSnapshot.version.desc())
-        .first()
-    )
-
-    from_text = extract_text(prev_snapshot.content if prev_snapshot else None)
-    to_text = extract_text(target_snapshot.content)
-
-    additions, deletions = compute_diff(from_text, to_text)
-
-    return {
-        "from_version": prev_snapshot.version if prev_snapshot else 0,
-        "to_version": version,
-        "additions": additions,
-        "deletions": deletions,
-    }
