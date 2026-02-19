@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-
-
 function isProtectedRoute(pathname: string): boolean {
   return pathname === "/plots/new";
 }
@@ -12,7 +10,7 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedRoute(request.nextUrl.pathname) && !user) {
     const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
+    loginUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }
 
