@@ -11,7 +11,7 @@ vi.mock("@/lib/supabase/server", () => ({
     }),
 }));
 
-import { GET } from "./route";
+import { GET } from "../route";
 
 function buildRequest(url: string): Request {
   return new Request(url, { method: "GET" });

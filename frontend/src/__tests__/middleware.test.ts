@@ -7,7 +7,7 @@ vi.mock("@/lib/supabase/middleware", () => ({
   updateSession: (...args: unknown[]) => mockUpdateSession(...args),
 }));
 
-import { middleware } from "./middleware";
+import { middleware } from "../middleware";
 
 function createMockRequest(pathname: string): NextRequest {
   const url = `http://localhost:3000${pathname}`;
@@ -50,16 +50,16 @@ describe("middleware", () => {
     expect(result.status).not.toBe(307);
   });
 
-  it("redirect URL includes the original path", async () => {
+  it("redirect URL includes the original path for /plots/new", async () => {
     const mockResponse = NextResponse.next();
     mockUpdateSession.mockResolvedValue({ response: mockResponse, user: null });
 
-    const request = createMockRequest("/plots/550e8400-e29b-41d4-a716-446655440000/edit");
+    const request = createMockRequest("/plots/new");
     const result = await middleware(request);
 
     expect(result.status).toBe(307);
     const location = result.headers.get("location");
-    expect(location).toContain("redirect=%2Fplots%2F550e8400-e29b-41d4-a716-446655440000%2Fedit");
+    expect(location).toContain("redirect=%2Fplots%2Fnew");
   });
 
   it("non-protected routes pass through regardless of auth status", async () => {

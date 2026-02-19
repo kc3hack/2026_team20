@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiClient, apiUpload } from "./client";
+import { ApiError, apiClient, apiUpload } from "../client";
 
 // Mock fetch
 const fetchMock = vi.fn();

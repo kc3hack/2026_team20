@@ -4,13 +4,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isProtectedRoute(pathname: string): boolean {
-  if (pathname === "/plots/new") return true;
-
-  const match = pathname.match(/^\/plots\/([^/]+)\/edit$/);
-  if (!match) return false;
-
-  const id = match[1];
-  return UUID_REGEX.test(id);
+  return pathname === "/plots/new";
 }
 
 export async function middleware(request: NextRequest) {

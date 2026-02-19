@@ -6,7 +6,7 @@ vi.mock("@supabase/ssr", () => ({
   createBrowserClient: (...args: unknown[]) => mockCreateBrowserClient(...args),
 }));
 
-import { createClient } from "./client";
+import { createClient } from "../client";
 
 describe("Supabase Browser Client", () => {
   beforeEach(() => {

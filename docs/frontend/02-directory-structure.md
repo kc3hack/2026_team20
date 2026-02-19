@@ -241,7 +241,7 @@ frontend/
 |-------------|------|
 | `app/` | **ルーティングのみ**に責任を持つ。ページコンポーネントは薄く保ち、ロジックは `hooks/`、表示は `components/` に委譲する。 |
 | `components/ui/` | **shadcn/ui が自動生成するファイル。絶対に手動で編集しない。** カスタマイズは呼び出し側で `className` prop を使って Tailwind クラスを追加する。新しいコンポーネントが必要になったら、まず [shadcn/ui のドキュメント](https://ui.shadcn.com/) で該当コンポーネントがあるか確認する。 |
-| `components/{feature}/` | 機能ドメインごとにグルーピング。1 コンポーネント = 1 フォルダ（`.tsx` + `.module.scss` + `.test.tsx`）。**内部では shadcn/ui コンポーネントを組み合わせて実装する。** |
+| `components/{feature}/` | 機能ドメインごとにグルーピング。1 コンポーネント = 1 フォルダ（`.tsx` + `.module.scss` + `.test.tsx`）。**内部では shadcn/ui コンポーネントを組み合わせて実装する。** ファイル数が多い場合は `.test.tsx` を `__tests__/` に、`.module.scss` を `styles/` サブディレクトリに移動することを推奨する。 |
 | `components/shared/` | 2 つ以上の機能ドメインで使われる汎用コンポーネント。shadcn/ui の薄いラッパーとして実装することが多い（例: `TagBadge` は内部で `<Badge>` を使う）。 |
 | `hooks/` | TanStack Query ベースのカスタム Hook。ページコンポーネントから API を直接呼ばない。`useSectionLock` と `useRealtimeSection` はリアルタイム編集の中核。 |
 | `lib/api/` | **API 変更の影響を吸収する唯一のレイヤー**。Repository パターンでリクエスト関数を分離。`client.ts` は必ずテスト（`client.test.ts`）を書く。 |
