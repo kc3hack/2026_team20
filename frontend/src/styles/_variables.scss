@@ -1,0 +1,17 @@
+// グローバル SCSS 変数
+// docs/frontend/05-styling-guide.md に基づく定義
+
+// ブレイクポイント
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+
+// z-index
+$z-header: 100;
+$z-modal: 200;
+$z-toast: 300;
+
+// レイアウト
+$editor-max-width: 800px;
+$sidebar-width: 280px;

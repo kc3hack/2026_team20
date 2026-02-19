@@ -1,24 +1,18 @@
-export type Content = {
-  type: string;
-  // biome-ignore lint/suspicious/noExplicitAny: Tiptap content can be complex
-  content?: any[];
-};
+import type { JSONContent } from "@tiptap/react";
+
+export type Content = JSONContent;
 
 export type PlotResponse = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   tags: string[];
   ownerId: string;
   starCount: number;
   isStarred: boolean;
   isPaused: boolean;
-  editingUsers: {
-    id: string;
-    displayName: string;
-    avatarUrl: string;
-    sectionId: string;
-  }[];
+  thumbnailUrl: string | null;
+  version: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -28,8 +22,8 @@ export type PlotDetailResponse = PlotResponse & {
   owner: {
     id: string;
     displayName: string;
-    avatarUrl: string;
-  };
+    avatarUrl: string | null;
+  } | null;
 };
 
 export type PlotListResponse = {
@@ -43,7 +37,7 @@ export type SectionResponse = {
   id: string;
   plotId: string;
   title: string;
-  content: Content;
+  content: Content | null;
   orderIndex: number;
   version: number;
   createdAt: string;
@@ -55,16 +49,21 @@ export type SectionListResponse = {
   total: number;
 };
 
+export type OperationPayload = {
+  position: number | null;
+  content: string | null;
+  length: number | null;
+};
+
 export type HistoryEntry = {
   id: string;
   sectionId: string;
   operationType: "insert" | "delete" | "update";
-  // biome-ignore lint/suspicious/noExplicitAny: Operation payload can be dynamic
-  payload: any;
+  payload: OperationPayload | null;
   user: {
     id: string;
     displayName: string;
-    avatarUrl: string;
+    avatarUrl: string | null;
   };
   version: number;
   createdAt: string;
@@ -102,7 +101,7 @@ export type StarListResponse = {
     user: {
       id: string;
       displayName: string;
-      avatarUrl: string;
+      avatarUrl: string | null;
     };
     createdAt: string;
   }[];
@@ -112,7 +111,7 @@ export type StarListResponse = {
 export type ThreadResponse = {
   id: string;
   plotId: string;
-  sectionId?: string;
+  sectionId: string | null;
   commentCount: number;
   createdAt: string;
 };
@@ -121,11 +120,11 @@ export type CommentResponse = {
   id: string;
   threadId: string;
   content: string;
-  parentCommentId?: string;
+  parentCommentId: string | null;
   user: {
     id: string;
     displayName: string;
-    avatarUrl: string;
+    avatarUrl: string | null;
   };
   createdAt: string;
 };
@@ -145,14 +144,14 @@ export type UserResponse = {
   id: string;
   email: string;
   displayName: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   createdAt: string;
 };
 
 export type UserProfileResponse = {
   id: string;
   displayName: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   plotCount: number;
   contributionCount: number;
   createdAt: string;
@@ -162,19 +161,21 @@ export type UserProfileResponse = {
 
 export type CreatePlotRequest = {
   title: string;
-  description: string;
-  tags: string[];
+  description?: string;
+  tags?: string[];
+  thumbnailUrl?: string;
 };
 
 export type UpdatePlotRequest = {
   title?: string;
   description?: string;
   tags?: string[];
+  thumbnailUrl?: string | null;
 };
 
 export type CreateSectionRequest = {
   title: string;
-  content: Content;
+  content?: Content;
 };
 
 export type UpdateSectionRequest = {
@@ -188,9 +189,9 @@ export type ReorderSectionRequest = {
 
 export type SaveOperationRequest = {
   operationType: "insert" | "delete" | "update";
-  position: number;
-  content: string;
-  length: number;
+  position?: number;
+  content?: string;
+  length?: number;
 };
 
 export type ForkPlotRequest = {
@@ -210,7 +211,7 @@ export type CreateCommentRequest = {
 export type BanUserRequest = {
   plotId: string;
   userId: string;
-  reason: string;
+  reason?: string;
 };
 
 export type UnbanUserRequest = {
@@ -219,7 +220,62 @@ export type UnbanUserRequest = {
 };
 
 export type PausePlotRequest = {
-  reason: string;
+  reason?: string;
+};
+
+// ---- Snapshot ----
+export type SnapshotResponse = {
+  id: string;
+  plotId: string;
+  version: number;
+  createdAt: string;
+};
+
+export type SnapshotListResponse = {
+  items: SnapshotResponse[];
+  total: number;
+};
+
+export type SnapshotDetailResponse = {
+  id: string;
+  plotId: string;
+  version: number;
+  content: {
+    plot: { title: string; description: string | null; tags: string[] };
+    sections: {
+      id: string;
+      title: string;
+      content: Content | null;
+      orderIndex: number;
+      version: number;
+    }[];
+  } | null;
+  createdAt: string;
+};
+
+// ---- Rollback ----
+export type RollbackRequest = {
+  expectedVersion?: number;
+  reason?: string;
+};
+
+export type RollbackLogResponse = {
+  id: string;
+  plotId: string;
+  snapshotId: string | null;
+  snapshotVersion: number;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+  reason: string | null;
+  createdAt: string;
+};
+
+export type RollbackLogListResponse = {
+  items: RollbackLogResponse[];
+  total: number;
 };
 
 // Error Response

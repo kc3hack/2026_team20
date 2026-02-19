@@ -62,7 +62,7 @@
 - `PlotForm`: 200 文字超えでバリデーションエラー
 - `PlotForm`: 正常入力で onSubmit が呼ばれる
 
-##### 使用する API（仮）
+##### 使用する API
 - `GET /search?q=xxx&limit=20&offset=0`
 - `GET /plots?tag=xxx&limit=20&offset=0`
 - `POST /plots` — Plot 作成
@@ -127,7 +127,7 @@
 - `CommentForm`: 空本文で送信不可
 - `CommentForm`: 5000 文字超でバリデーションエラー
 
-##### 使用する API（仮）
+##### 使用する API
 - `POST /plots/{plotId}/stars` — スター追加
 - `DELETE /plots/{plotId}/stars` — スター削除
 - `POST /plots/{plotId}/fork` — フォーク

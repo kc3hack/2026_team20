@@ -9,11 +9,12 @@
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  Component (page.tsx / *.tsx)                                 │
-│    └─ hooks (usePlots, useSections, ...)を呼ぶだけ           │
+│    └─ hooks (usePlots, useSections, ...)               │
 ├──────────────────────────────────────────────────────────────┤
 │  Hooks Layer (hooks/*.ts)                                    │
 │    └─ TanStack Query でキャッシュ/ローディング管理           │
 │    └─ Repository の関数を queryFn / mutationFn に渡す        │
+│    └─ useSectionLock / useRealtimeSection (Y.js Awareness)   │
 ├──────────────────────────────────────────────────────────────┤
 │  Repository Layer (lib/api/*.ts)                             │
 │    └─ 薄い関数群。HTTP リクエスト ⇄ 型変換のみ              │
@@ -21,8 +22,14 @@
 ├──────────────────────────────────────────────────────────────┤
 │  HTTP Client (lib/api/client.ts)                             │
 │    └─ fetch ラッパー。Base URL, Authorization, エラー変換    │
+├──────────────────────────────────────────────────────────────┤
+│  Realtime Layer (lib/realtime/*.ts) ← セクション編集専用          │
+│    └─ Y.js Awareness (ロック状態管理) + Broadcast (差分配信) │
+│    └─ REST API は使わない。すべて WebSocket 経由              │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+> 📘 Realtime Layer の詳細は [10-realtime-editing.md](./10-realtime-editing.md) を参照。ロック管理は Y.js Awareness で行い、REST API のロックエンドポイントは存在しない。
 
 **API が変わったとき:**
 - エンドポイント URL 変更 → `lib/api/{resource}.ts` のみ修正
@@ -107,158 +114,251 @@ export async function apiUpload<T>(
 
 ### 2. 型定義 — `lib/api/types.ts`
 
-API レスポンスの正規化型：
+API レスポンスの正規化型（抜粋）：
 
 ```typescript
-// ---- 共通 ----
-export interface UserBrief {
-  id: string;
-  displayName: string;
-  avatarUrl: string | null;
-}
-
 // ---- Plot ----
-export interface PlotItem {
+export type PlotResponse = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   tags: string[];
   ownerId: string;
   starCount: number;
   isStarred: boolean;
   isPaused: boolean;
-  editingUsers: { id: string; displayName: string; avatarUrl: string; sectionId: string }[];
+  thumbnailUrl: string | null;
+  version: number;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface PlotListResponse {
-  items: PlotItem[];
+export type PlotListResponse = {
+  items: PlotResponse[];
   total: number;
   limit: number;
   offset: number;
-}
+};
 
-export interface PlotDetailResponse extends PlotItem {
-  sections: SectionItem[];
-  owner: UserBrief;
-}
+export type PlotDetailResponse = PlotResponse & {
+  sections: SectionResponse[];
+  owner: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  } | null;
+};
 
-export interface CreatePlotRequest {
+export type CreatePlotRequest = {
   title: string;
   description?: string;
   tags?: string[];
-}
+  thumbnailUrl?: string;
+};
 
-export interface UpdatePlotRequest {
+export type UpdatePlotRequest = {
   title?: string;
   description?: string;
   tags?: string[];
-}
+  thumbnailUrl?: string | null;
+};
 
 // ---- Section ----
-export interface SectionItem {
+export type SectionResponse = {
   id: string;
   plotId: string;
   title: string;
-  content: Record<string, unknown> | null;
+  content: Content | null;
   orderIndex: number;
   version: number;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface SectionListResponse {
-  items: SectionItem[];
+export type SectionListResponse = {
+  items: SectionResponse[];
   total: number;
-}
+};
 
 // ---- History ----
-export interface HistoryEntry {
+export type OperationPayload = {
+  position: number | null;
+  content: string | null;
+  length: number | null;
+};
+
+export type HistoryEntry = {
   id: string;
   sectionId: string;
-  operationType: string;
-  payload: Record<string, unknown> | null;
-  user: UserBrief;
+  operationType: "insert" | "delete" | "update";
+  payload: OperationPayload | null;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
   version: number;
   createdAt: string;
-}
+};
 
-export interface HistoryListResponse {
+export type HistoryListResponse = {
   items: HistoryEntry[];
   total: number;
-}
+};
 
-export interface DiffResponse {
+export type DiffResponse = {
   fromVersion: number;
   toVersion: number;
-  additions: { start: number; end: number; text: string }[];
-  deletions: { start: number; end: number; text: string }[];
-}
+  additions: {
+    start: number;
+    end: number;
+    text: string;
+  }[];
+  deletions: {
+    start: number;
+    end: number;
+    text: string;
+  }[];
+};
 
 // ---- Image ----
-export interface ImageUploadResponse {
+export type ImageUploadResponse = {
   url: string;
   filename: string;
   width: number;
   height: number;
-}
+};
 
 // ---- SNS ----
-export interface StarListResponse {
-  items: { user: UserBrief; createdAt: string }[];
+export type StarListResponse = {
+  items: {
+    user: {
+      id: string;
+      displayName: string;
+      avatarUrl: string | null;
+    };
+    createdAt: string;
+  }[];
   total: number;
-}
+};
 
-export interface ThreadResponse {
+export type ThreadResponse = {
   id: string;
   plotId: string;
   sectionId: string | null;
   commentCount: number;
   createdAt: string;
-}
+};
 
-export interface CommentItem {
+export type CommentResponse = {
   id: string;
   threadId: string;
   content: string;
   parentCommentId: string | null;
-  user: UserBrief;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
   createdAt: string;
-}
+};
 
-export interface CommentListResponse {
-  items: CommentItem[];
+export type CommentListResponse = {
+  items: CommentResponse[];
   total: number;
-}
+};
 
 // ---- Search ----
-export interface SearchResponse {
-  items: PlotItem[];
+export type SearchResponse = {
+  items: PlotResponse[];
   total: number;
   query: string;
-}
+};
 
 // ---- User ----
-export interface UserProfile {
+export type UserResponse = {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+};
+
+export type UserProfileResponse = {
   id: string;
   displayName: string;
   avatarUrl: string | null;
   plotCount: number;
   contributionCount: number;
   createdAt: string;
-}
+};
+
+// ---- Snapshot ----
+export type SnapshotResponse = {
+  id: string;
+  plotId: string;
+  version: number;
+  createdAt: string;
+};
+
+export type SnapshotListResponse = {
+  items: SnapshotResponse[];
+  total: number;
+};
+
+export type SnapshotDetailResponse = {
+  id: string;
+  plotId: string;
+  version: number;
+  content: {
+    plot: { title: string; description: string | null; tags: string[] };
+    sections: {
+      id: string;
+      title: string;
+      content: Content | null;
+      orderIndex: number;
+      version: number;
+    }[];
+  } | null;
+  createdAt: string;
+};
+
+// ---- Rollback ----
+export type RollbackRequest = {
+  expectedVersion?: number;
+  reason?: string;
+};
+
+export type RollbackLogResponse = {
+  id: string;
+  plotId: string;
+  snapshotId: string | null;
+  snapshotVersion: number;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+  reason: string | null;
+  createdAt: string;
+};
+
+export type RollbackLogListResponse = {
+  items: RollbackLogResponse[];
+  total: number;
+};
 ```
 
 ### 3. リポジトリ例 — `lib/api/plots.ts`
 
 ```typescript
 import { apiClient } from "./client";
+import type { PlotListResponse, PlotDetailResponse, PlotResponse, CreatePlotRequest } from "./types";
 
 export const plotRepository = {
-  list(params) { return apiClient<PlotListResponse>(`/plots?${query}`) },
-  get(id) { return apiClient<PlotDetailResponse>(`/plots/${id}`) },
-  create(data, token) { return apiClient<PlotItem>("/plots", { method: "POST", body: data, token }) },
+  list(query: string) { return apiClient<PlotListResponse>(`/plots?${query}`) },
+  get(id: string) { return apiClient<PlotDetailResponse>(`/plots/${id}`) },
+  create(data: CreatePlotRequest, token?: string) { return apiClient<PlotResponse>("/plots", { method: "POST", body: data, token }) },
   trending(limit = 5) { return apiClient<PlotListResponse>(`/plots/trending?limit=${limit}`) },
   // ... popular, latest など同様
 };

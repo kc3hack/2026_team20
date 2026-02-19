@@ -1,14 +1,23 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiClient, apiUpload } from "./client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError, apiClient, apiUpload } from "../client";
 
 // Mock fetch
 const fetchMock = vi.fn();
 global.fetch = fetchMock;
 
 describe("apiClient", () => {
+  const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   beforeEach(() => {
     fetchMock.mockClear();
-    // Reset process.env if needed, but for now we assume default behavior or mocked env
+  });
+
+  afterEach(() => {
+    if (originalApiUrl !== undefined) {
+      process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
+    } else {
+      delete process.env.NEXT_PUBLIC_API_URL;
+    }
   });
 
   it("should make a GET request and return JSON", async () => {
@@ -114,8 +123,6 @@ describe("apiClient", () => {
   });
 
   it("should handle absolute URL in BASE_URL", async () => {
-    // Temporarily override BASE_URL behavior by mocking process.env
-    const originalEnv = process.env.NEXT_PUBLIC_API_URL;
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.com/api/v1";
 
     fetchMock.mockResolvedValueOnce({
@@ -130,13 +137,6 @@ describe("apiClient", () => {
 
     const calledUrl = fetchMock.mock.calls[0][0];
     expect(calledUrl).toBe("https://api.example.com/api/v1/plots?limit=10");
-
-    // Restore original env
-    if (originalEnv !== undefined) {
-      process.env.NEXT_PUBLIC_API_URL = originalEnv;
-    } else {
-      delete process.env.NEXT_PUBLIC_API_URL;
-    }
   });
 
   it("should automatically stringify JSON body", async () => {

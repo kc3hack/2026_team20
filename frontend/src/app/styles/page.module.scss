@@ -1,0 +1,54 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.main {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sectionTitle {
+    font-weight: 600;
+}
+
+.buttonGroup {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.badgeRow {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.avatarRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.skeletonGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.statusText {
+    color: hsl(var(--muted-foreground));
+}
+
+.footerText {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+}
