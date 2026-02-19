@@ -1,0 +1,18 @@
+@use "variables" as *;
+
+.errorCode {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.description {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.retryButton {
+    width: fit-content;
+}

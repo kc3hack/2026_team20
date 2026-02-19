@@ -94,7 +94,7 @@ $breakpoint-md: 768px;
 $breakpoint-lg: 1024px;
 $breakpoint-xl: 1280px;
 
-$z-header: 100;
+$z-header: 40;
 $z-modal: 200;
 $z-toast: 300;
 
