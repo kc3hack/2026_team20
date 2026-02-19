@@ -17,6 +17,8 @@ from app.api.v1.api import api_router
 from app.core.config import get_settings
 from app.core.database import get_engine, get_session_local
 from app.core.supabase import get_supabase_client
+from app.services.snapshot_cleanup import start_snapshot_cleanup
+from app.services.snapshot_scheduler import start_snapshot_scheduler
 
 settings = get_settings()
 
@@ -73,6 +75,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             "Image upload will not work.",
             _images_dir,
         )
+
+    start_snapshot_scheduler()
+    start_snapshot_cleanup()
 
     yield
 
@@ -222,4 +227,3 @@ async def health() -> dict[str, str]:
         db_status = "error"
     overall = "ok" if db_status == "ok" else "degraded"
     return {"status": overall, "database": db_status}
-

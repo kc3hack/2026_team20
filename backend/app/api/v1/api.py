@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin,
     auth,
-    # history,
+    history,
     # images,
     # plots,
     search,
@@ -16,7 +16,8 @@ from app.api.v1.endpoints import (
 api_router = APIRouter()
 # api_router.include_router(plots.router, prefix="/plots", tags=["plots"])
 # api_router.include_router(sections.router, tags=["sections"])
-# api_router.include_router(history.router, prefix="/sections", tags=["history"])
+# NOTE: history.py のルートは /sections/... と /plots/... の両方を含むためプレフィックスなし
+api_router.include_router(history.router, tags=["history"])
 # api_router.include_router(images.router, prefix="/images", tags=["images"])
 api_router.include_router(stars.router, tags=["stars"])
 api_router.include_router(social.router, tags=["social"])

@@ -53,10 +53,6 @@ class PlotResponse(BaseModel):
     isPaused: bool
     thumbnailUrl: str | None = None
     version: int
-    # TODO: editingUsers は WebSocket 接続管理の実装後に
-    #       リアルタイムの編集中ユーザー一覧を返す。
-    #       現時点では空リストをハードコードしている。
-    editingUsers: list[str]
     createdAt: datetime
     updatedAt: datetime
 
