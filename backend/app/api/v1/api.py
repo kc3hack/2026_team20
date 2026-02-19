@@ -7,7 +7,7 @@ from app.api.v1.endpoints import (
     # images,
     plots,
     search,
-    # sections,
+    sections,
     social,
     stars,
 )
@@ -15,7 +15,7 @@ from app.api.v1.endpoints import (
 # 追加し次第コメントアウトを解除
 api_router = APIRouter()
 api_router.include_router(plots.router, prefix="/plots", tags=["plots"])
-# api_router.include_router(sections.router, tags=["sections"])
+api_router.include_router(sections.router, tags=["sections"])
 # NOTE: history.py のルートは /sections/... と /plots/... の両方を含むためプレフィックスなし
 api_router.include_router(history.router, tags=["history"])
 # api_router.include_router(images.router, prefix="/images", tags=["images"])

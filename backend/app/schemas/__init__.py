@@ -65,6 +65,27 @@ class PlotListResponse(BaseModel):
     offset: int
 
 
+# ─── Section ─────────────────────────────────────
+class SectionResponse(BaseModel):
+    """api.md SectionResponse 準拠 (L586-598)。"""
+
+    id: str
+    plotId: str
+    title: str
+    content: dict | None = None
+    orderIndex: int
+    version: int
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class SectionListResponse(BaseModel):
+    """api.md SectionListResponse 準拠 (L600-606)。"""
+
+    items: list[SectionResponse]
+    total: int
+
+
 # ─── Admin ───────────────────────────────────────────────────
 class BanRequest(BaseModel):
     plotId: str

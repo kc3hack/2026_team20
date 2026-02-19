@@ -14,7 +14,9 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from app.api.v1.deps import AuthUser, DbSession
+from app.api.v1.utils import section_to_response
 from app.models import Plot, Section
+from app.schemas import SectionResponse
 from app.services import history_service
 from app.services.history_service import ConflictError
 
@@ -64,15 +66,7 @@ class DiffResponse(BaseModel):
     deletions: list[dict]
 
 
-class SectionResponse(BaseModel):
-    id: str
-    plotId: str
-    title: str
-    content: dict | None = None
-    orderIndex: int
-    version: int
-    createdAt: datetime
-    updatedAt: datetime
+# SectionResponse は app.schemas からインポート済み
 
 
 class PlotDetailResponse(BaseModel):
@@ -154,19 +148,7 @@ def _build_plot_detail_response(plot: Plot, db: DbSession) -> PlotDetailResponse
         .all()
     )
 
-    section_responses = [
-        SectionResponse(
-            id=str(s.id),
-            plotId=str(s.plot_id),
-            title=s.title,
-            content=s.content,
-            orderIndex=s.order_index,
-            version=s.version,
-            createdAt=s.created_at,
-            updatedAt=s.updated_at,
-        )
-        for s in sections
-    ]
+    section_responses = [section_to_response(s) for s in sections]
 
     # starCount: starsリレーションが読み込まれていれば実数、なければ0
     star_count = len(plot.stars) if plot.stars else 0
