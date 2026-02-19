@@ -9,16 +9,15 @@ docs/api.md の SNS セクション準拠:
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.api.v1.utils import _get_plot_or_404
 from app.models import Star, User
+from app.services import star_service
 
 router = APIRouter()
 
 
+# ─── ヘルパー ──────────────────────────────────────────────────
 def _serialize_star(star: Star, user: User) -> dict:
     """Star + User 情報を api.md の StarListResponse.items 形式に変換。"""
     return {
@@ -35,16 +34,15 @@ def _serialize_star(star: Star, user: User) -> dict:
 @router.get("/plots/{plot_id}/stars")
 def list_stars(plot_id: UUID, db: DbSession):
     """スター一覧取得。"""
-    _get_plot_or_404(db, str(plot_id))
+    try:
+        star_user_pairs = star_service.list_stars(db, plot_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
-    stars = db.execute(select(Star).where(Star.plot_id == plot_id)).scalars().all()
-
-    items = []
-    for star in stars:
-        user = db.execute(select(User).where(User.id == star.user_id)).scalar_one_or_none()
-        if user:
-            items.append(_serialize_star(star, user))
-
+    items = [_serialize_star(star, user) for star, user in star_user_pairs]
     return {"items": items, "total": len(items)}
 
 
@@ -55,26 +53,18 @@ def list_stars(plot_id: UUID, db: DbSession):
 )
 def add_star(plot_id: UUID, db: DbSession, current_user: AuthUser):
     """スター追加。既にスター済みなら 409 Conflict。"""
-    _get_plot_or_404(db, str(plot_id))
-
-    existing = db.execute(
-        select(Star).where(Star.plot_id == plot_id, Star.user_id == current_user.id)
-    ).scalar_one_or_none()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Already starred",
-        )
-
     try:
-        star = Star(plot_id=plot_id, user_id=current_user.id)
-        db.add(star)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
+        star_service.add_star(db, plot_id, current_user.id)
+    except ValueError as e:
+        # "Already starred" → 409, "Plot not found" → 404
+        if "Already starred" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(e),
+            )
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Already starred",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
         )
 
     return None
@@ -87,16 +77,10 @@ def add_star(plot_id: UUID, db: DbSession, current_user: AuthUser):
 )
 def remove_star(plot_id: UUID, db: DbSession, current_user: AuthUser):
     """スター削除。スターしていなければ 404。"""
-    _get_plot_or_404(db, str(plot_id))
-
-    star = db.execute(
-        select(Star).where(Star.plot_id == plot_id, Star.user_id == current_user.id)
-    ).scalar_one_or_none()
-    if not star:
+    try:
+        star_service.remove_star(db, plot_id, current_user.id)
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not starred",
+            detail=str(e),
         )
-
-    db.delete(star)
-    db.commit()
