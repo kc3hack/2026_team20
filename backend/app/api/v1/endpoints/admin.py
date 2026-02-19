@@ -1,4 +1,4 @@
-"""Admin endpoints – BAN 管理・Plot 一時停止。"""
+"""Admin endpoints – BAN 管理。"""
 
 import logging
 
@@ -6,24 +6,13 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import select
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.api.v1.utils import _get_plot_or_404, _get_user_or_404
-from app.models import Plot, PlotBan, User
-from app.schemas import BanRequest, MessageResponse, PauseRequest, UnbanRequest
+from app.api.v1.utils import _get_plot_or_404, _get_user_or_404, _require_admin
+from app.models import PlotBan
+from app.schemas import BanRequest, MessageResponse, UnbanRequest
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-ADMIN_ROLE = "admin"
-
-
-def _require_admin(user: AuthUser) -> None:
-    """管理者権限を検証する。admin でなければ 403 を返す。"""
-    if user.role != ADMIN_ROLE:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin privileges required",
-        )
 
 
 # ─── POST /admin/bans ────────────────────────────
@@ -112,65 +101,3 @@ def unban_user(
         body.plotId,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-# ─── POST /plots/{plot_id}/pause ─────────────────
-@router.post("/plots/{plot_id}/pause", response_model=MessageResponse)
-def pause_plot(
-    plot_id: str,
-    body: PauseRequest,
-    current_user: AuthUser,
-    db: DbSession,
-) -> MessageResponse:
-    """Plot の編集を一時停止する（要管理者権限）。"""
-    _require_admin(current_user)
-
-    plot = _get_plot_or_404(db, plot_id)
-
-    if plot.is_paused:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Plot is already paused",
-        )
-
-    plot.is_paused = True
-    plot.pause_reason = body.reason
-    db.commit()
-
-    logger.info(
-        "Admin %s paused plot %s (reason=%s)",
-        current_user.id,
-        plot_id,
-        body.reason,
-    )
-    return MessageResponse(detail="Plot paused")
-
-
-# ─── DELETE /plots/{plot_id}/pause ────────────────
-@router.delete("/plots/{plot_id}/pause", response_model=MessageResponse)
-def resume_plot(
-    plot_id: str,
-    current_user: AuthUser,
-    db: DbSession,
-) -> MessageResponse:
-    """Plot の編集を再開する（要管理者権限）。"""
-    _require_admin(current_user)
-
-    plot = _get_plot_or_404(db, plot_id)
-
-    if not plot.is_paused:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Plot is not paused",
-        )
-
-    plot.is_paused = False
-    plot.pause_reason = None
-    db.commit()
-
-    logger.info(
-        "Admin %s resumed plot %s",
-        current_user.id,
-        plot_id,
-    )
-    return MessageResponse(detail="Plot resumed")

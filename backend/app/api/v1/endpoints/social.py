@@ -13,7 +13,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.models import Comment, Plot, Thread, User
+from app.api.v1.utils import plot_to_response
+from app.models import Comment, Thread, User
 from app.services import social_service
 
 router = APIRouter()
@@ -45,23 +46,6 @@ def _serialize_user_brief(user: User | None) -> dict | None:
     }
 
 
-def _serialize_plot(plot: Plot, star_count: int = 0) -> dict:
-    """Plot を PlotResponse 形式に変換。"""
-    return {
-        "id": str(plot.id),
-        "title": plot.title,
-        "description": plot.description,
-        "tags": plot.tags or [],
-        "ownerId": str(plot.owner_id),
-        "version": plot.version or 0,
-        "starCount": star_count,
-        "isStarred": False,
-        "isPaused": plot.is_paused,
-        "createdAt": plot.created_at.isoformat() if plot.created_at else None,
-        "updatedAt": plot.updated_at.isoformat() if plot.updated_at else None,
-    }
-
-
 def _serialize_thread(thread: Thread) -> dict:
     return {
         "id": str(thread.id),
@@ -77,7 +61,9 @@ def _serialize_comment(comment: Comment, user: User | None) -> dict:
         "id": str(comment.id),
         "threadId": str(comment.thread_id),
         "content": comment.content,
-        "parentCommentId": str(comment.parent_comment_id) if comment.parent_comment_id else None,
+        "parentCommentId": str(comment.parent_comment_id)
+        if comment.parent_comment_id
+        else None,
         "user": _serialize_user_brief(user),
         "createdAt": comment.created_at.isoformat() if comment.created_at else None,
     }
@@ -98,7 +84,7 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
             detail=str(e),
         )
 
-    return _serialize_plot(new_plot)
+    return plot_to_response(new_plot, star_count=0)
 
 
 # ─── POST /threads ───────────────────────────────────────────
