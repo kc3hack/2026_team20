@@ -15,6 +15,7 @@ dependencies = [
   "uvicorn[standard]",
   "psycopg2-binary",
   "pytest",
+  "apscheduler",
 ]
 
 
@@ -57,6 +58,7 @@ docstring-code-format = true
 pythonVersion = "3.13"
 venvPath = "."
 venv = ".venv"
+stubPath = "typings"
 typeCheckingMode = "standard"
 reportMissingImports = true
 reportMissingTypeStubs = false
