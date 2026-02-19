@@ -1,14 +1,29 @@
-"""Auth endpoints – ユーザー情報取得。"""
+"""Auth endpoints – ユーザー認証・プロフィール・Plot/Contribution一覧。
+
+エンドポイント:
+- GET /auth/me: 現在のユーザー情報取得
+- GET /auth/users/{username}: ユーザープロフィール取得
+- GET /auth/users/{username}/plots: ユーザーのPlot一覧
+- GET /auth/users/{username}/contributions: ユーザーのContribution一覧
+
+実装ノート:
+- 本モジュールのエンドポイントは同期関数（def）で実装されている。
+- FastAPIは同期エンドポイントをスレッドプールで実行するため、
+  現在の規模ではパフォーマンス上の問題はない。
+- 将来的に非同期化（async def）が必要になった場合は、
+  SQLAlchemyの非同期セッション（AsyncSession）への移行が必要。
+"""
 
 import logging
-import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.models import Plot, Star, User
-from app.schemas import PlotListResponse, PlotResponse, UserProfileResponse, UserResponse
+from app.api.v1.utils import plot_to_response
+from app.models import HotOperation, Plot, Section, User
+from app.schemas import PlotListResponse, UserProfileResponse, UserResponse
 
 logger = logging.getLogger(__name__)
 
@@ -38,23 +53,6 @@ def _user_to_profile(user: User, plot_count: int, contribution_count: int) -> Us
     )
 
 
-def _plot_to_response(plot: Plot, *, is_starred: bool = False) -> PlotResponse:
-    """Plot ORM → PlotResponse に変換。"""
-    return PlotResponse(
-        id=str(plot.id),
-        title=plot.title,
-        description=plot.description,
-        tags=plot.tags or [],
-        ownerId=str(plot.owner_id),
-        starCount=len(plot.stars),
-        isStarred=is_starred,
-        isPaused=plot.is_paused,
-        editingUsers=[],
-        createdAt=plot.created_at,
-        updatedAt=plot.updated_at,
-    )
-
-
 # ─── GET /auth/me ────────────────────────────────
 @router.get("/me", response_model=UserResponse)
 def get_me(
@@ -62,8 +60,9 @@ def get_me(
     db: DbSession,
 ) -> UserResponse:
     """現在のユーザー情報を取得する（要認証）。"""
+    # CurrentUser.id は UUID 型のため、parse_uuid は不要
     user = db.execute(
-        select(User).where(User.id == uuid.UUID(current_user.id))
+        select(User).where(User.id == current_user.id)
     ).scalar_one_or_none()
 
     if user is None:
@@ -89,7 +88,7 @@ def get_user_profile(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User '{username}' not found",
+            detail="User not found",
         )
 
     # オーナーとして作成した Plot 数
@@ -98,8 +97,6 @@ def get_user_profile(
     ).scalar_one()
 
     # コントリビューション数（セクションを編集した他人の Plot 数）
-    from app.models import HotOperation, Section
-
     contribution_count: int = db.execute(
         select(func.count(func.distinct(Plot.id)))
         .select_from(HotOperation)
@@ -128,15 +125,19 @@ def get_user_plots(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User '{username}' not found",
+            detail="User not found",
         )
 
     total: int = db.execute(
         select(func.count()).select_from(Plot).where(Plot.owner_id == user.id)
     ).scalar_one()
 
+    # selectinload で stars を事前ロードし、N+1 問題を回避
+    # 自分が作成した Plot は作成順（created_at）で表示する。
+    # オーナー自身が「いつ作ったか」を時系列で把握できるようにするため。
     plots = db.execute(
         select(Plot)
+        .options(selectinload(Plot.stars))
         .where(Plot.owner_id == user.id)
         .order_by(Plot.created_at.desc())
         .limit(limit)
@@ -144,7 +145,7 @@ def get_user_plots(
     ).scalars().all()
 
     return PlotListResponse(
-        items=[_plot_to_response(p) for p in plots],
+        items=[plot_to_response(p) for p in plots],
         total=total,
         limit=limit,
         offset=offset,
@@ -162,8 +163,6 @@ def get_user_contributions(
     offset: int = Query(default=0, ge=0),
 ) -> PlotListResponse:
     """ユーザーがコントリビューションした Plot 一覧を取得する。"""
-    from app.models import HotOperation, Section
-
     user = db.execute(
         select(User).where(User.display_name == username)
     ).scalar_one_or_none()
@@ -171,7 +170,7 @@ def get_user_contributions(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User '{username}' not found",
+            detail="User not found",
         )
 
     # コントリビューションした Plot の ID を取得（自分がオーナーでないもの）
@@ -189,8 +188,12 @@ def get_user_contributions(
         select(func.count()).select_from(contributed_plot_ids_subq)
     ).scalar_one()
 
+    # selectinload で stars を事前ロードし、N+1 問題を回避
+    # コントリビューションした Plot は最終更新順（updated_at）で表示する。
+    # 直近アクティブな Plot を上位に表示し、協業の進捗を追いやすくするため。
     plots = db.execute(
         select(Plot)
+        .options(selectinload(Plot.stars))
         .where(Plot.id.in_(select(contributed_plot_ids_subq)))
         .order_by(Plot.updated_at.desc())
         .limit(limit)
@@ -198,7 +201,7 @@ def get_user_contributions(
     ).scalars().all()
 
     return PlotListResponse(
-        items=[_plot_to_response(p) for p in plots],
+        items=[plot_to_response(p) for p in plots],
         total=total,
         limit=limit,
         offset=offset,

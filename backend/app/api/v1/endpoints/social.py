@@ -11,8 +11,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 
 from app.api.v1.deps import AuthUser, DbSession
+from app.api.v1.utils import plot_to_response
 from app.models import Comment, Fork, Plot, Section, Thread, User
 
 router = APIRouter()
@@ -44,23 +46,6 @@ def _serialize_user_brief(user: User | None) -> dict | None:
     }
 
 
-def _serialize_plot(plot: Plot, star_count: int = 0) -> dict:
-    """Plot を PlotResponse 形式に変換。"""
-    return {
-        "id": str(plot.id),
-        "title": plot.title,
-        "description": plot.description,
-        "tags": plot.tags or [],
-        "ownerId": str(plot.owner_id),
-        "version": plot.version or 0,
-        "starCount": star_count,
-        "isStarred": False,
-        "isPaused": plot.is_paused,
-        "createdAt": plot.created_at.isoformat() if plot.created_at else None,
-        "updatedAt": plot.updated_at.isoformat() if plot.updated_at else None,
-    }
-
-
 def _serialize_thread(thread: Thread) -> dict:
     return {
         "id": str(thread.id),
@@ -89,7 +74,7 @@ def _serialize_comment(comment: Comment, user: User | None) -> dict:
 )
 def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: AuthUser):
     """Plotをフォーク。Plot + 全 Sections を複製する。"""
-    source = db.query(Plot).filter(Plot.id == plot_id).first()
+    source = db.execute(select(Plot).where(Plot.id == plot_id)).scalar_one_or_none()
     if not source:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -108,12 +93,11 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
     db.flush()  # new_plot.id を確定させる
 
     # セクションを複製
-    source_sections = (
-        db.query(Section)
-        .filter(Section.plot_id == plot_id)
+    source_sections = db.execute(
+        select(Section)
+        .where(Section.plot_id == plot_id)
         .order_by(Section.order_index)
-        .all()
-    )
+    ).scalars().all()
     for section in source_sections:
         new_section = Section(
             plot_id=new_plot.id,
@@ -134,7 +118,7 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
     db.commit()
     db.refresh(new_plot)
 
-    return _serialize_plot(new_plot)
+    return plot_to_response(new_plot, star_count=0)
 
 
 # ─── POST /threads ───────────────────────────────────────────
@@ -145,7 +129,7 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
 def create_thread(body: CreateThreadRequest, db: DbSession, current_user: AuthUser):
     """スレッド作成。"""
     # Plot の存在確認
-    plot = db.query(Plot).filter(Plot.id == body.plotId).first()
+    plot = db.execute(select(Plot).where(Plot.id == body.plotId)).scalar_one_or_none()
     if not plot:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -155,7 +139,7 @@ def create_thread(body: CreateThreadRequest, db: DbSession, current_user: AuthUs
     # sectionId が指定されている場合、存在確認
     section_id = None
     if body.sectionId:
-        section = db.query(Section).filter(Section.id == body.sectionId).first()
+        section = db.execute(select(Section).where(Section.id == body.sectionId)).scalar_one_or_none()
         if not section:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -179,31 +163,30 @@ def create_thread(body: CreateThreadRequest, db: DbSession, current_user: AuthUs
 def list_comments(
     thread_id: UUID,
     db: DbSession,
-    limit: int = Query(default=50, le=50),
+    limit: int = Query(default=50, le=50, ge=1),
     offset: int = Query(default=0, ge=0),
 ):
     """コメント一覧取得。"""
-    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    thread = db.execute(select(Thread).where(Thread.id == thread_id)).scalar_one_or_none()
     if not thread:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Thread not found",
         )
 
-    total = db.query(Comment).filter(Comment.thread_id == thread_id).count()
+    total = db.execute(select(func.count()).select_from(Comment).where(Comment.thread_id == thread_id)).scalar_one()
 
-    comments = (
-        db.query(Comment)
-        .filter(Comment.thread_id == thread_id)
+    comments = db.execute(
+        select(Comment)
+        .where(Comment.thread_id == thread_id)
         .order_by(Comment.created_at)
         .offset(offset)
         .limit(limit)
-        .all()
-    )
+    ).scalars().all()
 
     items = []
     for comment in comments:
-        user = db.query(User).filter(User.id == comment.user_id).first()
+        user = db.execute(select(User).where(User.id == comment.user_id)).scalar_one_or_none()
         items.append(_serialize_comment(comment, user))
 
     return {"items": items, "total": total}
@@ -228,7 +211,7 @@ def create_comment(
             detail="Content exceeds 5000 characters",
         )
 
-    thread = db.query(Thread).filter(Thread.id == thread_id).first()
+    thread = db.execute(select(Thread).where(Thread.id == thread_id)).scalar_one_or_none()
     if not thread:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -238,14 +221,12 @@ def create_comment(
     # 親コメントが指定されている場合、存在確認
     parent_id = None
     if body.parentCommentId:
-        parent = (
-            db.query(Comment)
-            .filter(
+        parent = db.execute(
+            select(Comment).where(
                 Comment.id == body.parentCommentId,
                 Comment.thread_id == thread_id,
             )
-            .first()
-        )
+        ).scalar_one_or_none()
         if not parent:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -263,6 +244,6 @@ def create_comment(
     db.commit()
     db.refresh(comment)
 
-    user = db.query(User).filter(User.id == comment.user_id).first()
+    user = db.execute(select(User).where(User.id == comment.user_id)).scalar_one_or_none()
 
     return _serialize_comment(comment, user)

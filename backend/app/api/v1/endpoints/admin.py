@@ -1,14 +1,14 @@
 """Admin endpoints – BAN 管理・Plot 一時停止。"""
 
 import logging
-import uuid
 
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import select
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.models import Plot, PlotBan
-from app.schemas import BanRequest, PauseRequest, UnbanRequest
+from app.api.v1.utils import _get_plot_or_404, _get_user_or_404
+from app.models import Plot, PlotBan, User
+from app.schemas import BanRequest, MessageResponse, PauseRequest, UnbanRequest
 
 logger = logging.getLogger(__name__)
 
@@ -26,37 +26,29 @@ def _require_admin(user: AuthUser) -> None:
         )
 
 
-def _get_plot_or_404(db: DbSession, plot_id: str) -> Plot:
-    """Plot を取得する。存在しなければ 404 を返す。"""
-    plot = db.execute(
-        select(Plot).where(Plot.id == uuid.UUID(plot_id))
-    ).scalar_one_or_none()
-    if plot is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Plot not found",
-        )
-    return plot
-
-
 # ─── POST /admin/bans ────────────────────────────
-@router.post("/admin/bans", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/admin/bans",
+    status_code=status.HTTP_201_CREATED,
+    response_model=MessageResponse,
+)
 def ban_user(
     body: BanRequest,
     current_user: AuthUser,
     db: DbSession,
-) -> dict[str, str]:
+) -> MessageResponse:
     """ユーザーを BAN する（要管理者権限）。"""
     _require_admin(current_user)
 
-    # 対象 Plot の存在確認
-    _get_plot_or_404(db, body.plot_id)
+    # 対象 Plot と User の存在確認（内部でパース済み）
+    plot = _get_plot_or_404(db, body.plotId)
+    user = _get_user_or_404(db, body.userId)
 
     # 既に BAN されている場合は 409
     existing = db.execute(
         select(PlotBan).where(
-            PlotBan.plot_id == uuid.UUID(body.plot_id),
-            PlotBan.user_id == uuid.UUID(body.user_id),
+            PlotBan.plot_id == plot.id,
+            PlotBan.user_id == user.id,
         )
     ).scalar_one_or_none()
     if existing is not None:
@@ -66,8 +58,8 @@ def ban_user(
         )
 
     ban = PlotBan(
-        plot_id=uuid.UUID(body.plot_id),
-        user_id=uuid.UUID(body.user_id),
+        plot_id=plot.id,
+        user_id=user.id,
         reason=body.reason,
     )
     db.add(ban)
@@ -76,11 +68,11 @@ def ban_user(
     logger.info(
         "Admin %s banned user %s from plot %s (reason=%s)",
         current_user.id,
-        body.user_id,
-        body.plot_id,
+        body.userId,
+        body.plotId,
         body.reason,
     )
-    return {"detail": "User banned"}
+    return MessageResponse(detail="User banned")
 
 
 # ─── DELETE /admin/bans ──────────────────────────
@@ -93,10 +85,14 @@ def unban_user(
     """BAN を解除する（要管理者権限）。"""
     _require_admin(current_user)
 
+    # 対象 Plot と User の存在確認（内部でパース済み）
+    plot = _get_plot_or_404(db, body.plotId)
+    user = _get_user_or_404(db, body.userId)
+
     ban = db.execute(
         select(PlotBan).where(
-            PlotBan.plot_id == uuid.UUID(body.plot_id),
-            PlotBan.user_id == uuid.UUID(body.user_id),
+            PlotBan.plot_id == plot.id,
+            PlotBan.user_id == user.id,
         )
     ).scalar_one_or_none()
 
@@ -112,20 +108,20 @@ def unban_user(
     logger.info(
         "Admin %s unbanned user %s from plot %s",
         current_user.id,
-        body.user_id,
-        body.plot_id,
+        body.userId,
+        body.plotId,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ─── POST /plots/{plot_id}/pause ─────────────────
-@router.post("/plots/{plot_id}/pause")
+@router.post("/plots/{plot_id}/pause", response_model=MessageResponse)
 def pause_plot(
     plot_id: str,
     body: PauseRequest,
     current_user: AuthUser,
     db: DbSession,
-) -> dict[str, str]:
+) -> MessageResponse:
     """Plot の編集を一時停止する（要管理者権限）。"""
     _require_admin(current_user)
 
@@ -147,16 +143,16 @@ def pause_plot(
         plot_id,
         body.reason,
     )
-    return {"detail": "Plot paused"}
+    return MessageResponse(detail="Plot paused")
 
 
 # ─── DELETE /plots/{plot_id}/pause ────────────────
-@router.delete("/plots/{plot_id}/pause")
+@router.delete("/plots/{plot_id}/pause", response_model=MessageResponse)
 def resume_plot(
     plot_id: str,
     current_user: AuthUser,
     db: DbSession,
-) -> dict[str, str]:
+) -> MessageResponse:
     """Plot の編集を再開する（要管理者権限）。"""
     _require_admin(current_user)
 
@@ -177,4 +173,4 @@ def resume_plot(
         current_user.id,
         plot_id,
     )
-    return {"detail": "Plot resumed"}
+    return MessageResponse(detail="Plot resumed")

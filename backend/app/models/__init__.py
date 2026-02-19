@@ -39,7 +39,7 @@ class Plot(Base):
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     is_paused = Column(Boolean, default=False)
     pause_reason = Column(Text, nullable=True)
-    version = Column(Integer, default=0)#コンフリクト起きたらこれ残してね
+    version = Column(Integer, default=0)  # コンフリクト起きたらこれ残してね
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

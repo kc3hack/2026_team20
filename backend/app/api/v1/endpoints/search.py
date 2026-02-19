@@ -11,26 +11,10 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import or_
 
 from app.api.v1.deps import DbSession
+from app.api.v1.utils import plot_to_response
 from app.models import Plot, Star
 
 router = APIRouter()
-
-
-def _serialize_plot(plot: Plot, star_count: int = 0) -> dict:
-    """Plot を PlotResponse 形式に変換。"""
-    return {
-        "id": str(plot.id),
-        "title": plot.title,
-        "description": plot.description,
-        "tags": plot.tags or [],
-        "ownerId": str(plot.owner_id),
-        "version": plot.version or 0,
-        "starCount": star_count,
-        "isStarred": False,
-        "isPaused": plot.is_paused,
-        "createdAt": plot.created_at.isoformat() if plot.created_at else None,
-        "updatedAt": plot.updated_at.isoformat() if plot.updated_at else None,
-    }
 
 
 @router.get("/")
@@ -63,7 +47,7 @@ def search_plots(
     items = []
     for plot in plots:
         star_count = db.query(Star).filter(Star.plot_id == plot.id).count()
-        items.append(_serialize_plot(plot, star_count))
+        items.append(plot_to_response(plot, star_count=star_count))
 
     return {
         "items": items,
