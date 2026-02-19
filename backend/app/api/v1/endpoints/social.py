@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api.v1.deps import AuthUser, DbSession
+from app.api.v1.utils import parse_uuid, plot_to_response
 from app.models import Comment, Plot, Thread, User
 from app.services import social_service
 
@@ -42,23 +43,6 @@ def _serialize_user_brief(user: User | None) -> dict | None:
         "id": str(user.id),
         "displayName": user.display_name,
         "avatarUrl": user.avatar_url,
-    }
-
-
-def _serialize_plot(plot: Plot, star_count: int = 0) -> dict:
-    """Plot を PlotResponse 形式に変換。"""
-    return {
-        "id": str(plot.id),
-        "title": plot.title,
-        "description": plot.description,
-        "tags": plot.tags or [],
-        "ownerId": str(plot.owner_id),
-        "version": plot.version or 0,
-        "starCount": star_count,
-        "isStarred": False,
-        "isPaused": plot.is_paused,
-        "createdAt": plot.created_at.isoformat() if plot.created_at else None,
-        "updatedAt": plot.updated_at.isoformat() if plot.updated_at else None,
     }
 
 
@@ -98,7 +82,7 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
             detail=str(e),
         )
 
-    return _serialize_plot(new_plot)
+    return plot_to_response(new_plot, star_count=0).model_dump()
 
 
 # ─── POST /threads ───────────────────────────────────────────
@@ -108,8 +92,13 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
 )
 def create_thread(body: CreateThreadRequest, db: DbSession, current_user: AuthUser):
     """スレッド作成。"""
+    # api.md ではリクエストボディは string(UUID) 形式。
+    # service 層は UUID 型を期待するため、ここで変換する。
+    plot_uuid = parse_uuid(body.plotId, "plotId")
+    section_uuid = parse_uuid(body.sectionId, "sectionId") if body.sectionId else None
+
     try:
-        thread = social_service.create_thread(db, body.plotId, body.sectionId)
+        thread = social_service.create_thread(db, plot_uuid, section_uuid)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -154,9 +143,12 @@ def create_comment(
     current_user: AuthUser,
 ):
     """コメント投稿。本文 5000 文字制限は api.md に合わせて 400 で返す。"""
+    # parentCommentId が文字列で送られてくるため UUID に変換
+    parent_uuid = parse_uuid(body.parentCommentId, "parentCommentId") if body.parentCommentId else None
+
     try:
         comment, user = social_service.create_comment(
-            db, thread_id, current_user.id, body.content, body.parentCommentId
+            db, thread_id, current_user.id, body.content, parent_uuid
         )
     except ValueError as e:
         # "Content exceeds 5000 characters" → 400
