@@ -41,12 +41,30 @@ Plot作成（要認証）
 ```json
 {
   "title": "string (max 200)",
-  "description": "string (max 2000)",
-  "tags": ["tag1", "tag2"]
+  "description": "string (max 2000) (省略可)",
+  "tags": ["tag1", "tag2"] (省略可),
+  "thumbnailUrl": "string (省略可)"
 }
 ```
 
 **Response**: `201 Created` → `PlotResponse`
+
+---
+
+#### PUT /plots/{plotId}
+Plot更新（要認証・作成者のみ）
+
+**Request Body**: `UpdatePlotRequest`
+```json
+{
+  "title": "string (max 200) (省略可)",
+  "description": "string (max 2000) (省略可)",
+  "tags": ["tag1", "tag2"] (省略可),
+  "thumbnailUrl": "string | null (省略可)"
+}
+```
+
+**Response**: `200 OK` → `PlotResponse`
 
 ---
 
@@ -57,17 +75,10 @@ Plot詳細取得
 
 ---
 
-#### PUT /plots/{plotId}
-Plot更新（要認証・作成者のみ）
-
-**Request Body**: `UpdatePlotRequest`
-
-**Response**: `200 OK` → `PlotResponse`
-
----
-
 #### DELETE /plots/{plotId}
 Plot削除（要認証・作成者のみ）
+
+関連するセクション、スナップショット（`cold_snapshots`）、ロールバックログ（`rollback_logs`）、スター、スレッド・コメントは `ON DELETE CASCADE` により自動削除される。
 
 **Response**: `204 No Content`
 
@@ -125,7 +136,7 @@ Plot削除（要認証・作成者のみ）
 ```json
 {
   "title": "string (max 200)",
-  "content": { "type": "doc", "content": [...] }
+  "content": { "type": "doc", "content": [...] } (省略可)
 }
 ```
 
@@ -148,8 +159,8 @@ Plot削除（要認証・作成者のみ）
 **Request Body**:
 ```json
 {
-  "title": "string (max 200)",
-  "content": { "type": "doc", "content": [...] }
+  "title": "string (max 200) (省略可)",
+  "content": { "type": "doc", "content": [...] } (省略可)
 }
 ```
 
@@ -191,9 +202,9 @@ Plot削除（要認証・作成者のみ）
 ```json
 {
   "operationType": "insert | delete | update",
-  "position": 10,
-  "content": "追加されたテキスト",
-  "length": 5
+  "position": 10 (省略可),
+  "content": "追加されたテキスト (省略可)",
+  "length": 5 (省略可)
 }
 ```
 
@@ -202,7 +213,7 @@ Plot削除（要認証・作成者のみ）
 ---
 
 #### GET /sections/{sectionId}/history
-履歴一覧取得（72時間以内のみ）
+操作ログ一覧取得（HotOperation、72時間以内の操作ログ）
 
 **Query Parameters**:
 | Parameter | Type | Default |
@@ -214,19 +225,96 @@ Plot削除（要認証・作成者のみ）
 
 ---
 
-#### POST /sections/{sectionId}/rollback/{version}
-ロールバック（要認証・72時間以内のみ）
-
-**Response**: `200 OK` → `SectionResponse`
-
-**Error**: `400 Bad Request` - 72時間以上前のバージョンはロールバック不可
-
----
-
 #### GET /sections/{sectionId}/diff/{fromVersion}/{toVersion}
 差分取得
 
 **Response**: `DiffResponse`
+
+---
+
+#### GET /plots/{plotId}/snapshots
+スナップショット一覧取得（ColdSnapshot、保持ポリシーに基づく段階的間引き：直近7日=全保持、7〜30日=1時間1個、30日以降=1日1個）
+
+スナップショットは5分間隔バッチで自動作成される。1スナップショットあたりの最大サイズは10MB。超過したPlotのスナップショットは作成がスキップされ、ログに警告が出力される。
+
+**Query Parameters**:
+| Parameter | Type | Default | Max |
+|-----------|------|---------|-----|
+| limit | integer | 20 | 100 |
+| offset | integer | 0 | - |
+
+**Response**: `SnapshotListResponse`
+
+---
+
+#### GET /plots/{plotId}/snapshots/{snapshotId}
+スナップショット詳細取得（プレビュー用）
+
+復元前にスナップショットの内容を確認するためのエンドポイント。
+スナップショットに保存されたPlotのメタデータと全セクションの内容を返す。
+
+**Response**: `200 OK` → `SnapshotDetailResponse`
+
+**Error**:
+- `404 Not Found` - スナップショットが存在しない
+
+---
+
+#### POST /plots/{plotId}/rollback/{snapshotId}
+Plot全体ロールバック（要認証）
+
+スナップショットからPlot全体（メタデータ + 全セクション）を復元する。
+楽観的ロック（Optimistic Locking）により同時ロールバックの競合を防止する。
+
+**Request Body** (省略可):
+```json
+{
+  "expectedVersion": 5,
+  "reason": "荒らし行為の復旧 (省略可)"
+}
+```
+
+- `expectedVersion`: 現在のPlotの `version` 値。指定した場合、サーバー側の `version` と一致しなければ `409 Conflict` を返す。省略した場合はバージョンチェックを行わない。
+- `reason`: ロールバック理由。監査ログ（`rollback_logs`）に記録される。
+
+**Response**: `200 OK` → `PlotDetailResponse`
+
+**処理フロー**:
+1. `expectedVersion` が指定されている場合、`plots.version` と比較
+2. 不一致の場合は `409 Conflict` を返却（他のユーザーが先にロールバック済み）
+3. 一致する場合、スナップショットの内容でPlot全体を上書き
+4. `plots.version` をインクリメント
+5. `rollback_logs` テーブルに監査ログを記録（plot_id, snapshot_id, user_id, reason, created_at）
+
+**セクション構成差異の処理（完全上書き方式）**:
+- 現在の全セクションを削除し、スナップショットのセクション構成で完全に上書きする
+- セクションIDは新規採番される（スナップショット時点のIDは保持しない）
+- コメントスレッド（`threads.section_id`）はPlot単位のスレッドとして引き続きアクセス可能（`section_id` はNULL許容）
+- HotOperation（旧セクションIDへの参照）は72時間TTLで自動消滅するため特別な処理不要
+
+**Error**:
+- `404 Not Found` - スナップショットが存在しない
+- `403 Forbidden` - Plotが一時停止中
+- `409 Conflict` - バージョン不一致（同時ロールバックの競合）
+
+---
+
+#### GET /plots/{plotId}/rollback-logs
+ロールバック監査ログ一覧取得（要認証・Plot所有者または管理者）
+
+ロールバック操作の監査ログを閲覧する。「誰が、いつ、どのスナップショットに復元したか」の履歴を確認できる。
+
+**Query Parameters**:
+| Parameter | Type | Default | Max |
+|-----------|------|---------|-----|
+| limit | integer | 20 | 100 |
+| offset | integer | 0 | - |
+
+**Response**: `RollbackLogListResponse`
+
+**Error**:
+- `403 Forbidden` - Plot所有者または管理者ではない
+- `404 Not Found` - Plotが存在しない
 
 ---
 
@@ -375,7 +463,7 @@ Plot検索（PostgreSQL全文検索）
 {
   "plotId": "uuid",
   "userId": "uuid",
-  "reason": "string"
+  "reason": "string (省略可)"
 }
 ```
 
@@ -404,7 +492,7 @@ BAN解除（要管理者権限）
 **Request Body**:
 ```json
 {
-  "reason": "string"
+  "reason": "string (省略可)"
 }
 ```
 
@@ -456,24 +544,21 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "title": "string",
-  "description": "string",
+  "description": "string | null",
   "tags": ["string"],
   "ownerId": "uuid",
   "starCount": 42,
   "isStarred": false,
   "isPaused": false,
-  "editingUsers": [
-    {
-      "id": "uuid",
-      "displayName": "string",
-      "avatarUrl": "string",
-      "sectionId": "uuid"
-    }
-  ],
+  "thumbnailUrl": "string | null",
+  "version": 0,
   "createdAt": "2026-02-16T00:00:00Z",
   "updatedAt": "2026-02-16T00:00:00Z"
 }
 ```
+
+**フィールド補足**:
+- `thumbnailUrl`: `ImageUploadResponse.url` の値（`/api/v1/images/{filename}` 形式）がそのまま格納される。`<img src={thumbnailUrl} />` で直接使用可能。
 
 ### PlotDetailResponse
 `PlotResponse` +:
@@ -483,8 +568,8 @@ BAN解除（要管理者権限）
   "owner": {
     "id": "uuid",
     "displayName": "string",
-    "avatarUrl": "string"
-  }
+    "avatarUrl": "string | null"
+  } | null
 }
 ```
 
@@ -504,7 +589,7 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "plotId": "uuid",
   "title": "string",
-  "content": { "type": "doc", "content": [...] },
+  "content": { "type": "doc", "content": [...] } | null,
   "orderIndex": 0,
   "version": 5,
   "createdAt": "2026-02-16T00:00:00Z",
@@ -528,8 +613,8 @@ BAN解除（要管理者権限）
       "id": "uuid",
       "sectionId": "uuid",
       "operationType": "insert",
-      "payload": {},
-      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+      "payload": {} | null,
+      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
       "version": 5,
       "createdAt": "2026-02-16T00:00:00Z"
     }
@@ -552,6 +637,74 @@ BAN解除（要管理者権限）
 }
 ```
 
+### SnapshotResponse
+```json
+{
+  "id": "uuid",
+  "plotId": "uuid",
+  "version": 1,
+  "createdAt": "2026-02-16T00:00:00Z"
+}
+```
+
+### SnapshotListResponse
+```json
+{
+  "items": [SnapshotResponse],
+  "total": 50
+}
+```
+
+### SnapshotDetailResponse
+```json
+{
+  "id": "uuid",
+  "plotId": "uuid",
+  "version": 1,
+  "content": {
+    "plot": {
+      "title": "...",
+      "description": "...",
+      "tags": [...]
+    },
+    "sections": [
+      {
+        "id": "uuid",
+        "title": "...",
+        "content": { "type": "doc", "content": [...] } | null,
+        "orderIndex": 0,
+        "version": 5
+      }
+    ]
+  } | null,
+  "createdAt": "2026-02-16T00:00:00Z"
+}
+```
+
+### RollbackLogResponse
+```json
+{
+  "id": "uuid",
+  "plotId": "uuid",
+  "snapshotId": "uuid | null",
+  "snapshotVersion": 5,
+  "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
+  "reason": "string | null",
+  "createdAt": "2026-02-19T00:00:00Z"
+}
+```
+
+**フィールド補足**:
+- `snapshotVersion`: `rollback_logs` テーブルの `snapshot_version` カラムから直接取得。スナップショット間引き（`snapshot_id` が `SET NULL`）後もバージョン情報を保持するため、非正規化してテーブルに記録している。
+
+### RollbackLogListResponse
+```json
+{
+  "items": [RollbackLogResponse],
+  "total": 10
+}
+```
+
 ### ImageUploadResponse
 ```json
 {
@@ -567,7 +720,7 @@ BAN解除（要管理者権限）
 {
   "items": [
     {
-      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+      "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
       "createdAt": "2026-02-16T00:00:00Z"
     }
   ],
@@ -580,7 +733,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "plotId": "uuid",
-  "sectionId": "uuid",
+  "sectionId": "uuid | null",
   "commentCount": 10,
   "createdAt": "2026-02-16T00:00:00Z"
 }
@@ -592,8 +745,8 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "threadId": "uuid",
   "content": "string",
-  "parentCommentId": "uuid",
-  "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string" },
+  "parentCommentId": "uuid | null",
+  "user": { "id": "uuid", "displayName": "string", "avatarUrl": "string | null" },
   "createdAt": "2026-02-16T00:00:00Z"
 }
 ```
@@ -621,7 +774,7 @@ BAN解除（要管理者権限）
   "id": "uuid",
   "email": "string",
   "displayName": "string",
-  "avatarUrl": "string",
+  "avatarUrl": "string | null",
   "createdAt": "2026-02-16T00:00:00Z"
 }
 ```
@@ -631,7 +784,7 @@ BAN解除（要管理者権限）
 {
   "id": "uuid",
   "displayName": "string",
-  "avatarUrl": "string",
+  "avatarUrl": "string | null",
   "plotCount": 10,
   "contributionCount": 50,
   "createdAt": "2026-02-16T00:00:00Z"

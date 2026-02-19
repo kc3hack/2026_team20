@@ -18,11 +18,11 @@ vars:
 
 includes:
   frontend:
-    taskfile: ./taskfile/Taskfile.frontend.yml
+    taskfile: ./Taskfile/Taskfile.frontend.yml
     dir: ./frontend
 
   backend:
-    taskfile: ./taskfile/Taskfile.backend.yml
+    taskfile: ./Taskfile/Taskfile.backend.yml
     dir: ./backend
 
 tasks:

@@ -20,7 +20,7 @@
 
 ## テストファイル命名規則
 
-- Unit / Integration: `ComponentName.test.tsx` (`hooks/usePlots.test.ts`)
+- Unit / Integration: `ComponentName.test.tsx` (`hooks/usePlots.test.ts`) または `__tests__/ComponentName.test.tsx`
 - E2E: `feature-name.spec.ts`
 
 ## Mock 戦略

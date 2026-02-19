@@ -69,3 +69,8 @@ secrets/
 
 # --- Version Control (Jujutsu) ---
 .jj/
+
+# --- Sisyphus ---
+.sisyphus/
+
+review_result.md

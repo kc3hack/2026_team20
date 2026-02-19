@@ -30,8 +30,6 @@ frontend/
 │   │   │   └── [id]/
 │   │   │       ├── page.tsx             #     Plot 詳細ページ
 │   │   │       ├── page.module.scss     #     Plot 詳細用 SCSS
-│   │   │       ├── edit/
-│   │   │       │   └── page.tsx         #     Plot 編集ページ (認証必須)
 │   │   │       └── history/
 │   │   │           └── page.tsx         #     履歴・復元ページ
 │   │   │
@@ -87,13 +85,16 @@ frontend/
 │   │   │
 │   │   ├── section/                     #   セクション関連
 │   │   │   ├── SectionViewer/
-│   │   │   │   ├── SectionViewer.tsx    #     セクション閲覧コンポーネント
+│   │   │   │   ├── SectionViewer.tsx    #     セクション閲覧 (リアルタイム更新対応)
 │   │   │   │   └── SectionViewer.module.scss
 │   │   │   ├── SectionEditor/
-│   │   │   │   ├── SectionEditor.tsx    #     Tiptap によるセクション編集
+│   │   │   │   ├── SectionEditor.tsx    #     Tiptap 編集 (セクションロック統合)
 │   │   │   │   └── SectionEditor.module.scss
+│   │   │   ├── SectionLockBadge/
+│   │   │   │   ├── SectionLockBadge.tsx #     「🔒 ○○が編集中」バッジ
+│   │   │   │   └── SectionLockBadge.module.scss
 │   │   │   └── SectionList/
-│   │   │       └── SectionList.tsx      #     セクションの一覧 (並び替え対応)
+│   │   │       └── SectionList.tsx      #     セクションの一覧 (並び替え + ロック状態表示)
 │   │   │
 │   │   ├── editor/                      #   Tiptap エディタ関連
 │   │   │   ├── TiptapEditor/
@@ -157,6 +158,8 @@ frontend/
 │   │   ├── useAuth.ts                   #   認証状態 & ログイン/ログアウト
 │   │   ├── usePlots.ts                  #   Plot 一覧/詳細/CRUD クエリ
 │   │   ├── useSections.ts              #   Section CRUD クエリ
+│   │   ├── useSectionLock.ts           #   セクションロック管理 (Y.js Awareness ベース)
+│   │   ├── useRealtimeSection.ts       #   セクション内容リアルタイム同期 (Y.js + Broadcast)
 │   │   ├── useStar.ts                   #   スター toggle
 │   │   ├── useSearch.ts                 #   検索クエリ
 │   │   ├── useHistory.ts               #   履歴取得/ロールバック
@@ -181,6 +184,11 @@ frontend/
 │   │   │   ├── client.ts               #     ブラウザ用クライアント (createBrowserClient)
 │   │   │   ├── server.ts               #     Server Component 用クライアント
 │   │   │   └── middleware.ts           #     Middleware 用クライアント
+│   │   │
+│   │   ├── realtime/                    #   --- Supabase Realtime + Y.js ラッパー ---
+│   │   │   ├── channel.ts             #     チャネル作成・購読・切断ユーティリティ
+│   │   │   ├── awareness.ts           #     Y.js Awareness ラッパー (セクションロック状態管理)
+│   │   │   └── types.ts               #     SectionAwarenessState, YjsSyncMessage 等
 │   │   │
 │   │   ├── mock/                        #   --- Mock データ (開発初期用) ---
 │   │   │   ├── data.ts                 #     Mock データ定義 (plots, users, sections 等)
@@ -233,11 +241,12 @@ frontend/
 |-------------|------|
 | `app/` | **ルーティングのみ**に責任を持つ。ページコンポーネントは薄く保ち、ロジックは `hooks/`、表示は `components/` に委譲する。 |
 | `components/ui/` | **shadcn/ui が自動生成するファイル。絶対に手動で編集しない。** カスタマイズは呼び出し側で `className` prop を使って Tailwind クラスを追加する。新しいコンポーネントが必要になったら、まず [shadcn/ui のドキュメント](https://ui.shadcn.com/) で該当コンポーネントがあるか確認する。 |
-| `components/{feature}/` | 機能ドメインごとにグルーピング。1 コンポーネント = 1 フォルダ（`.tsx` + `.module.scss` + `.test.tsx`）。**内部では shadcn/ui コンポーネントを組み合わせて実装する。** |
+| `components/{feature}/` | 機能ドメインごとにグルーピング。1 コンポーネント = 1 フォルダ（`.tsx` + `.module.scss` + `.test.tsx`）。**内部では shadcn/ui コンポーネントを組み合わせて実装する。** ファイル数が多い場合は `.test.tsx` を `__tests__/` に、`.module.scss` を `styles/` サブディレクトリに移動することを推奨する。 |
 | `components/shared/` | 2 つ以上の機能ドメインで使われる汎用コンポーネント。shadcn/ui の薄いラッパーとして実装することが多い（例: `TagBadge` は内部で `<Badge>` を使う）。 |
-| `hooks/` | TanStack Query ベースのカスタム Hook。ページコンポーネントから API を直接呼ばない。 |
+| `hooks/` | TanStack Query ベースのカスタム Hook。ページコンポーネントから API を直接呼ばない。`useSectionLock` と `useRealtimeSection` はリアルタイム編集の中核。 |
 | `lib/api/` | **API 変更の影響を吸収する唯一のレイヤー**。Repository パターンでリクエスト関数を分離。`client.ts` は必ずテスト（`client.test.ts`）を書く。 |
 | `lib/supabase/` | Supabase クライアント生成関数。ブラウザ用・サーバー用・Middleware 用の 3 種類を用意。 |
+| `lib/realtime/` | Supabase Realtime チャネル管理。Y.js 差分の Broadcast と Y.js Awareness によるロック状態共有。詳細は [10-realtime-editing.md](./10-realtime-editing.md) を参照。 |
 | `lib/mock/` | **Mock ファースト開発用**。`data.ts` で偽データ定義、`storage.ts` で永続化、`migration.ts` でバージョン管理。`NEXT_PUBLIC_USE_MOCK=true` 時に使用。[Mock ファースト開発](./09-mock-development.md)参照。 |
 | `providers/` | Client Component 限定の Context Provider。`"use client"` 境界をここに集約。 |
 | `styles/` | SCSS パーシャル。`@use` で各 `.module.scss` から参照。 |
@@ -250,15 +259,15 @@ frontend/
 
 | ファイル | 用途 | 具体例 |
 |---------|------|--------|
-| **`lib/api/types.ts`** | **API リクエスト/レスポンスの型定義** | `PlotItem`, `UserBrief`, `PlotListResponse`, `CreatePlotRequest` 等。バックエンド API とやり取りする際の型をすべてここに集約。 |
+| **`lib/api/types.ts`** | **API リクエスト/レスポンスの型定義** | `PlotResponse`, `PlotListResponse`, `CreatePlotRequest`, `UserProfileResponse` 等。バックエンド API とやり取りする際の型をすべてここに集約。 |
 | **`types/index.ts`** | **ドメイン横断の共通型・ユーティリティ型** | `Nullable<T>`, `DeepPartial<T>`, アプリ固有の定数型、列挙型など。複数のドメインで使われる汎用的な型。 |
 
 **使い分けの判断基準：**
 
 ```typescript
 // ✅ lib/api/types.ts に配置すべき型
-export interface PlotItem { /* API レスポンス */ }
-export interface CreatePlotRequest { /* API リクエスト */ }
+export type PlotResponse = { /* API レスポンス */ }
+export type CreatePlotRequest = { /* API リクエスト */ }
 
 // ✅ types/index.ts に配置すべき型
 export type Nullable<T> = T | null;

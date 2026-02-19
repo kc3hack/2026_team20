@@ -89,7 +89,7 @@
 - [ ] 全APIエンドポイントが動作し、curlで検証可能
 - [ ] トップページでPlot一覧が表示される
 - [ ] Plot詳細ページでリアルタイム編集が可能
-- [ ] 履歴から復元が可能
+- [ ] Plot全体ロールバックが可能
 - [ ] GitHub/Google認証が動作する
 - [ ] Docker compose upで全サービスが起動する
 
@@ -178,6 +178,7 @@
 | 画像ファイルサイズ | 最大5MB |
 | 画像リサイズ | 最大幅1920px、アスペクト比維持、JPEG品質85 |
 | 許可画像形式 | .jpg, .png, .gif, .webp |
+| スナップショット最大サイズ | 10MB/スナップショット（超過時はスキップしてログ警告） |
 
 ### 表示件数
 
@@ -191,9 +192,11 @@
 
 | 項目 | 仕様 |
 |------|------|
-| Phase 1（操作ログ） | 72時間保持 |
-| Phase 2（スナップショット） | 永続保持 |
-| 荒らし対策 | BAN/一時停止で事前防止、72時間以内は個別ロールバック可能 |
+| HotOperation（操作ログ） | セクション単位、**72時間保持**（TTL超過分は自動削除）、UI表示用（「誰が、いつ、どこを、どう変えた」） |
+| ColdSnapshot（スナップショット） | Plot全体、5分間隔バッチ作成（APScheduler）、**保持ポリシーに基づく段階的間引き**（直近7日=全保持、7〜30日=1時間1個、30日以降=1日1個）。毎日午前3時のcleanupバッチで間引きを実行。間引き後も各期間の最新スナップショットは必ず保持されるため、**実質的に無期限で復元ポイントが存在する**（ただし粒度は経過期間に応じて低下する） |
+| ロールバック | Plot全体をスナップショットから復元（`POST /plots/{plotId}/rollback/{snapshotId}`） |
+| ロールバック競合制御 | 楽観的ロック（`plots.version`）で同時ロールバックを排他制御。バージョン不一致時は409 Conflictを返却 |
+| 荒らし対策 | BAN/一時停止で事前防止が基本方針、5分間隔のPlotスナップショットで復元可能 |
 
 ### ランキングアルゴリズム
 
@@ -486,17 +489,30 @@ Wave 3 (Day 6-7): SNS機能 + 統合
   - [ ] Supabaseプロジェクトが作成されている
   - [ ] 以下のテーブルが作成されている（制限値を反映）:
     - `users` (id, email, display_name, avatar_url, created_at)
-    - `plots` (id, title VARCHAR(200), description VARCHAR(2000), owner_id, tags, visibility, created_at, updated_at)
-    - `sections` (id, plot_id, title, content, order_index, created_at, updated_at)
+    - `plots` (id, title VARCHAR(200), description VARCHAR(2000), owner_id, tags, visibility, version INTEGER DEFAULT 0, thumbnail_url TEXT DEFAULT NULL, created_at, updated_at)
+      - version: 楽観的ロック用。ロールバック時にバージョンチェックを行い、同時ロールバックの競合を防止
+    - `sections` (id, plot_id, title, content, order_index, version INTEGER DEFAULT 1, created_at, updated_at)
       - plot_idに外部キー制約
-    - `hot_operations` (id, section_id, operation_type, payload, user_id, created_at)
-      - TTL: 72時間
-    - `cold_snapshots` (id, section_id, content, version, created_at)
+      - version: セクションの編集バージョン。更新ごとにインクリメントされ、差分取得・スナップショット記録に使用
+    - `hot_operations` (id, section_id, operation_type, payload, user_id, version INTEGER NOT NULL, created_at)
+      - TTL: 72時間（操作ログ表示用）
+      - version: 操作時点のセクションバージョンを記録。履歴一覧や差分取得で使用
+    - `cold_snapshots` (id, plot_id, content, version, created_at)
+      - Plot全体のJSONスナップショット、5分間隔バッチ作成
+      - 保持ポリシー: 直近7日=全保持、7〜30日=1時間1個、30日以降=1日1個（毎日午前3時にcleanupバッチで間引き）
+      - plot_idに外部キー制約（`ON DELETE CASCADE`）: Plot削除時に関連スナップショットを自動削除
     - `stars` (id, plot_id, user_id, created_at)
     - `forks` (id, source_plot_id, new_plot_id, user_id, created_at)
-    - `threads` (id, plot_id, section_id, created_at)
+    - `threads` (id, plot_id, section_id (NULL許可), created_at)
+      - section_id: ロールバック時にセクションIDが新規採番されるため、NULL許容。NULLの場合はPlot単位のスレッドとして扱う
     - `comments` (id, thread_id, user_id, content, created_at)
     - `plot_bans` (id, plot_id, user_id, reason, created_at)
+    - `rollback_logs` (id, plot_id, snapshot_id, snapshot_version, user_id, reason, created_at)
+      - ロールバック操作の監査ログ。「誰が、いつ、どのスナップショットに復元したか」を記録
+      - `snapshot_version INTEGER NOT NULL`: ロールバック先スナップショットのバージョン番号。スナップショット間引き（`ON DELETE SET NULL`）後もバージョン情報を保持するため、非正規化して記録する
+      - plot_id, snapshot_id, user_idに外部キー制約
+      - plot_idは `ON DELETE CASCADE`: Plot削除時に関連ログを自動削除
+      - snapshot_idは `ON DELETE SET NULL`: スナップショット間引き時もログは保持
   - [ ] GitHub/Google OAuth Providerが設定されている
   - [ ] RLSポリシーが設定されている（plots: 公開読み取り, sections: 公開読み取り, 編集は要ログイン）
 
@@ -703,6 +719,7 @@ Wave 3 (Day 6-7): SNS機能 + 統合
   - Tiptap JSON形式でのコンテンツ保存
   - Y.js ドキュメント永続化（Supabase連携）
   - リアルタイム同期の基盤（Supabase Realtime）
+  - **Section CRUD時に親Plotの `updated_at` を更新する**（5分間隔バッチのスナップショット作成に必須）
   - テスト作成（TDD）
 
   **Must NOT do**:
@@ -754,15 +771,20 @@ Wave 3 (Day 6-7): SNS機能 + 統合
 - [ ] 6. 履歴API（2層ストレージ）（バック担当1）
 
   **What to do**:
-  - Phase 1: 操作ログ保存API（**72時間保持**）
-  - Phase 2: スナップショット保存・取得API（永続保持）
-  - ロールバックAPI（**72時間以内は個別操作をロールバック可能**）
-  - TTL cleanupジョブ（72時間経過したPhase 1ログを削除）
+  - HotOperation: 操作ログ保存API（**72時間保持、UI表示用**）
+  - ColdSnapshot: 5分間隔バッチによるPlot全体スナップショット作成（**APScheduler、保持ポリシーに基づく段階的間引き: 直近7日=全保持、7〜30日=1時間1個、30日以降=1日1個**）
+  - Plot全体ロールバックAPI（スナップショットからPlot全体を復元）
+  - スナップショット一覧取得API
+  - TTL cleanupジョブ（72時間経過したHotOperationを削除）
   - テスト作成（TDD）
   
-  **注意**: 荒らし対策はBAN/一時停止で事前防止する。72時間以上前の荒らしは個別ロールバック不可。
+  **注意**: 
+  - 荒らし対策はBAN/一時停止で事前防止する方針。ロールバックはPlot全体単位のみ。
+  - セクション単位のロールバックは行わない（設計変更済み、詳細は `.sisyphus/plans/renew-api.md` 参照）。
+  - **重要**: Section CRUD時に `Plot.updated_at` が更新されていることが前提。Task 5で実装すること。
 
   **Must NOT do**:
+  - セクション単位のロールバック（廃止済み）
   - 完全なイベントリプレイ（MVPはスナップショットベース）
   - 複雑な差分アルゴリズム
   - Phase 1ログの72時間以上の保持（DB容量対策）
@@ -782,24 +804,27 @@ Wave 3 (Day 6-7): SNS機能 + 統合
 
   **Acceptance Criteria**:
   - [ ] POST /api/v1/sections/{id}/operations → 操作ログ保存
-  - [ ] GET /api/v1/sections/{id}/history → 履歴一覧取得
-  - [ ] POST /api/v1/sections/{id}/rollback/{version} → ロールバック
+  - [ ] GET /api/v1/sections/{id}/history → 履歴一覧取得（72時間操作ログ）
+  - [ ] GET /api/v1/plots/{id}/snapshots → スナップショット一覧取得
+  - [ ] POST /api/v1/plots/{id}/rollback/{snapshotId} → Plot全体ロールバック
   - [ ] GET /api/v1/sections/{id}/diff/{from}/{to} → 差分取得
+  - [ ] 5分間隔バッチでColdSnapshotが自動作成される
   - [ ] pytest tests/test_history.py → PASS
 
   **Agent-Executed QA Scenarios**:
   ```
-  Scenario: History and rollback
+  Scenario: Snapshot creation and plot rollback
     Tool: Bash (curl)
     Steps:
-      1. Create section with content "v1"
-      2. Update section to "v2"
-      3. GET /api/v1/sections/{id}/history
-      4. Assert: history.items.length >= 1
-      5. POST /api/v1/sections/{id}/rollback/{v1_version}
-      6. GET /api/v1/sections/{id}
-      7. Assert: response.content == "v1"
-    Expected Result: History and rollback work
+      1. Create plot with section, content "v1"
+      2. Update section content to "v2"
+      3. Wait for snapshot batch (or trigger manually)
+      4. GET /api/v1/plots/{id}/snapshots
+      5. Assert: snapshots.items.length >= 1
+      6. POST /api/v1/plots/{id}/rollback/{snapshot_id}
+      7. GET /api/v1/plots/{id}
+      8. Assert: section content matches snapshot state
+    Expected Result: Plot-level snapshot and rollback work
     Evidence: Response bodies captured
   ```
 
@@ -873,7 +898,8 @@ Wave 3 (Day 6-7): SNS機能 + 統合
   - 新規（New）セクション - **5件表示**
   - 人気（Popular）セクション - **5件表示**
   - 「もっと見る」ボタン - 最大100件まで表示
-  - Plotカードコンポーネント（タイトル、タグ、スター数、更新時間、編集中表示）
+  - Plotカードコンポーネント（タイトル、タグ、スター数、更新時間）
+    - ※「編集中のユーザー表示」はAPIレスポンスには含めず、Y.jsのawareness機能でクライアントサイドのみで管理する
   - **モバイル対応（SCSSで1/2/3カラム切り替え）**
   - テスト作成（Vitest + Playwright）
 
@@ -898,7 +924,7 @@ Wave 3 (Day 6-7): SNS機能 + 統合
   **Acceptance Criteria**:
   - [ ] / にアクセスすると3セクションが表示される
   - [ ] 各Plotカードに情報が表示される
-  - [ ] 編集中のPlotに「編集中」バッジが表示される
+  - [ ] 編集中のPlotに「編集中」バッジが表示される（Y.js awarenessによるクライアントサイド管理）
   - [ ] **モバイル表示で1カラム、タブレットで2カラム、PCで3カラム**
   - [ ] vitest run → PASS
   - [ ] playwright test → PASS
@@ -1194,7 +1220,8 @@ Wave 3 (Day 6-7): SNS機能 + 統合
   - [ ] POST /api/v1/admin/bans → ユーザーBAN
   - [ ] POST /api/v1/plots/{id}/pause → 編集一時停止
   - [ ] GET /api/v1/sections/{id}/diff/{version} → 差分表示
-  - [ ] POST /api/v1/sections/{id}/restore/{version} → 1クリック復元
+  - [ ] POST /api/v1/plots/{id}/rollback/{snapshotId} → Plot全体ロールバック（1クリック復元）
+  - [ ] GET /api/v1/plots/{id}/rollback-logs → ロールバック監査ログ一覧取得
   - [ ] pytest tests/test_moderation.py → PASS
 
   **Agent-Executed QA Scenarios**:
@@ -1286,7 +1313,7 @@ Wave 3 (Day 6-7): SNS機能 + 統合
 
   **What to do**:
   - E2Eテスト作成（Playwright）
-    - トップページ → Plot詳細 → 編集 → 履歴 → 復元
+    - トップページ → Plot詳細 → 編集 → 履歴 → Plot全体ロールバック
     - ログイン → スター → フォーク
     - **モバイル表示確認**
     - **画像アップロード確認**
@@ -1395,7 +1422,7 @@ cd frontend && pnpm test:e2e
 - [ ] 全APIエンドポイントが動作（/api/v1/*）
 - [ ] トップページでPlot一覧が表示（モバイル対応、SCSS）
 - [ ] Plot詳細ページでTiptap編集が可能（8色パレット）
-- [ ] 履歴から復元が可能（72時間以内）
+- [ ] Plot全体ロールバックが可能（5分間隔スナップショットから復元）
 - [ ] GitHub/Google認証が動作
 - [ ] 画像アップロードが動作（最大5MB、1920px）
 - [ ] Docker compose upで全サービス起動
