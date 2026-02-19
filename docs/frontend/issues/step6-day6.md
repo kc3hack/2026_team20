@@ -94,3 +94,17 @@
 ##### 依存関係
 - Issue #2 〜 #14 の全コンポーネントが対象
 - sonner の `<Toaster />` が layout.tsx に配置済みであること
+
+---
+
+## 画像API関連の未実装項目
+
+### バックエンド
+- [ ] `backend/app/api/v1/endpoints/images.py` — POST /images ルーター実装
+- [ ] `plots` テーブルに `thumbnail_url` カラム追加（マイグレーション）
+- [ ] `api.py` で images router を有効化（コメントアウト解除）
+
+### フロントエンド
+- [ ] `frontend/src/lib/api/images.ts` — 画像アップロードリポジトリ実装
+- [ ] サムネイル画像アップロードUI コンポーネント
+- [ ] Plot作成/編集フォームへのサムネイル選択機能追加

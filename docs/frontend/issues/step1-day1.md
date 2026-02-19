@@ -123,6 +123,8 @@ pnpm install  # package.json の依存関係をインストール
   - ImageUploadResponse
   - StarListResponse, ThreadResponse, CommentResponse, CommentListResponse
   - SearchResponse
+  - SnapshotResponse, SnapshotListResponse, SnapshotDetailResponse
+  - RollbackRequest, RollbackLogResponse, RollbackLogListResponse
   - CreatePlotRequest, UpdatePlotRequest
   - CreateSectionRequest, UpdateSectionRequest
   - ...等、30-40個の型定義
