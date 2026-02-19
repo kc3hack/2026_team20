@@ -13,8 +13,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.api.v1.utils import parse_uuid, plot_to_response
-from app.models import Comment, Plot, Thread, User
+from app.api.v1.utils import plot_to_response
+from app.models import Comment, Thread, User
 from app.services import social_service
 
 router = APIRouter()
@@ -61,7 +61,9 @@ def _serialize_comment(comment: Comment, user: User | None) -> dict:
         "id": str(comment.id),
         "threadId": str(comment.thread_id),
         "content": comment.content,
-        "parentCommentId": str(comment.parent_comment_id) if comment.parent_comment_id else None,
+        "parentCommentId": str(comment.parent_comment_id)
+        if comment.parent_comment_id
+        else None,
         "user": _serialize_user_brief(user),
         "createdAt": comment.created_at.isoformat() if comment.created_at else None,
     }
@@ -82,7 +84,7 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
             detail=str(e),
         )
 
-    return plot_to_response(new_plot, star_count=0).model_dump()
+    return plot_to_response(new_plot, star_count=0)
 
 
 # ─── POST /threads ───────────────────────────────────────────

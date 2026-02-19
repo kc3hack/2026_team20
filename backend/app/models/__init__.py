@@ -23,7 +23,7 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False)
-    display_name = Column(String, nullable=False, index=True)
+    display_name = Column(String, unique=True, nullable=False, index=True)
     avatar_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -107,6 +107,7 @@ class HotOperation(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     version = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -272,11 +273,13 @@ class PlotBan(Base):
         UUID(as_uuid=True),
         ForeignKey("plots.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

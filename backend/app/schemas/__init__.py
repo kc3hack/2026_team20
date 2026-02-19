@@ -38,8 +38,7 @@ class UserProfileResponse(BaseModel):
 class PlotResponse(BaseModel):
     """api.md PlotResponse 準拠。
 
-    - thumbnailUrl: モデルに thumbnail_url カラムが追加され次第、
-      ORM 変換で値を渡す。現時点では常に None。
+    - thumbnailUrl: Plot.thumbnail_url カラムの値を ORM 変換で返却する。
     - version: 楽観的ロック用バージョン番号。
     """
 
@@ -53,10 +52,6 @@ class PlotResponse(BaseModel):
     isPaused: bool
     thumbnailUrl: str | None = None
     version: int
-    # TODO: editingUsers は WebSocket 接続管理の実装後に
-    #       リアルタイムの編集中ユーザー一覧を返す。
-    #       現時点では空リストをハードコードしている。
-    editingUsers: list[str]
     createdAt: datetime
     updatedAt: datetime
 
@@ -76,6 +71,9 @@ class BanRequest(BaseModel):
     userId: str
     reason: str | None = None
 
+    # UUID フォーマットをスキーマ層で早期検証する。
+    # utils._get_plot_or_404 / _get_user_or_404 でも parse_uuid() を呼ぶため
+    # 二重バリデーションになるが、defense-in-depth として意図的に残している。
     @field_validator("plotId", "userId")
     @classmethod
     def validate_uuid(cls, v: str) -> str:
@@ -90,6 +88,7 @@ class UnbanRequest(BaseModel):
     plotId: str
     userId: str
 
+    # UUID フォーマットをスキーマ層で早期検証する（BanRequest と同様の意図）。
     @field_validator("plotId", "userId")
     @classmethod
     def validate_uuid(cls, v: str) -> str:

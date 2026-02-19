@@ -27,7 +27,7 @@ def search_plots(
     plot_star_pairs, total = search_service.search_plots(db, q, limit, offset)
 
     items = [
-        plot_to_response(plot, star_count=star_count).model_dump()
+        plot_to_response(plot, star_count=star_count)
         for plot, star_count in plot_star_pairs
     ]
 
