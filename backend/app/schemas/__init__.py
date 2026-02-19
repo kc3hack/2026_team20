@@ -101,8 +101,8 @@ class BanRequest(BaseModel):
         try:
             UUID(v)
             return v
-        except ValueError:
-            raise ValueError(f"Invalid UUID format: {v}")
+        except ValueError as e:
+            raise ValueError(f"Invalid UUID format: {v}") from e
 
 
 class UnbanRequest(BaseModel):
@@ -116,12 +116,22 @@ class UnbanRequest(BaseModel):
         try:
             UUID(v)
             return v
-        except ValueError:
-            raise ValueError(f"Invalid UUID format: {v}")
+        except ValueError as e:
+            raise ValueError(f"Invalid UUID format: {v}") from e
 
 
 class PauseRequest(BaseModel):
     reason: str | None = None
+
+
+# ─── Image ────────────────────────────────────────────────────
+class ImageUploadResponse(BaseModel):
+    """api.md ImageUploadResponse 準拠 (L716-722)。"""
+
+    url: str
+    filename: str
+    width: int
+    height: int
 
 
 # ─── Admin Response ──────────────────────────────────────────
