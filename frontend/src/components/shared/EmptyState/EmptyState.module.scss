@@ -1,0 +1,33 @@
+@use "variables" as *;
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.icon {
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 1rem;
+}
+
+.title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+    margin-bottom: 0.5rem;
+}
+
+.description {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    max-width: 24rem;
+    margin-bottom: 1rem;
+}
+
+.action {
+    margin-top: 0.5rem;
+}

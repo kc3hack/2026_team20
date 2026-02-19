@@ -24,3 +24,50 @@ tasks:
     desc: (内部用) サーバーを起動してOpenAPIを公開
     cmds:
       - "{{.INFISICAL_RUN}} uv run fastapi dev app/main.py --port 8000"
+
+  # DB マイグレーション (Alembic)
+  #
+  # Supabase接続の使い分け:
+  # - DATABASE_URL: Transaction Pooler (port 6543) - アプリ通常動作用
+  # - DATABASE_URL_MIGRATE: マイグレーション用 (DDLサポートが必要)
+  #
+  # ⚠️ Direct Connection (db.[REF].supabase.co:5432) はIPv6優先で解決されるため、
+  # ローカル環境から "Network is unreachable" エラーが発生する場合があります。
+  #
+  # 推奨: Supabase Session Pooler (port 5432 on pooler host) を使用
+  #   - DDLサポートあり（セッション単位のコネクション維持）
+  #   - IPv4で接続可能（IPv6問題を回避）
+  #
+  # 設定方法:
+  # 1. Infisicalに DATABASE_URL_MIGRATE を追加:
+  #    infisical secrets set DATABASE_URL_MIGRATE="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres"
+  #
+  # 2. または環境変数として一時設定:
+  #    DATABASE_URL_MIGRATE="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres" task backend:migrate
+  #
+  # 注意: DATABASE_URL_MIGRATE未設定時はDATABASE_URLを使用するが、
+  # Transaction Pooler経由ではDDLが失敗する可能性があります。
+  migrate:
+    desc: マイグレーションを最新まで適用
+    cmds:
+      - "{{.INFISICAL_RUN}} uv run alembic upgrade head"
+
+  migrate-downgrade:
+    desc: マイグレーションを1つ戻す
+    cmds:
+      - "{{.INFISICAL_RUN}} uv run alembic downgrade -1"
+
+  migrate-create:
+    desc: "新しいマイグレーションを自動生成 (引数: -- -m 'description')"
+    cmds:
+      - "{{.INFISICAL_RUN}} uv run alembic revision --autogenerate {{.CLI_ARGS}}"
+
+  migrate-history:
+    desc: マイグレーション履歴を表示
+    cmds:
+      - uv run alembic history --verbose
+
+  migrate-current:
+    desc: 現在のマイグレーションバージョンを表示
+    cmds:
+      - "{{.INFISICAL_RUN}} uv run alembic current"

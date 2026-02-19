@@ -176,6 +176,8 @@ export type UpdatePlotRequest = {
 export type CreateSectionRequest = {
   title: string;
   content?: Content;
+  /** 省略時は末尾に追加。指定時はその位置に挿入し、後続を +1 シフト */
+  orderIndex?: number;
 };
 
 export type UpdateSectionRequest = {

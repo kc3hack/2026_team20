@@ -16,6 +16,7 @@ from sqlalchemy import and_, delete, distinct, select
 from sqlalchemy.orm import Session
 
 from app.models import ColdSnapshot
+from app.services.history_service import delete_expired_hot_operations
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,7 @@ def start_snapshot_cleanup() -> None:
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.cron import CronTrigger
+        from apscheduler.triggers.interval import IntervalTrigger
     except ImportError:
         logger.warning(
             "apscheduler is not installed. Snapshot cleanup will not start. "
@@ -165,8 +167,8 @@ def start_snapshot_cleanup() -> None:
 
     from app.core.database import get_db
 
-    def _job() -> None:
-        """Scheduler job: run cleanup in a fresh DB session."""
+    def _snapshot_cleanup_job() -> None:
+        """Scheduler job: run snapshot retention cleanup in a fresh DB session."""
         db = next(get_db())
         try:
             cleanup_old_snapshots(db)
@@ -175,12 +177,33 @@ def start_snapshot_cleanup() -> None:
         finally:
             db.close()
 
+    def _hot_operation_ttl_job() -> None:
+        """Scheduler job: delete HotOperations older than 72 hours."""
+        db = next(get_db())
+        try:
+            deleted = delete_expired_hot_operations(db)
+            if deleted > 0:
+                logger.info(
+                    "HotOperation TTL cleanup: deleted %d expired record(s)", deleted
+                )
+        except Exception:
+            logger.exception("HotOperation TTL cleanup failed")
+        finally:
+            db.close()
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        _job,
+        _snapshot_cleanup_job,
         trigger=CronTrigger(hour=3, minute=0),
         id="snapshot_cleanup",
         replace_existing=True,
     )
+    scheduler.add_job(
+        _hot_operation_ttl_job,
+        trigger=IntervalTrigger(hours=6),
+        id="hot_operation_ttl_cleanup",
+        replace_existing=True,
+    )
     scheduler.start()
     logger.info("Snapshot cleanup scheduler started (daily at 3:00 AM)")
+    logger.info("HotOperation TTL cleanup scheduler started (every 6 hours)")
