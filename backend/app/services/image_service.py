@@ -87,9 +87,8 @@ def validate_content_type(data: bytes) -> str:
         if data[: len(magic)] == magic:
             # RIFFコンテナの場合、WEBPサブタイプを追加検証
             # RIFF????WEBP の12バイト完全一致で AVI/WAV 等を除外する
-            if magic == b"RIFF":
-                if len(data) < 12 or data[8:12] != b"WEBP":
-                    continue  # WEBPではないRIFFファイル
+            if magic == b"RIFF" and (len(data) < 12 or data[8:12] != b"WEBP"):
+                continue  # WEBPではないRIFFファイル
             return fmt
     raise ValueError("File content does not match any allowed image format")
 
