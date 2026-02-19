@@ -7,10 +7,7 @@ import type {
   UpdateSectionRequest,
 } from "../types";
 
-export async function listByPlot(
-  plotId: string,
-  token?: string,
-): Promise<SectionListResponse> {
+export async function listByPlot(plotId: string, token?: string): Promise<SectionListResponse> {
   return apiClient<SectionListResponse>(`/plots/${plotId}/sections`, { token });
 }
 

@@ -18,10 +18,7 @@ export async function get(plotId: string, token?: string): Promise<PlotDetailRes
   return apiClient<PlotDetailResponse>(`/plots/${plotId}`, { token });
 }
 
-export async function create(
-  body: CreatePlotRequest,
-  token?: string,
-): Promise<PlotResponse> {
+export async function create(body: CreatePlotRequest, token?: string): Promise<PlotResponse> {
   return apiClient<PlotResponse>("/plots", {
     method: "POST",
     body,

@@ -193,9 +193,7 @@ describe("sectionRepository", () => {
         headers: new Headers({ "content-type": "application/json" }),
       });
 
-      await expect(
-        sectionRepository.remove("section-403", "test-token"),
-      ).rejects.toMatchObject({
+      await expect(sectionRepository.remove("section-403", "test-token")).rejects.toMatchObject({
         status: 403,
         detail: "This plot is paused",
       });
