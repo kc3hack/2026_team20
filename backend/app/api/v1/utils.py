@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
-from app.schemas import CurrentUser, PlotResponse
+from app.schemas import CurrentUser, PlotResponse, SectionResponse
 
 ADMIN_ROLE = "admin"
 
@@ -129,4 +129,24 @@ def plot_to_response(
         version=plot.version or 0,
         createdAt=plot.created_at,
         updatedAt=plot.updated_at,
+    )
+
+
+def section_to_response(section: "Section") -> SectionResponse:
+    """Section ORM → SectionResponse に変換する共通ヘルパー。
+
+    plots.py (PlotDetail), sections.py (CRUD), history.py (rollback)
+    の3箇所で統一的に使用する。
+    """
+    from app.models import Section  # noqa: F811 – 循環インポート回避
+
+    return SectionResponse(
+        id=str(section.id),
+        plotId=str(section.plot_id),
+        title=section.title,
+        content=section.content,
+        orderIndex=section.order_index,
+        version=section.version,
+        createdAt=section.created_at,
+        updatedAt=section.updated_at,
     )

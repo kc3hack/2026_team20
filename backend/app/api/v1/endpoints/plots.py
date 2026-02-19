@@ -20,7 +20,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api.v1.deps import AuthUser, DbSession, OptionalUser
-from app.api.v1.utils import _get_plot_or_404, _require_admin, plot_to_response
+from app.api.v1.utils import _get_plot_or_404, _require_admin, plot_to_response, section_to_response
 from app.models import Plot, Section, User
 from app.schemas import MessageResponse, PauseRequest
 from app.services import plot_service
@@ -45,19 +45,8 @@ class UpdatePlotRequest(BaseModel):
     thumbnailUrl: str | None = ...  # noqa: N815 – sentinel: 未指定と明示的 null を区別
 
 
-# ─── シリアライズヘルパー ──────────────────────────────────────
-def _serialize_section(section: Section) -> dict:
-    """Section を SectionResponse 形式に変換。api.md L586-598 準拠。"""
-    return {
-        "id": str(section.id),
-        "plotId": str(section.plot_id),
-        "title": section.title,
-        "content": section.content,
-        "orderIndex": section.order_index,
-        "version": section.version,
-        "createdAt": section.created_at.isoformat() if section.created_at else None,
-        "updatedAt": section.updated_at.isoformat() if section.updated_at else None,
-    }
+# _serialize_section は utils.section_to_response() に統一済み
+
 
 
 def _serialize_user_brief(user: User | None) -> dict | None:
@@ -91,7 +80,7 @@ def _to_plot_detail_dict(
     """
     result = _to_plot_dict(plot, star_count, is_starred)
     result["sections"] = [
-        _serialize_section(s)
+        section_to_response(s).model_dump()
         for s in sorted(plot.sections or [], key=lambda s: s.order_index)
     ]
     result["owner"] = _serialize_user_brief(plot.owner)
