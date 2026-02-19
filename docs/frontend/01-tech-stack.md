@@ -9,13 +9,17 @@
 | UI Library | shadcn/ui (New York) | latest | 基盤 UI コンポーネント |
 | Styling (primary) | SCSS Modules | sass 1.x | **自前スタイルのメイン実装** |
 | Styling (secondary) | Tailwind CSS | 4.x | **shadcn/ui のため & 簡単なユーティリティ** |
-| Editor | Tiptap | 2.x | リッチテキストエディタ |
-| Realtime | Y.js + y-prosemirror | 13.x | CRDT 共同編集 |
+| Editor | Tiptap | 3.x | リッチテキストエディタ |
+| Realtime (CRDT) | Y.js + y-prosemirror | 13.x | エディタ内容のリアルタイム同期（CRDT ベース） |
+| Realtime (通信) | Supabase Realtime (WebSocket) | latest | Y.js 差分配信 (Broadcast) + セクションロック状態共有 (Y.js Awareness) |
+| Collaboration | @tiptap/extension-collaboration | 2.x | Tiptap ↔ Y.js 統合 (ProseMirror binding) |
 | Auth | Supabase Auth (@supabase/ssr) | latest | OAuth / セッション管理 |
 | Icons | Lucide React | latest | SVG アイコン |
 | Linter/Formatter | Biome | 2.x | ESLint + Prettier 代替 |
 | Test (Unit) | Vitest + Testing Library | latest | コンポーネント / ロジックテスト |
 | Test (E2E) | Playwright | latest | ブラウザ統合テスト |
+
+> **📘 セクション単位ロック + リアルタイム同期**: 詳細は [リアルタイム編集仕様](./10-realtime-editing.md) を参照。1 セクション = 1 編集者の排他ロック。他ユーザーには編集内容がリアルタイムで閲覧表示される。
 
 ## 追加選定ライブラリ
 
@@ -36,6 +40,7 @@ pnpm add @tanstack/react-query @tanstack/react-query-devtools
 pnpm add react-hook-form @hookform/resolvers zod
 pnpm add sonner date-fns
 pnpm add @supabase/ssr
+pnpm add @tiptap/extension-collaboration   # Y.js ↔ Tiptap 統合
 
 # shadcn/ui コンポーネント (必要に応じて追加)
 pnpm dlx shadcn@latest add button card input textarea badge avatar

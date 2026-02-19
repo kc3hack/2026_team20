@@ -14,12 +14,11 @@
 
 ##### 実装するファイル
 - `src/hooks/useImageUpload.ts` — 画像アップロード hook
-- EditorToolbar の画像ボタンに実装を追加（Issue #6 で作成済みの Dialog を完成させる）
+- EditorToolbar の画像ボタンに実装を追加（Issue #9 で作成済の Dialog を完成させる）
 - 各ページのモバイル対応 SCSS 調整:
   - `src/app/page.module.scss` — トップページモバイル最適化
   - `src/app/plots/[id]/page.module.scss` — 詳細ページ 1 カラム化
   - `src/components/layout/Header/Header.module.scss` — ヘッダーレスポンシブ改善
-- モバイルでは編集ボタンを非表示にする（閲覧モードのみ）
 
 ##### 満たすべき要件
 - **画像アップロード:**
@@ -32,10 +31,11 @@
   - `toast.success("画像をアップロードしました")`
   - エラー時: `toast.error("アップロードに失敗しました")`
 - **モバイル対応:**
-  - ブレイクポイント: sm (640px), md (768px), lg (1024px)
+  - ブレークポイント: sm (640px), md (768px), lg (1024px)
   - トップページ: 1 列表示
   - 詳細ページ: 目次を非表示 (or アコーディオン)、セクション 1 カラム
-  - 編集ボタン: `md` 未満では非表示 (`hidden md:block` or SCSS mixin)
+  - 編集ボタン: **PC・モバイルともに表示**（モバイルでも編集可能）
+  - `SectionLockBadge`: モバイルでも表示（他の人が編集中であることは全デバイスで確認可能）
   - ヘッダー: md 未満で検索バー非表示 → ハンバーガーメニュー内に移動
 
 ##### テスト観点
@@ -43,7 +43,7 @@
 - 非対応形式 (.pdf 等) でバリデーションエラー
 - レスポンシブ表示テスト (E2E で viewport 切り替え)
 
-##### 使用する API（仮）
+##### 使用する API
 - `POST /images` (multipart/form-data)
 
 ##### 依存関係

@@ -1,6 +1,6 @@
-# スタイリング戦略
+# 🎯 スタイリング戦略
 
-## 基本方針：SCSS ファースト、Tailwind は shadcn/ui のため
+## 基本方針：SCSS ファースト、Tailwind は shadcn/ui のためだけ
 
 **Tailwind CSS は shadcn/ui のために導入しているだけ。自前のスタイルは SCSS Module で書く。**
 
