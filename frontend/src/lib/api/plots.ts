@@ -1,14 +1,12 @@
-import {
+import type {
   PlotResponse,
   PlotListResponse,
   PlotDetailResponse,
   CreatePlotRequest,
   UpdatePlotRequest,
   ListPlotsParams,
-  ApiErrorResponse,
 } from "./types";
 import { apiClient } from "./client";
-import { parseContent } from "@/lib/utils";
 
 const isMock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -23,33 +21,25 @@ export const plotRepository = {
    */
   async list(params: ListPlotsParams = {}): Promise<PlotListResponse> {
     if (isMock) {
-      // Mock: useMockData フックは React コンポーネント内でのみ使用可能なため、
-      // ここでは直接 mock data にアクセス
-      const { mockPlotList } = await import("@/mocks/data/plots");
-      const { filterMockPlots } = await import("@/mocks/data/plots");
-      
-      const filtered = filterMockPlots(params);
-      
+      const { mockService } = await import("@/mocks/service");
+      const result = mockService.filterPlots(params);
       return {
-        plots: filtered,
-        total: filtered.length,
+        plots: result.items,
+        total: result.total,
       };
     }
 
-    // Real API
-    const queryParams: Record<string, string> = {};
-    
-    if (params.limit !== undefined) queryParams.limit = String(params.limit);
-    if (params.offset !== undefined) queryParams.offset = String(params.offset);
-    if (params.sort) queryParams.sort = params.sort;
-    if (params.order) queryParams.order = params.order;
-    if (params.author) queryParams.author = params.author;
-    if (params.tag) queryParams.tag = params.tag;
-    if (params.search) queryParams.search = params.search;
-    if (params.starred !== undefined) queryParams.starred = String(params.starred);
-
-    return apiClient("/plots", {
-      params: queryParams,
+    return apiClient<PlotListResponse>("/plots", {
+      params: {
+        tag: params.tag,
+        limit: params.limit,
+        offset: params.offset,
+        sort: params.sort,
+        order: params.order,
+        author: params.author,
+        search: params.search,
+        starred: params.starred,
+      },
     });
   },
 
@@ -59,27 +49,25 @@ export const plotRepository = {
    */
   async get(plotId: string): Promise<PlotDetailResponse> {
     if (isMock) {
-      const { getMockPlotById } = await import("@/mocks/data/plots");
-      const plot = getMockPlotById(plotId);
-      
+      const { mockService } = await import("@/mocks/service");
+      const plot = mockService.getPlot(plotId);
+
       if (!plot) {
-        const error: ApiErrorResponse = {
-          error: {
-            code: "NOT_FOUND",
-            message: "Plot not found",
-          },
-        };
-        throw error;
+        throw new Error("Plot not found");
       }
 
-      // Content をパースして返す
+      // Mock ではセクションデータも取得して PlotDetailResponse を構築する
+      const sections = mockService.listSections({ plotId });
+
       return {
         ...plot,
-        content: parseContent(plot.content),
-      };
+        content: { type: "doc", content: [] },
+        sections,
+        owner: null,
+      } as PlotDetailResponse;
     }
 
-    return apiClient(`/plots/${plotId}`);
+    return apiClient<PlotDetailResponse>(`/plots/${plotId}`, {});
   },
 
   /**
@@ -88,13 +76,16 @@ export const plotRepository = {
    */
   async create(data: CreatePlotRequest): Promise<PlotResponse> {
     if (isMock) {
-      const { createPlot } = await import("@/mocks/service");
-      return createPlot(data);
+      const { mockService } = await import("@/mocks/service");
+      // mockService.createPlot の戻り値は PlotResponse と完全には一致しないが、
+      // Mock モードではテスト互換性のためそのまま返す
+      return mockService.createPlot(data) as unknown as PlotResponse;
     }
 
-    return apiClient("/plots", {
+    return apiClient<PlotResponse>("/plots", {
       method: "POST",
-      body: JSON.stringify(data),
+      // biome-ignore lint/suspicious/noExplicitAny: client.ts accepts any JSON-serializable body
+      body: data as any,
     });
   },
 
@@ -104,13 +95,14 @@ export const plotRepository = {
    */
   async update(plotId: string, data: UpdatePlotRequest): Promise<PlotResponse> {
     if (isMock) {
-      const { updatePlot } = await import("@/mocks/service");
-      return updatePlot(plotId, data);
+      const { mockService } = await import("@/mocks/service");
+      return mockService.updatePlot({ id: plotId, ...data }) as unknown as PlotResponse;
     }
 
-    return apiClient(`/plots/${plotId}`, {
+    return apiClient<PlotResponse>(`/plots/${plotId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      // biome-ignore lint/suspicious/noExplicitAny: client.ts accepts any JSON-serializable body
+      body: data as any,
     });
   },
 
@@ -120,12 +112,12 @@ export const plotRepository = {
    */
   async delete(plotId: string): Promise<void> {
     if (isMock) {
-      const { deletePlot } = await import("@/mocks/service");
-      deletePlot(plotId);
+      const { mockService } = await import("@/mocks/service");
+      mockService.deletePlot({ id: plotId });
       return;
     }
 
-    await apiClient(`/plots/${plotId}`, {
+    await apiClient<void>(`/plots/${plotId}`, {
       method: "DELETE",
     });
   },
@@ -134,27 +126,25 @@ export const plotRepository = {
    * 急上昇プロットを取得
    * GET /plots/trending
    */
-  async trending(params: { limit?: number; days?: number } = {}): Promise<PlotListResponse> {
+  async trending(params: { limit?: number } = {}): Promise<PlotListResponse> {
     if (isMock) {
-      const { mockTrendingPlots } = await import("@/mocks/data/plots");
-      
-      let plots = mockTrendingPlots;
-      if (params.limit) {
-        plots = plots.slice(0, params.limit);
-      }
-      
+      const { mockService } = await import("@/mocks/service");
+      // トレンドはスター数降順でソートして返す
+      const result = mockService.filterPlots({
+        limit: params.limit,
+        sort: "star_count",
+        order: "desc",
+      });
       return {
-        plots,
-        total: plots.length,
+        plots: result.items,
+        total: result.total,
       };
     }
 
-    const queryParams: Record<string, string> = {};
-    if (params.limit !== undefined) queryParams.limit = String(params.limit);
-    if (params.days !== undefined) queryParams.days = String(params.days);
-
-    return apiClient("/plots/trending", {
-      params: queryParams,
+    return apiClient<PlotListResponse>("/plots/trending", {
+      params: {
+        limit: params.limit,
+      },
     });
   },
 
@@ -164,24 +154,22 @@ export const plotRepository = {
    */
   async popular(params: { limit?: number } = {}): Promise<PlotListResponse> {
     if (isMock) {
-      const { mockPopularPlots } = await import("@/mocks/data/plots");
-      
-      let plots = mockPopularPlots;
-      if (params.limit) {
-        plots = plots.slice(0, params.limit);
-      }
-      
+      const { mockService } = await import("@/mocks/service");
+      const result = mockService.filterPlots({
+        limit: params.limit,
+        sort: "star_count",
+        order: "desc",
+      });
       return {
-        plots,
-        total: plots.length,
+        plots: result.items,
+        total: result.total,
       };
     }
 
-    const queryParams: Record<string, string> = {};
-    if (params.limit !== undefined) queryParams.limit = String(params.limit);
-
-    return apiClient("/plots/popular", {
-      params: queryParams,
+    return apiClient<PlotListResponse>("/plots/popular", {
+      params: {
+        limit: params.limit,
+      },
     });
   },
 
@@ -191,24 +179,22 @@ export const plotRepository = {
    */
   async newest(params: { limit?: number } = {}): Promise<PlotListResponse> {
     if (isMock) {
-      const { mockNewPlots } = await import("@/mocks/data/plots");
-      
-      let plots = mockNewPlots;
-      if (params.limit) {
-        plots = plots.slice(0, params.limit);
-      }
-      
+      const { mockService } = await import("@/mocks/service");
+      const result = mockService.filterPlots({
+        limit: params.limit,
+        sort: "created_at",
+        order: "desc",
+      });
       return {
-        plots,
-        total: plots.length,
+        plots: result.items,
+        total: result.total,
       };
     }
 
-    const queryParams: Record<string, string> = {};
-    if (params.limit !== undefined) queryParams.limit = String(params.limit);
-
-    return apiClient("/plots/new", {
-      params: queryParams,
+    return apiClient<PlotListResponse>("/plots/new", {
+      params: {
+        limit: params.limit,
+      },
     });
   },
 };

@@ -66,30 +66,27 @@ export function getPlot(id: string): PlotResponse | undefined {
 
 export function createPlot(data: {
   title: string;
-  is_public?: boolean;
   tags?: string[];
 }): PlotResponse {
   const newPlot: PlotResponse = {
     id: generateId('plot'),
     title: data.title,
+    description: null,
     tags: data.tags || [],
-    is_public: data.is_public ?? true,
-    author: {
-      id: mockUser.id,
-      username: mockUser.username,
-      display_name: mockUser.display_name,
-    },
-    star_count: 0,
-    section_count: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    ownerId: mockUser.id,
+    starCount: 0,
+    isStarred: false,
+    isPaused: false,
+    thumbnailUrl: null,
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   return newPlot;
 }
 
 export function updatePlot(id: string, data: {
   title?: string;
-  is_public?: boolean;
   tags?: string[];
 }): PlotResponse {
   const plot = mockPlotList.find(p => p.id === id);
@@ -99,8 +96,7 @@ export function updatePlot(id: string, data: {
     ...plot,
     ...(data.title !== undefined && { title: data.title }),
     ...(data.tags !== undefined && { tags: data.tags }),
-    ...(data.is_public !== undefined && { is_public: data.is_public }),
-    updated_at: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -110,7 +106,7 @@ export function deletePlot(id: string): void {
 
 // Section operations
 export function listSections(plotId: string): SectionResponse[] {
-  return getMockSectionsByPlotId(plotId).sort((a, b) => a.order - b.order);
+  return getMockSectionsByPlotId(plotId).sort((a, b) => a.orderIndex - b.orderIndex);
 }
 
 export function getSection(id: string): SectionResponse | undefined {
@@ -126,11 +122,11 @@ export function createSection(plotId: string, data: {
     id: generateId('section'),
     plot_id: plotId,
     title: data.title,
-    content: data.content || '',
-    order: plotSections.length,
-    parent_id: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    content: data.content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: data.content }] }] } : null,
+    orderIndex: plotSections.length,
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   return newSection;
 }
@@ -145,8 +141,8 @@ export function updateSection(id: string, data: {
   return {
     ...section,
     ...(data.title !== undefined && { title: data.title }),
-    ...(data.content !== undefined && { content: data.content }),
-    updated_at: new Date().toISOString(),
+    ...(data.content !== undefined && { content: { type: 'doc' as const, content: [{ type: 'paragraph', content: [{ type: 'text', text: data.content }] }] } }),
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -162,7 +158,7 @@ export function reorderSections(plotId: string, sectionIds: string[]): SectionRe
     .map((id, index) => {
       const section = plotSections.find(s => s.id === id);
       if (!section) return null;
-      return { ...section, order: index };
+      return { ...section, orderIndex: index };
     })
     .filter((s): s is SectionResponse => s !== null);
 }
@@ -195,12 +191,10 @@ export function createThread(data: {
 }): ThreadResponse {
   const newThread: ThreadResponse = {
     id: generateId('thread'),
-    plot_id: data.plot_id,
-    title: data.title,
-    user_id: mockUser.id,
-    comment_count: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    plotId: data.plot_id,
+    sectionId: null,
+    commentCount: 0,
+    createdAt: new Date().toISOString(),
   };
   return newThread;
 }
@@ -213,8 +207,6 @@ export function updateThread(id: string, data: {
 
   return {
     ...thread,
-    ...(data.title !== undefined && { title: data.title }),
-    updated_at: new Date().toISOString(),
   };
 }
 
@@ -244,9 +236,13 @@ export function createComment(data: {
     id: generateId('comment'),
     thread_id: data.thread_id,
     content: data.content,
-    user_id: mockUser.id,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    parentCommentId: null,
+    user: {
+      id: mockUser.id,
+      displayName: mockUser.display_name,
+      avatarUrl: mockUser.avatar_url,
+    },
+    createdAt: new Date().toISOString(),
   };
   return newComment;
 }
@@ -309,15 +305,13 @@ export function saveOperation(plotId: string, data: {
 }): HistoryEntry {
   const entry: HistoryEntry = {
     id: generateId('history'),
-    plot_id: plotId,
-    operation: data.operation,
-    section_id: data.section_id || '',
-    section_title: data.section_title || '',
-    description: data.description,
-    editor: {
+    sectionId: data.section_id || '',
+    operationType: data.operation as HistoryEntry['operationType'],
+    payload: null,
+    user: {
       id: mockUser.id,
-      username: mockUser.username,
-      display_name: mockUser.display_name,
+      displayName: mockUser.display_name,
+      avatarUrl: mockUser.avatar_url,
     },
     created_at: new Date().toISOString(),
   };
@@ -376,9 +370,9 @@ export const mockService = {
     tag?: string;
   }) => listPlots(params),
   getPlot: (id: string) => getPlot(id),
-  createPlot: (data: { title: string; is_public?: boolean; tags?: string[] }) => createPlot(data),
-  updatePlot: (data: { id: string; title?: string; is_public?: boolean; tags?: string[] }) => 
-    updatePlot(data.id, { title: data.title, is_public: data.is_public, tags: data.tags }),
+  createPlot: (data: { title: string; tags?: string[] }) => createPlot(data),
+  updatePlot: (data: { id: string; title?: string; tags?: string[] }) => 
+    updatePlot(data.id, { title: data.title, tags: data.tags }),
   deletePlot: (data: { id: string }) => deletePlot(data.id),
   
   // Sections - accept single object parameter

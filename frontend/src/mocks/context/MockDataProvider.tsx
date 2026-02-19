@@ -34,10 +34,10 @@ import type {
   SectionSnapshot,
   ChangedSection,
 } from "./types";
-import { mockPlotList, createMockContent } from "../data/plots";
-import { generateMockSections } from "../data/sections";
-import { generateMockStars, generateMockThreads, generateMockComments } from "../data/sns";
-import { generateMockHistory, generateMockDiff } from "../data/history";
+import { mockPlotList } from "../data/plots";
+import { getMockSectionsByPlotId } from "../data/sections";
+import { getMockStarsByPlotId, getMockThreadsByPlotId, getMockCommentsByThreadId } from "../data/sns";
+import { getMockHistoryByPlotId, generateMockDiff } from "../data/history";
 
 // ============================================================================
 // Initial State
@@ -62,32 +62,35 @@ const createInitialState = (): MockDataState => {
   // Initialize with mock data
   for (const plot of mockPlotList) {
     const plotId = plot.id;
-    const plotIndex = parseInt(plotId.split("-")[1]) - 1;
-    const daysAgo = plotIndex * 2;
 
     // Plot details
     const detail: PlotDetailResponse = {
       ...plot,
-      content: createMockContent(plotIndex),
-      sections: [], // Will be populated separately
+      content: { type: "doc", content: [] },
+      sections: [],
+      owner: {
+        id: plot.ownerId,
+        displayName: "Mock User",
+        avatarUrl: null,
+      },
     };
     plots.set(plotId, detail);
 
-    // Sections
-    const plotSections: SectionData[] = generateMockSections(plotId).map((s) => ({
+    // Sections - map from SectionResponse to SectionData
+    const plotSections: SectionData[] = getMockSectionsByPlotId(plotId).map((s: import("@/lib/api/types").SectionResponse) => ({
       id: s.id,
       plot_id: s.plot_id,
       title: s.title,
-      content: s.content,
-      order: s.order,
-      parent_id: s.parent_id,
-      created_at: s.created_at,
-      updated_at: s.updated_at,
+      content: s.content ? JSON.stringify(s.content) : "",
+      order: s.orderIndex,
+      parent_id: null,
+      created_at: s.createdAt,
+      updated_at: s.updatedAt,
     }));
     sections.set(plotId, plotSections);
 
     // Stars
-    const plotStars: StarData[] = generateMockStars(plotId).map((s) => ({
+    const plotStars: StarData[] = getMockStarsByPlotId(plotId).map((s: import("../data/sns").StarData) => ({
       id: s.id,
       plot_id: s.plot_id,
       user_id: s.user_id,
@@ -97,42 +100,42 @@ const createInitialState = (): MockDataState => {
 
     // Threads and Comments
     const plotThreads: ThreadData[] = [];
-    const mockThreadData = generateMockThreads(plotId);
+    const mockThreadData = getMockThreadsByPlotId(plotId);
     
     for (const thread of mockThreadData) {
       const threadData: ThreadData = {
         id: thread.id,
-        plot_id: thread.plot_id,
-        title: thread.title,
-        user_id: thread.user_id,
-        comment_count: thread.comment_count,
-        created_at: thread.created_at,
-        updated_at: thread.updated_at,
+        plot_id: thread.plotId,
+        title: "",
+        user_id: "",
+        comment_count: thread.commentCount,
+        created_at: thread.createdAt,
+        updated_at: thread.createdAt,
       };
       plotThreads.push(threadData);
 
       // Comments for this thread
-      const threadComments: CommentData[] = generateMockComments(thread.id).map((c) => ({
+      const threadComments: CommentData[] = getMockCommentsByThreadId(thread.id).map((c: import("@/lib/api/types").CommentResponse) => ({
         id: c.id,
         thread_id: c.thread_id,
         content: c.content,
-        user_id: c.user_id,
-        created_at: c.created_at,
-        updated_at: c.updated_at,
+        user_id: c.user.id,
+        created_at: c.createdAt,
+        updated_at: c.createdAt,
       }));
       comments.set(thread.id, threadComments);
     }
     threads.set(plotId, plotThreads);
 
     // History
-    const plotHistory: HistoryEntryData[] = generateMockHistory(plotId).map((h) => ({
+    const plotHistory: HistoryEntryData[] = getMockHistoryByPlotId(plotId).map((h: import("@/lib/api/types").HistoryEntry) => ({
       id: h.id,
-      plot_id: h.plot_id,
-      operation: h.operation,
-      section_id: h.section_id,
-      section_title: h.section_title,
-      description: h.description,
-      user_id: h.editor.id,
+      plot_id: "",
+      operation: h.operationType as "create" | "update" | "delete",
+      section_id: h.sectionId,
+      section_title: "",
+      description: "",
+      user_id: h.user.id,
       created_at: h.created_at,
     }));
     history.set(plotId, plotHistory);
@@ -185,17 +188,16 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
     const newPlot: PlotResponse = {
       id,
       title: data.title,
+      description: null,
       tags: data.tags,
-      is_public: data.is_public,
-      author: {
-        id: "current-user",
-        username: "currentuser",
-        display_name: "Current User",
-      },
-      created_at: now,
-      updated_at: now,
-      star_count: 0,
-      section_count: 0,
+      ownerId: "current-user",
+      starCount: 0,
+      isStarred: false,
+      isPaused: false,
+      thumbnailUrl: null,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
     };
 
     setState((prev) => ({
@@ -206,6 +208,11 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
           ...newPlot,
           content: { type: "doc", content: [] },
           sections: [],
+          owner: {
+            id: "current-user",
+            displayName: "Current User",
+            avatarUrl: null,
+          },
         }),
       },
     }));
@@ -221,8 +228,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       ...plot,
       ...(data.title && { title: data.title }),
       ...(data.tags && { tags: data.tags }),
-      ...(data.is_public !== undefined && { is_public: data.is_public }),
-      updated_at: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     setState((prev) => {
@@ -270,15 +276,15 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
     
     return {
       ...detail,
-      sections: sections.map((s) => ({
+      sections: sections.map((s: SectionData) => ({
         id: s.id,
         plot_id: s.plot_id,
         title: s.title,
-        content: s.content,
-        order: s.order,
-        parent_id: s.parent_id,
-        created_at: s.created_at,
-        updated_at: s.updated_at,
+        content: s.content ? JSON.parse(s.content) : null,
+        orderIndex: s.order,
+        version: 1,
+        createdAt: s.created_at,
+        updatedAt: s.updated_at,
       })),
     };
   }, [state.plots.details, state.sections.byPlotId]);
@@ -288,7 +294,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
 
     // Filter by author
     if (params.author) {
-      result = result.filter((p) => p.author.username === params.author);
+      result = result.filter((p) => p.ownerId === params.author);
     }
 
     // Filter by tag
@@ -298,21 +304,23 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Sort
-    const sortKey = params.sort || "updated_at";
+    const sortKey = params.sort || "updatedAt";
     const order = params.order || "desc";
 
     result.sort((a, b) => {
       let comparison = 0;
       switch (sortKey) {
         case "created_at":
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
         case "updated_at":
-          comparison = new Date(a[sortKey]).getTime() - new Date(b[sortKey]).getTime();
+          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
           break;
         case "title":
           comparison = a.title.localeCompare(b.title);
           break;
         case "star_count":
-          comparison = a.star_count - b.star_count;
+          comparison = a.starCount - b.starCount;
           break;
       }
       return order === "asc" ? comparison : -comparison;
@@ -351,7 +359,7 @@ export function MockDataProvider({ children }: { children: React.ReactNode }) {
       // Update plot's section count
       const newList = prev.plots.list.map((p) =>
         p.id === plotId
-          ? { ...p, section_count: p.section_count + 1, updated_at: now }
+          ? { ...p, updatedAt: now }
           : p
       );
 

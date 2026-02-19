@@ -49,12 +49,11 @@ describe("Mock mode: all repositories return mock data", () => {
       const result = await plotRepository.create({
         title: "Test",
         tags: [],
-        is_public: true,
       });
 
       expect(result).toHaveProperty("id");
       expect(result).toHaveProperty("title", "Test");
-      expect(result).toHaveProperty("created_at");
+      expect(result).toHaveProperty("createdAt");
     });
   });
 
