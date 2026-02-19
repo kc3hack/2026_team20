@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./styles/error.module.scss";
+
 export default function ErrorPage({
   error,
   reset,
@@ -8,13 +10,13 @@ export default function ErrorPage({
   reset: () => void;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-2xl font-bold">エラーが発生しました</h1>
+    <div className={styles.container}>
+      <h1 className={styles.heading}>エラーが発生しました</h1>
       <p>{error.message}</p>
       <button
         type="button"
         onClick={() => reset()}
-        className="underline hover:text-primary transition-colors"
+        className={styles.retryButton}
       >
         再試行
       </button>

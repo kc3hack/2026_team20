@@ -23,7 +23,7 @@ vi.mock("sonner", () => ({
   Toaster: () => null,
 }));
 
-import { AuthProvider, useAuth } from "./AuthProvider";
+import { AuthProvider, useAuth } from "../AuthProvider";
 
 function TestConsumer() {
   const auth = useAuth();
@@ -231,7 +231,7 @@ describe("AuthProvider", () => {
   });
 
   it("throws error when useAuth is used outside AuthProvider", () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => { });
     expect(() => render(<TestConsumer />)).toThrow("useAuth must be used within an AuthProvider");
     consoleError.mockRestore();
   });

@@ -14,7 +14,7 @@ vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve(mockCookieStore),
 }));
 
-import { createClient } from "./server";
+import { createClient } from "../server";
 
 describe("Supabase Server Client", () => {
   beforeEach(() => {

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import ErrorPage from "./error";
+import ErrorPage from "../error";
 
 describe("ErrorPage", () => {
   it("renders error heading and message", () => {
