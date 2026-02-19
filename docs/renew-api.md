@@ -1,6 +1,6 @@
 # 履歴サービス設計変更計画
 
-> **本ドキュメントの位置づけ**: 新規作成ガイド。影響範囲に記載されたファイルの多くは未作成であり、本計画書はこれらのファイルを新規作成する際の設計指針を定めるものです。
+> **本ドキュメントの位置づけ**: 履歴サービスの設計変更計画書。影響範囲に記載されたファイルは作成済みであり、本計画書はそれらの設計指針を定めるものです。
 
 ## 前提条件
 
@@ -8,11 +8,11 @@
 
 | ファイル | ステータス | 備考 |
 |---------|-----------|------|
-| `backend/app/models/__init__.py` | **未作成** | ColdSnapshotモデル定義を含む。Task 1（DB設計）で作成予定 |
-| `backend/app/services/history_service.py` | **未作成** | record_operation, rollback関数を含む。Task 6（履歴API）で作成予定 |
-| `backend/app/services/moderation_service.py` | **未作成** | ColdSnapshot参照箇所を含む。Task 13（荒らし対策）で作成予定 |
+| `backend/app/models/__init__.py` | **作成済み** | ColdSnapshotモデル定義を含む |
+| `backend/app/services/history_service.py` | **作成済み** | record_operation, rollback関数を含む |
+| `backend/app/services/moderation_service.py` | **作成済み** | ColdSnapshot参照箇所を含む |
 | `backend/app/main.py` | **作成済み** | APScheduler + snapshot_scheduler統合先 |
-| `backend/app/services/snapshot_scheduler.py` | **未作成** | 5分間隔バッチ処理。Task 6（履歴API）で新規作成予定 |
+| `backend/app/services/snapshot_scheduler.py` | **作成済み** | 5分間隔バッチ処理 |
 | `docs/plot-platform.md` | **作成済み** | 仕様書の該当箇所を更新 |
 | `docs/api.md` | **作成済み** | API仕様の該当箇所を更新 |
 
@@ -87,7 +87,7 @@
       "id": "uuid",
       "title": "...",
       "content": { "type": "doc", "content": [...] },
-      "order_index": 0,
+      "orderIndex": 0,
       "version": 5
     }
   ]
@@ -295,12 +295,12 @@ Plot全体ロールバック（要認証）
 
 | ファイル | 変更内容 | ステータス |
 |---------|---------|-----------|
-| `backend/app/models/__init__.py` | ColdSnapshot の section_id → plot_id, plots.version 追加 | **未作成**（新規作成ガイド） |
-| `backend/app/services/history_service.py` | record_operation改修、rollback関数書き換え | **未作成**（新規作成ガイド） |
-| `backend/app/services/moderation_service.py` | ColdSnapshot参照箇所の改修 | **未作成**（新規作成ガイド） |
+| `backend/app/models/__init__.py` | ColdSnapshot の section_id → plot_id, plots.version 追加 | **作成済み** |
+| `backend/app/services/history_service.py` | record_operation改修、rollback関数書き換え | **作成済み** |
+| `backend/app/services/moderation_service.py` | ColdSnapshot参照箇所の改修 | **作成済み** |
 | `backend/app/main.py` | APScheduler + snapshot_scheduler統合 | **作成済み** |
-| `backend/app/services/snapshot_scheduler.py` | 新規作成 | **未作成**（新規作成） |
-| `backend/app/services/snapshot_cleanup.py` | 新規作成（保持ポリシーに基づくcleanupバッチ） | **未作成**（新規作成） |
+| `backend/app/services/snapshot_scheduler.py` | 新規作成 | **作成済み** |
+| `backend/app/services/snapshot_cleanup.py` | 新規作成（保持ポリシーに基づくcleanupバッチ） | **作成済み** |
 | `docs/plot-platform.md` | 仕様書の該当箇所を更新 | **作成済み** |
 | `docs/api.md` | API仕様の該当箇所を更新 | **作成済み** |
 
