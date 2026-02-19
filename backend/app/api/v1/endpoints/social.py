@@ -10,15 +10,16 @@ docs/api.md の SNS セクション準拠:
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.models import Comment, Fork, Plot, Section, Thread, User
+from app.models import Comment, Plot, Thread, User
+from app.services import social_service
 
 router = APIRouter()
 
 
-# ─── Request / Response Schemas ───────────────────────────────
+# ─── Request Schemas ──────────────────────────────────────────
 class ForkRequest(BaseModel):
     title: str | None = None
 
@@ -33,7 +34,7 @@ class CreateCommentRequest(BaseModel):
     parentCommentId: str | None = None  # noqa: N815
 
 
-# ─── ヘルパー ──────────────────────────────────────────────────
+# ─── シリアライズヘルパー ──────────────────────────────────────
 def _serialize_user_brief(user: User | None) -> dict | None:
     if user is None:
         return None
@@ -89,50 +90,13 @@ def _serialize_comment(comment: Comment, user: User | None) -> dict:
 )
 def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: AuthUser):
     """Plotをフォーク。Plot + 全 Sections を複製する。"""
-    source = db.query(Plot).filter(Plot.id == plot_id).first()
-    if not source:
+    try:
+        new_plot = social_service.fork_plot(db, plot_id, current_user.id, body.title)
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Plot not found",
+            detail=str(e),
         )
-
-    # 新しい Plot を作成
-    new_title = body.title if body.title else f"{source.title} (fork)"
-    new_plot = Plot(
-        title=new_title,
-        description=source.description,
-        tags=list(source.tags) if source.tags else [],
-        owner_id=current_user.id,
-    )
-    db.add(new_plot)
-    db.flush()  # new_plot.id を確定させる
-
-    # セクションを複製
-    source_sections = (
-        db.query(Section)
-        .filter(Section.plot_id == plot_id)
-        .order_by(Section.order_index)
-        .all()
-    )
-    for section in source_sections:
-        new_section = Section(
-            plot_id=new_plot.id,
-            title=section.title,
-            content=section.content,
-            order_index=section.order_index,
-        )
-        db.add(new_section)
-
-    # Fork レコードを作成（追跡用）
-    fork_record = Fork(
-        source_plot_id=plot_id,
-        new_plot_id=new_plot.id,
-        user_id=current_user.id,
-    )
-    db.add(fork_record)
-
-    db.commit()
-    db.refresh(new_plot)
 
     return _serialize_plot(new_plot)
 
@@ -144,32 +108,13 @@ def fork_plot(plot_id: UUID, body: ForkRequest, db: DbSession, current_user: Aut
 )
 def create_thread(body: CreateThreadRequest, db: DbSession, current_user: AuthUser):
     """スレッド作成。"""
-    # Plot の存在確認
-    plot = db.query(Plot).filter(Plot.id == body.plotId).first()
-    if not plot:
+    try:
+        thread = social_service.create_thread(db, body.plotId, body.sectionId)
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Plot not found",
+            detail=str(e),
         )
-
-    # sectionId が指定されている場合、存在確認
-    section_id = None
-    if body.sectionId:
-        section = db.query(Section).filter(Section.id == body.sectionId).first()
-        if not section:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Section not found",
-            )
-        section_id = body.sectionId
-
-    thread = Thread(
-        plot_id=body.plotId,
-        section_id=section_id,
-    )
-    db.add(thread)
-    db.commit()
-    db.refresh(thread)
 
     return _serialize_thread(thread)
 
@@ -183,29 +128,17 @@ def list_comments(
     offset: int = Query(default=0, ge=0),
 ):
     """コメント一覧取得。"""
-    thread = db.query(Thread).filter(Thread.id == thread_id).first()
-    if not thread:
+    try:
+        comment_user_pairs, total = social_service.list_comments(
+            db, thread_id, limit, offset
+        )
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Thread not found",
+            detail=str(e),
         )
 
-    total = db.query(Comment).filter(Comment.thread_id == thread_id).count()
-
-    comments = (
-        db.query(Comment)
-        .filter(Comment.thread_id == thread_id)
-        .order_by(Comment.created_at)
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-
-    items = []
-    for comment in comments:
-        user = db.query(User).filter(User.id == comment.user_id).first()
-        items.append(_serialize_comment(comment, user))
-
+    items = [_serialize_comment(c, u) for c, u in comment_user_pairs]
     return {"items": items, "total": total}
 
 
@@ -221,48 +154,21 @@ def create_comment(
     current_user: AuthUser,
 ):
     """コメント投稿。本文 5000 文字制限は api.md に合わせて 400 で返す。"""
-    # api.md では 400 Bad Request を要求するため、Pydantic ではなく手動で検証
-    if len(body.content) > 5000:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Content exceeds 5000 characters",
+    try:
+        comment, user = social_service.create_comment(
+            db, thread_id, current_user.id, body.content, body.parentCommentId
         )
-
-    thread = db.query(Thread).filter(Thread.id == thread_id).first()
-    if not thread:
+    except ValueError as e:
+        # "Content exceeds 5000 characters" → 400
+        # "Thread not found" / "Parent comment not found" → 404
+        if "5000" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Thread not found",
+            detail=str(e),
         )
-
-    # 親コメントが指定されている場合、存在確認
-    parent_id = None
-    if body.parentCommentId:
-        parent = (
-            db.query(Comment)
-            .filter(
-                Comment.id == body.parentCommentId,
-                Comment.thread_id == thread_id,
-            )
-            .first()
-        )
-        if not parent:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Parent comment not found",
-            )
-        parent_id = body.parentCommentId
-
-    comment = Comment(
-        thread_id=thread_id,
-        user_id=current_user.id,
-        content=body.content,
-        parent_comment_id=parent_id,
-    )
-    db.add(comment)
-    db.commit()
-    db.refresh(comment)
-
-    user = db.query(User).filter(User.id == comment.user_id).first()
 
     return _serialize_comment(comment, user)

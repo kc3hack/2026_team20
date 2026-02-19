@@ -4,14 +4,14 @@ docs/api.md の Search セクション準拠:
 - GET /  → Plot 検索（q, limit, offset）
 
 将来的に ts_vector ベースの全文検索に移行する場合、
-このファイル内のクエリロジックのみ修正すれば良い。
+search_service.py 内のクエリロジックのみ修正すれば良い。
 """
 
-from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import or_
+from fastapi import APIRouter, Query
 
 from app.api.v1.deps import DbSession
-from app.models import Plot, Star
+from app.models import Plot
+from app.services import search_service
 
 router = APIRouter()
 
@@ -41,29 +41,9 @@ def search_plots(
     offset: int = Query(default=0, ge=0),
 ):
     """ILIKE を使用した Plot 検索。title と description を対象とする。"""
-    pattern = f"%{q}%"
+    plot_star_pairs, total = search_service.search_plots(db, q, limit, offset)
 
-    query = db.query(Plot).filter(
-        or_(
-            Plot.title.ilike(pattern),
-            Plot.description.ilike(pattern),
-        )
-    )
-
-    total = query.count()
-
-    plots = (
-        query
-        .order_by(Plot.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-
-    items = []
-    for plot in plots:
-        star_count = db.query(Star).filter(Star.plot_id == plot.id).count()
-        items.append(_serialize_plot(plot, star_count))
+    items = [_serialize_plot(plot, star_count) for plot, star_count in plot_star_pairs]
 
     return {
         "items": items,
