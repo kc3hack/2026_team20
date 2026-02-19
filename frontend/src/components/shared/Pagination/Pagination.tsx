@@ -40,12 +40,12 @@ function calculatePageNumbers(currentPage: number, totalPages: number): (number 
 }
 
 export function Pagination({ total, limit, offset, onPageChange }: PaginationProps) {
-  if (total === 0) {
+  if (total === 0 || limit <= 0) {
     return null;
   }
 
   const totalPages = Math.ceil(total / limit);
-  const currentPage = Math.floor(offset / limit) + 1;
+  const currentPage = Math.min(Math.floor(offset / limit) + 1, totalPages);
   const pageNumbers = calculatePageNumbers(currentPage, totalPages);
 
   const handlePageClick = (page: number) => {

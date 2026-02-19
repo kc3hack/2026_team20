@@ -1,6 +1,8 @@
 // タイポグラフィユーティリティ (Tiptap 用)
 // docs/frontend/05-styling-guide.md に基づく定義
 // .prose クラス内にスコープし、グローバル適用を防止する
+// 将来 Tiptap エディタのリッチテキスト表示で使用予定。
+// globals.css または Tiptap コンポーネントの SCSS Module からインポートして利用する。
 
 .prose {
     h1 {

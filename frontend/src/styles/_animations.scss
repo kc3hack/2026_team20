@@ -1,5 +1,7 @@
 // カスタムアニメーション定義
 // docs/frontend/05-styling-guide.md に基づく定義
+// 将来 Tiptap エディタや Plot カードなどのコンポーネントで使用予定。
+// 各 SCSS Module から @use "animations" で参照して利用する。
 
 @keyframes fadeIn {
     from {

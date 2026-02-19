@@ -1,3 +1,4 @@
+import styles from "./layout.module.scss";
 import "./globals.css";
 import type { Metadata } from "next";
 import { Footer } from "@/components/layout/Footer/Footer";
@@ -16,10 +17,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+      <body className={styles.body}>
         <Providers>
+          {/* Header は useAuth を使用しているため、必ず Providers の子としてレンダリングする必要がある */}
           <Header />
-          <main style={{ flex: 1 }}>{children}</main>
+          <main className={styles.main}>{children}</main>
           <Footer />
         </Providers>
       </body>
