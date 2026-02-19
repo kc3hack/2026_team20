@@ -11,12 +11,8 @@ export type PlotResponse = {
   starCount: number;
   isStarred: boolean;
   isPaused: boolean;
-  editingUsers: {
-    id: string;
-    displayName: string;
-    avatarUrl: string | null;
-    sectionId: string | null;
-  }[];
+  thumbnailUrl: string | null;
+  version: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -167,12 +163,14 @@ export type CreatePlotRequest = {
   title: string;
   description?: string;
   tags?: string[];
+  thumbnailUrl?: string;
 };
 
 export type UpdatePlotRequest = {
   title?: string;
   description?: string;
   tags?: string[];
+  thumbnailUrl?: string | null;
 };
 
 export type CreateSectionRequest = {
@@ -223,6 +221,61 @@ export type UnbanUserRequest = {
 
 export type PausePlotRequest = {
   reason?: string;
+};
+
+// ---- Snapshot ----
+export type SnapshotResponse = {
+  id: string;
+  plotId: string;
+  version: number;
+  createdAt: string;
+};
+
+export type SnapshotListResponse = {
+  items: SnapshotResponse[];
+  total: number;
+};
+
+export type SnapshotDetailResponse = {
+  id: string;
+  plotId: string;
+  version: number;
+  content: {
+    plot: { title: string; description: string | null; tags: string[] };
+    sections: {
+      id: string;
+      title: string;
+      content: Content | null;
+      orderIndex: number;
+      version: number;
+    }[];
+  } | null;
+  createdAt: string;
+};
+
+// ---- Rollback ----
+export type RollbackRequest = {
+  expectedVersion?: number;
+  reason?: string;
+};
+
+export type RollbackLogResponse = {
+  id: string;
+  plotId: string;
+  snapshotId: string | null;
+  snapshotVersion: number;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+  reason: string | null;
+  createdAt: string;
+};
+
+export type RollbackLogListResponse = {
+  items: RollbackLogResponse[];
+  total: number;
 };
 
 // Error Response

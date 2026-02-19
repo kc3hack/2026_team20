@@ -192,8 +192,8 @@
 
 | 項目 | 仕様 |
 |------|------|
-| HotOperation（操作ログ） | セクション単位、72時間保持、UI表示用（「誰が、いつ、どこを、どう変えた」） |
-| ColdSnapshot（スナップショット） | Plot全体、5分間隔バッチ作成（APScheduler）、保持ポリシーに基づく段階的間引き（直近7日=全保持、7〜30日=1時間1個、30日以降=1日1個） |
+| HotOperation（操作ログ） | セクション単位、**72時間保持**（TTL超過分は自動削除）、UI表示用（「誰が、いつ、どこを、どう変えた」） |
+| ColdSnapshot（スナップショット） | Plot全体、5分間隔バッチ作成（APScheduler）、**保持ポリシーに基づく段階的間引き**（直近7日=全保持、7〜30日=1時間1個、30日以降=1日1個）。毎日午前3時のcleanupバッチで間引きを実行。間引き後も各期間の最新スナップショットは必ず保持されるため、**実質的に無期限で復元ポイントが存在する**（ただし粒度は経過期間に応じて低下する） |
 | ロールバック | Plot全体をスナップショットから復元（`POST /plots/{plotId}/rollback/{snapshotId}`） |
 | ロールバック競合制御 | 楽観的ロック（`plots.version`）で同時ロールバックを排他制御。バージョン不一致時は409 Conflictを返却 |
 | 荒らし対策 | BAN/一時停止で事前防止が基本方針、5分間隔のPlotスナップショットで復元可能 |
@@ -489,7 +489,7 @@ Wave 3 (Day 6-7): SNS機能 + 統合
   - [ ] Supabaseプロジェクトが作成されている
   - [ ] 以下のテーブルが作成されている（制限値を反映）:
     - `users` (id, email, display_name, avatar_url, created_at)
-    - `plots` (id, title VARCHAR(200), description VARCHAR(2000), owner_id, tags, visibility, version INTEGER DEFAULT 0, created_at, updated_at)
+    - `plots` (id, title VARCHAR(200), description VARCHAR(2000), owner_id, tags, visibility, version INTEGER DEFAULT 0, thumbnail_url TEXT DEFAULT NULL, created_at, updated_at)
       - version: 楽観的ロック用。ロールバック時にバージョンチェックを行い、同時ロールバックの競合を防止
     - `sections` (id, plot_id, title, content, order_index, version INTEGER DEFAULT 1, created_at, updated_at)
       - plot_idに外部キー制約
@@ -507,8 +507,9 @@ Wave 3 (Day 6-7): SNS機能 + 統合
       - section_id: ロールバック時にセクションIDが新規採番されるため、NULL許容。NULLの場合はPlot単位のスレッドとして扱う
     - `comments` (id, thread_id, user_id, content, created_at)
     - `plot_bans` (id, plot_id, user_id, reason, created_at)
-    - `rollback_logs` (id, plot_id, snapshot_id, user_id, reason, created_at)
+    - `rollback_logs` (id, plot_id, snapshot_id, snapshot_version, user_id, reason, created_at)
       - ロールバック操作の監査ログ。「誰が、いつ、どのスナップショットに復元したか」を記録
+      - `snapshot_version INTEGER NOT NULL`: ロールバック先スナップショットのバージョン番号。スナップショット間引き（`ON DELETE SET NULL`）後もバージョン情報を保持するため、非正規化して記録する
       - plot_id, snapshot_id, user_idに外部キー制約
       - plot_idは `ON DELETE CASCADE`: Plot削除時に関連ログを自動削除
       - snapshot_idは `ON DELETE SET NULL`: スナップショット間引き時もログは保持
@@ -771,7 +772,7 @@ Wave 3 (Day 6-7): SNS機能 + 統合
 
   **What to do**:
   - HotOperation: 操作ログ保存API（**72時間保持、UI表示用**）
-  - ColdSnapshot: 5分間隔バッチによるPlot全体スナップショット作成（**APScheduler、永続保持**）
+  - ColdSnapshot: 5分間隔バッチによるPlot全体スナップショット作成（**APScheduler、保持ポリシーに基づく段階的間引き: 直近7日=全保持、7〜30日=1時間1個、30日以降=1日1個**）
   - Plot全体ロールバックAPI（スナップショットからPlot全体を復元）
   - スナップショット一覧取得API
   - TTL cleanupジョブ（72時間経過したHotOperationを削除）

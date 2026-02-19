@@ -42,18 +42,12 @@ Plot作成（要認証）
 {
   "title": "string (max 200)",
   "description": "string (max 2000) (省略可)",
-  "tags": ["tag1", "tag2"] (省略可)
+  "tags": ["tag1", "tag2"] (省略可),
+  "thumbnailUrl": "string (省略可)"
 }
 ```
 
 **Response**: `201 Created` → `PlotResponse`
-
----
-
-#### GET /plots/{plotId}
-Plot詳細取得
-
-**Response**: `PlotDetailResponse`
 
 ---
 
@@ -65,11 +59,19 @@ Plot更新（要認証・作成者のみ）
 {
   "title": "string (max 200) (省略可)",
   "description": "string (max 2000) (省略可)",
-  "tags": ["tag1", "tag2"] (省略可)
+  "tags": ["tag1", "tag2"] (省略可),
+  "thumbnailUrl": "string | null (省略可)"
 }
 ```
 
 **Response**: `200 OK` → `PlotResponse`
+
+---
+
+#### GET /plots/{plotId}
+Plot詳細取得
+
+**Response**: `PlotDetailResponse`
 
 ---
 
@@ -545,14 +547,18 @@ BAN解除（要管理者権限）
   "description": "string | null",
   "tags": ["string"],
   "ownerId": "uuid",
-  "version": 0,
   "starCount": 42,
   "isStarred": false,
   "isPaused": false,
+  "thumbnailUrl": "string | null",
+  "version": 0,
   "createdAt": "2026-02-16T00:00:00Z",
   "updatedAt": "2026-02-16T00:00:00Z"
 }
 ```
+
+**フィールド補足**:
+- `thumbnailUrl`: `ImageUploadResponse.url` の値（`/api/v1/images/{filename}` 形式）がそのまま格納される。`<img src={thumbnailUrl} />` で直接使用可能。
 
 ### PlotDetailResponse
 `PlotResponse` +:
@@ -665,12 +671,12 @@ BAN解除（要管理者権限）
       {
         "id": "uuid",
         "title": "...",
-        "content": { "type": "doc", "content": [...] },
+        "content": { "type": "doc", "content": [...] } | null,
         "orderIndex": 0,
         "version": 5
       }
     ]
-  },
+  } | null,
   "createdAt": "2026-02-16T00:00:00Z"
 }
 ```
@@ -687,6 +693,9 @@ BAN解除（要管理者権限）
   "createdAt": "2026-02-19T00:00:00Z"
 }
 ```
+
+**フィールド補足**:
+- `snapshotVersion`: `rollback_logs` テーブルの `snapshot_version` カラムから直接取得。スナップショット間引き（`snapshot_id` が `SET NULL`）後もバージョン情報を保持するため、非正規化してテーブルに記録している。
 
 ### RollbackLogListResponse
 ```json

@@ -62,7 +62,9 @@
 - `src/components/history/HistoryList/HistoryList.module.scss`
 - `src/components/history/DiffViewer/DiffViewer.tsx` — 差分表示
 - `src/components/history/DiffViewer/DiffViewer.module.scss`
-- `src/hooks/useHistory.ts` — useHistory, useRollback, useDiff
+- `src/components/history/SnapshotList/SnapshotList.tsx` — スナップショット一覧
+- `src/components/history/SnapshotList/SnapshotList.module.scss`
+- `src/hooks/useHistory.ts` — useHistory, useSnapshots, useRollback, useDiff
 
 ##### 満たすべき要件
 - **履歴ページ (`/plots/[id]/history`):**
@@ -75,15 +77,27 @@
   - `useHistory(sectionId)` でデータ取得
   - 各項目: バージョン番号、操作種別 (insert/delete/update)、ユーザー、日時
   - タイムライン風の表示 (SCSS Module で縦線 + ドット装飾)
-  - 72 時間以上前のバージョンには「復元不可」バッジ
+  - HotOperation（72時間保持）の操作ログのみを表示対象とする
+- **SnapshotList:**
+  - Props: `plotId: string`
+  - `useSnapshots(plotId)` でデータ取得（`GET /plots/{plotId}/snapshots`）
+  - 各項目: バージョン番号、作成日時、「このバージョンに戻す」ボタン
+  - スナップショットの保持ポリシーに基づき、古いスナップショットには保持粒度を表示（7日以内: 全保持、7-30日: 毎時、30日以降: 日次）
+  - ColdSnapshot の閲覧・復元を担当するコンポーネントであり、HistoryList とは責務を分離する
+  - **スナップショット詳細プレビュー:**
+    - 各スナップショット項目をクリックするとモーダルで詳細を表示
+    - `GET /plots/{plotId}/snapshots/{snapshotId}` → `SnapshotDetailResponse` でデータ取得
+    - モーダル内に Plot タイトル・説明・タグ、各セクションのタイトルとコンテンツのプレビューを表示
+    - `content` が `null` の場合は「スナップショットデータなし」を表示
+    - モーダル内に「このバージョンに戻す」ボタンを配置（ロールバック導線）
 - **DiffViewer:**
   - Props: `diff: DiffResponse`
   - additions を緑背景、deletions を赤背景で表示
   - GitHub 風の diff 表示スタイル
 - **ロールバック:**
-  - `useRollback(sectionId, version)` ミューテーション
-  - 成功 → `toast.success("バージョンを復元しました")` + Plot 詳細を invalidate
-  - 72 時間超のバージョン → `toast.error("72時間以内のバージョンのみ復元可能です")`
+  - `useRollback(plotId, snapshotId)` ミューテーション
+  - 成功 → `toast.success("スナップショットから復元しました")` + Plot 詳細を invalidate
+  - スナップショットが存在しない → `toast.error("指定のスナップショットが見つかりません")`
 
 ##### テスト観点
 - `HistoryList`: 履歴項目がバージョン降順で表示される
@@ -93,7 +107,9 @@
 ##### 使用する API
 - `GET /sections/{sectionId}/history?limit=50`
 - `GET /sections/{sectionId}/diff/{fromVersion}/{toVersion}`
-- `POST /sections/{sectionId}/rollback/{version}`
+- `GET /plots/{plotId}/snapshots`
+- `GET /plots/{plotId}/snapshots/{snapshotId}` → `SnapshotDetailResponse`
+- `POST /plots/{plotId}/rollback/{snapshotId}`
 
 ##### 依存関係
 - Issue #3 (historyRepository)

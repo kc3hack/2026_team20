@@ -73,7 +73,8 @@ const MOCK_PLOTS: PlotListResponse = {
       starCount: 42,
       isStarred: false,
       isPaused: false,
-      editingUsers: [],
+      thumbnailUrl: null,
+      version: 0,
       createdAt: "2026-02-10T00:00:00Z",
       updatedAt: "2026-02-15T00:00:00Z",
     },
@@ -86,9 +87,8 @@ const MOCK_PLOTS: PlotListResponse = {
       starCount: 128,
       isStarred: true,
       isPaused: false,
-      editingUsers: [
-        { id: "user-3", displayName: "次郎", avatarUrl: null, sectionId: "section-1" },
-      ],
+      thumbnailUrl: null,
+      version: 0,
       createdAt: "2026-01-28T09:00:00Z",
       updatedAt: "2026-02-15T12:00:00Z",
     },
@@ -139,7 +139,7 @@ export const plotRepository = {
   },
 
   /** Plot 作成 */
-  create(data: { title: string; description?: string; tags?: string[] }) {
+  create(data: { title: string; description?: string; tags?: string[]; thumbnailUrl?: string }) {
     if (USE_MOCK) {
       const newPlot = {
         id: `mock-${Date.now()}`,
@@ -150,7 +150,8 @@ export const plotRepository = {
         starCount: 0,
         isStarred: false,
         isPaused: false,
-        editingUsers: [],
+        thumbnailUrl: data.thumbnailUrl ?? null,
+        version: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -192,7 +193,8 @@ export const mockPlots: PlotResponse[] = [
     starCount: 42,
     isStarred: false,
     isPaused: false,
-    editingUsers: [],
+    thumbnailUrl: null,
+    version: 0,
     createdAt: "2026-02-10T00:00:00Z",
     updatedAt: "2026-02-15T00:00:00Z",
   },
