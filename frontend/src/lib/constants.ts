@@ -1,3 +1,7 @@
+export const APP_CONFIG = {
+  GITHUB_URL: "https://github.com/kc3hack/2026_team20",
+} as const;
+
 // TODO: 他の定数は各機能実装時に担当者が追加
 
 /** 一覧取得時のデフォルト件数 (TODO: API仕様に基づき調整) */

@@ -1,0 +1,19 @@
+@use "variables" as *;
+
+.container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 1rem 0;
+}
+
+.ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    color: hsl(var(--muted-foreground));
+    user-select: none;
+}

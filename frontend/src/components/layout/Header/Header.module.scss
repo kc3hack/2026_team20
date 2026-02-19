@@ -1,0 +1,55 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.header {
+    position: sticky;
+    top: 0;
+    z-index: $z-header;
+    background-color: hsl(var(--background));
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: $breakpoint-xl;
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+    gap: 1rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.center {
+    display: none;
+    flex: 1;
+    max-width: 32rem;
+
+    @include respond-to(lg) {
+        display: flex;
+        justify-content: center;
+    }
+}
+
+.right {
+    display: none;
+    align-items: center;
+
+    @include respond-to(lg) {
+        display: flex;
+    }
+}
+
+.mobileMenu {
+    display: flex;
+    align-items: center;
+
+    @include respond-to(lg) {
+        display: none;
+    }
+}
