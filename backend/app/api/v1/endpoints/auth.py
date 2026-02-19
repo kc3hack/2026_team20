@@ -21,7 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.deps import AuthUser, DbSession
-from app.api.v1.utils import plot_to_response
+from app.api.v1.utils import _get_user_by_username_or_404, plot_to_response
 from app.models import HotOperation, Plot, Section, User
 from app.schemas import PlotListResponse, UserProfileResponse, UserResponse
 
@@ -41,7 +41,9 @@ def _user_to_response(user: User) -> UserResponse:
     )
 
 
-def _user_to_profile(user: User, plot_count: int, contribution_count: int) -> UserProfileResponse:
+def _user_to_profile(
+    user: User, plot_count: int, contribution_count: int
+) -> UserProfileResponse:
     """User ORM → UserProfileResponse に変換。"""
     return UserProfileResponse(
         id=str(user.id),
@@ -81,15 +83,7 @@ def get_user_profile(
     db: DbSession,
 ) -> UserProfileResponse:
     """ユーザーの公開プロフィールを取得する。"""
-    user = db.execute(
-        select(User).where(User.display_name == username)
-    ).scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+    user = _get_user_by_username_or_404(db, username)
 
     # オーナーとして作成した Plot 数
     plot_count: int = db.execute(
@@ -118,15 +112,7 @@ def get_user_plots(
     offset: int = Query(default=0, ge=0),
 ) -> PlotListResponse:
     """ユーザーが作成した Plot 一覧を取得する。"""
-    user = db.execute(
-        select(User).where(User.display_name == username)
-    ).scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+    user = _get_user_by_username_or_404(db, username)
 
     total: int = db.execute(
         select(func.count()).select_from(Plot).where(Plot.owner_id == user.id)
@@ -135,14 +121,18 @@ def get_user_plots(
     # selectinload で stars を事前ロードし、N+1 問題を回避
     # 自分が作成した Plot は作成順（created_at）で表示する。
     # オーナー自身が「いつ作ったか」を時系列で把握できるようにするため。
-    plots = db.execute(
-        select(Plot)
-        .options(selectinload(Plot.stars))
-        .where(Plot.owner_id == user.id)
-        .order_by(Plot.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    ).scalars().all()
+    plots = (
+        db.execute(
+            select(Plot)
+            .options(selectinload(Plot.stars))
+            .where(Plot.owner_id == user.id)
+            .order_by(Plot.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        .scalars()
+        .all()
+    )
 
     return PlotListResponse(
         items=[plot_to_response(p) for p in plots],
@@ -153,9 +143,7 @@ def get_user_plots(
 
 
 # ─── GET /auth/users/{username}/contributions ────
-@router.get(
-    "/users/{username}/contributions", response_model=PlotListResponse
-)
+@router.get("/users/{username}/contributions", response_model=PlotListResponse)
 def get_user_contributions(
     username: str,
     db: DbSession,
@@ -163,15 +151,7 @@ def get_user_contributions(
     offset: int = Query(default=0, ge=0),
 ) -> PlotListResponse:
     """ユーザーがコントリビューションした Plot 一覧を取得する。"""
-    user = db.execute(
-        select(User).where(User.display_name == username)
-    ).scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+    user = _get_user_by_username_or_404(db, username)
 
     # コントリビューションした Plot の ID を取得（自分がオーナーでないもの）
     contributed_plot_ids_subq = (
@@ -191,14 +171,18 @@ def get_user_contributions(
     # selectinload で stars を事前ロードし、N+1 問題を回避
     # コントリビューションした Plot は最終更新順（updated_at）で表示する。
     # 直近アクティブな Plot を上位に表示し、協業の進捗を追いやすくするため。
-    plots = db.execute(
-        select(Plot)
-        .options(selectinload(Plot.stars))
-        .where(Plot.id.in_(select(contributed_plot_ids_subq)))
-        .order_by(Plot.updated_at.desc())
-        .limit(limit)
-        .offset(offset)
-    ).scalars().all()
+    plots = (
+        db.execute(
+            select(Plot)
+            .options(selectinload(Plot.stars))
+            .where(Plot.id.in_(select(contributed_plot_ids_subq)))
+            .order_by(Plot.updated_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        .scalars()
+        .all()
+    )
 
     return PlotListResponse(
         items=[plot_to_response(p) for p in plots],
