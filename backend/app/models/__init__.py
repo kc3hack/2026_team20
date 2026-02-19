@@ -126,6 +126,7 @@ class HotOperation(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -323,11 +324,13 @@ class PlotBan(Base):
         UUID(as_uuid=True),
         ForeignKey("plots.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     user_id: Mapped[_uuid_mod.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

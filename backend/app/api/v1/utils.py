@@ -3,10 +3,12 @@
 公開関数:
 - parse_uuid: 文字列 → UUID 変換（失敗時 400）
 - plot_to_response: Plot ORM → PlotResponse 変換
+- _require_admin: 管理者権限チェック（403）
 
 内部関数:
 - _get_plot_or_404: Plot 取得（未存在時 404）
 - _get_user_or_404: User 取得（未存在時 404）
+- _get_user_by_username_or_404: display_name で User 取得（未存在時 404）
 """
 
 import uuid
@@ -15,7 +17,19 @@ from typing import TYPE_CHECKING
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
-from app.schemas import PlotResponse
+from app.schemas import CurrentUser, PlotResponse
+
+ADMIN_ROLE = "admin"
+
+
+def _require_admin(user: CurrentUser) -> None:
+    """管理者権限を検証する。admin でなければ 403 を返す。"""
+    if user.role != ADMIN_ROLE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -39,9 +53,7 @@ def _get_plot_or_404(db: "Session", plot_id: str) -> "Plot":
     from app.models import Plot  # 循環インポート回避
 
     parsed_id = parse_uuid(plot_id, "plot_id")
-    plot = db.execute(
-        select(Plot).where(Plot.id == parsed_id)
-    ).scalar_one_or_none()
+    plot = db.execute(select(Plot).where(Plot.id == parsed_id)).scalar_one_or_none()
     if plot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -55,8 +67,21 @@ def _get_user_or_404(db: "Session", user_id: str) -> "User":
     from app.models import User  # 循環インポート回避
 
     parsed_id = parse_uuid(user_id, "user_id")
+    user = db.execute(select(User).where(User.id == parsed_id)).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
+
+
+def _get_user_by_username_or_404(db: "Session", username: str) -> "User":
+    """display_name で User を取得する。存在しなければ HTTPException(404) を送出する。"""
+    from app.models import User  # 循環インポート回避
+
     user = db.execute(
-        select(User).where(User.id == parsed_id)
+        select(User).where(User.display_name == username)
     ).scalar_one_or_none()
     if user is None:
         raise HTTPException(
@@ -91,19 +116,17 @@ def plot_to_response(
             )
         star_count = len(plot.stars)
 
-    resolved_star_count = star_count
     return PlotResponse(
         id=str(plot.id),
         title=plot.title,
         description=plot.description,
         tags=plot.tags or [],
         ownerId=str(plot.owner_id),
-        starCount=resolved_star_count,
+        starCount=star_count,
         isStarred=is_starred,
         isPaused=plot.is_paused,
-        thumbnailUrl=None,
+        thumbnailUrl=plot.thumbnail_url,
         version=plot.version or 0,
-        editingUsers=[],
         createdAt=plot.created_at,
         updatedAt=plot.updated_at,
     )
