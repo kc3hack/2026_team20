@@ -1,15 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiClient, apiUpload } from "../client";
 
 // Mock fetch
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+vi.stubGlobal("fetch", fetchMock);
 
 describe("apiClient", () => {
   const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   afterEach(() => {
@@ -215,7 +219,7 @@ describe("apiClient", () => {
 
 describe("apiUpload", () => {
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
   });
 
   it("should accept supported image types", async () => {
