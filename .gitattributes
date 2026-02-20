@@ -1,0 +1,13 @@
+# テキストファイルの改行をLFに正規化（git利用者向け）
+* text=auto eol=lf
+# バイナリファイル（改行変換しない）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
