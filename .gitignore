@@ -57,7 +57,7 @@ postgres_data/
 pgdata/
 mysql_data/
 mongo_data/
-data/
+/data/
 
 # --- Security / Environment Variables ---
 .env
