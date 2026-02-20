@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     max_image_width: int = Field(default=1920, gt=0)
     jpeg_quality: int = Field(default=85, ge=1, le=95)
 
+    image_processing_max_workers: int = Field(default=4, ge=1, le=32)
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     @property

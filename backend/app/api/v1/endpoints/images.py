@@ -3,15 +3,23 @@
 docs/api.md の Images セクション準拠:
 - POST /  → 画像アップロード（要認証, multipart/form-data, 最大5MB）
 - GET /{filename} → 画像取得（認証不要）
+
+セキュリティ前提:
+- リバースプロキシ (nginx等) で client_max_body_size / client_header_timeout /
+  client_body_timeout を適切に設定し、Slowloris 等の L7 DoS を緩和すること。
+  本エンドポイントはアプリケーション層の防御のみ担当する。
 """
 
 import asyncio
+import io
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile, status
 from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
+from PIL import Image
 
 from app.api.v1.deps import AuthUser
 from app.core.config import get_settings
@@ -22,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
 # Content-Type マッピング: 拡張子 → MIME タイプ
 _MEDIA_TYPES: dict[str, str] = {
     ".jpg": "image/jpeg",
@@ -30,6 +39,23 @@ _MEDIA_TYPES: dict[str, str] = {
     ".gif": "image/gif",
     ".webp": "image/webp",
 }
+
+_image_executor: ThreadPoolExecutor | None = None
+
+
+def _get_image_executor() -> ThreadPoolExecutor:
+    """画像処理専用の ThreadPoolExecutor をシングルトンで取得する。
+
+    遅延初期化: 初回呼び出し時にのみ生成し、以降はキャッシュを返す。
+    """
+    global _image_executor  # noqa: PLW0603
+    if _image_executor is None:
+        settings = get_settings()
+        _image_executor = ThreadPoolExecutor(
+            max_workers=settings.image_processing_max_workers,
+            thread_name_prefix="image-proc",
+        )
+    return _image_executor
 
 
 @router.post(
@@ -61,26 +87,52 @@ async def upload_image(file: UploadFile, current_user: AuthUser) -> ImageUploadR
     # チャンク読み込み中にサイズチェック（HTTP 413）
     # process_and_save内のvalidate_file_sizeでも二重チェック（HTTP 400に変換）
     try:
-        chunks: list[bytes] = []
+        buffer = io.BytesIO()
         total = 0
         while chunk := await file.read(8192):
             total += len(chunk)
             if total > max_upload_bytes:
+                while await file.read(65536):
+                    pass
                 raise HTTPException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                     detail="File size exceeds maximum allowed size",
                 )
-            chunks.append(chunk)
-        file_data = b"".join(chunks)
+            buffer.write(chunk)
+        file_data = buffer.getvalue()
 
-        result = await asyncio.to_thread(
-            image_service.process_and_save, file_data, file.filename
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            _get_image_executor(),
+            image_service.process_and_save,
+            file_data,
+            file.filename,
         )
+    except HTTPException:
+        raise
     except ValueError as e:
-        logger.warning("Image upload failed: %s", e)
+        logger.warning("Image upload validation failed: %s", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
+        ) from e
+    except Image.DecompressionBombError as e:
+        logger.warning("Decompression bomb detected: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Image too large: {e}",
+        ) from e
+    except (Image.UnidentifiedImageError, SyntaxError) as e:
+        logger.warning("Invalid image file: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid or corrupted image file: {e}",
+        ) from e
+    except OSError as e:
+        logger.error("Image processing I/O error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Image processing failed due to server error",
         ) from e
     finally:
         await file.close()
