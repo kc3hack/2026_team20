@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { SectionViewer } from "@/components/section/SectionViewer/SectionViewer";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SectionResponse } from "@/lib/api/types";
@@ -11,6 +12,11 @@ type SectionListProps = {
 };
 
 export function SectionList({ sections, isLoading = false }: SectionListProps) {
+  const sorted = useMemo(
+    () => [...sections].sort((a, b) => a.orderIndex - b.orderIndex),
+    [sections],
+  );
+
   if (isLoading) {
     return (
       <div className={styles.container} data-testid="section-list-loading">
@@ -24,7 +30,15 @@ export function SectionList({ sections, isLoading = false }: SectionListProps) {
     );
   }
 
-  const sorted = [...sections].sort((a, b) => a.orderIndex - b.orderIndex);
+  if (sorted.length === 0) {
+    return (
+      <div className={styles.container}>
+        <p className={styles.empty} data-testid="section-list-empty">
+          まだセクションがありません
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

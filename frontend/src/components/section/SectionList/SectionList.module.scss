@@ -3,6 +3,13 @@
   flex-direction: column;
 }
 
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+}
+
 .skeletonItem {
   margin-bottom: 2rem;
 }

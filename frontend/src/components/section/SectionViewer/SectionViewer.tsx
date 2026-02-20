@@ -8,7 +8,6 @@ import styles from "./SectionViewer.module.scss";
 
 type SectionViewerProps = {
   section: SectionResponse;
-  enableRealtime?: boolean;
   isBeingEdited?: boolean;
   editedBy?: { id: string; displayName: string; avatarUrl: string | null } | null;
 };
@@ -18,8 +17,6 @@ export function SectionViewer({
   isBeingEdited = false,
   editedBy = null,
 }: SectionViewerProps) {
-  const hasContent = !!section.content;
-
   const editor = useEditor(
     {
       extensions: [StarterKit],
@@ -27,10 +24,10 @@ export function SectionViewer({
       editable: false,
       immediatelyRender: false,
     },
-    [hasContent],
+    [section.content, section.version],
   );
 
-  if (!hasContent) return null;
+  if (!section.content) return null;
 
   return (
     <div id={`section-${section.id}`} className={styles.container}>

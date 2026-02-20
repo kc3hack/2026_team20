@@ -118,6 +118,20 @@ export const mockPlots: PlotResponse[] = [
     createdAt: "2026-02-12T13:00:00Z",
     updatedAt: "2026-02-18T17:00:00Z",
   },
+  {
+    id: "plot-test-scroll",
+    title: "スクロールテスト用：超巨大プロット",
+    description: "目次のスクロール追従やクリック時の挙動をテストするために作成された、大量のセクションと長文で構成されるテスト用データです。",
+    tags: ["テスト", "スクロール"],
+    ownerId: mockUsers.owner.id,
+    starCount: 999,
+    isStarred: true,
+    isPaused: false,
+    thumbnailUrl: null,
+    version: 1,
+    createdAt: "2026-02-21T00:00:00Z",
+    updatedAt: "2026-02-21T00:00:00Z",
+  },
 ];
 
 export function getMockPlotList(params?: {
@@ -140,27 +154,6 @@ export function getMockPlotList(params?: {
 }
 
 export function getMockPlotDetail(id: string): PlotDetailResponse {
-  const plot = mockPlots.find((p) => p.id === id);
-  if (!plot) {
-    throw new Error(`Plot not found: ${id}`);
-  }
-
-  const sections = mockSections
-    .filter((s) => s.plotId === id)
-    .sort((a, b) => a.orderIndex - b.orderIndex);
-
-  return {
-    ...plot,
-    sections,
-    owner: {
-      id: mockUsers.owner.id,
-      displayName: mockUsers.owner.displayName,
-      avatarUrl: mockUsers.owner.avatarUrl,
-    },
-  };
-}
-
-export function getMockPlotDetailWithSections(id: string): PlotDetailResponse {
   const plot = mockPlots.find((p) => p.id === id);
   if (!plot) {
     throw new Error(`Plot not found: ${id}`);

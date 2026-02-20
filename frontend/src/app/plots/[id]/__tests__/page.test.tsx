@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
 import type { PlotDetailResponse } from "@/lib/api/types";
+import "@/tests/helpers/tiptapMock";
 
 vi.mock("@/lib/api/repositories/plotRepository", () => ({
   get: vi.fn(),
@@ -18,17 +19,6 @@ vi.mock("@/hooks/useAuth", () => ({
 
 vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
-}));
-
-vi.mock("@tiptap/react", () => ({
-  useEditor: vi.fn(() => null),
-  EditorContent: ({ editor }: { editor: unknown }) => (
-    <div data-testid="editor-content">{editor ? "rendered" : "no-editor"}</div>
-  ),
-}));
-
-vi.mock("@tiptap/starter-kit", () => ({
-  default: {},
 }));
 
 import { notFound } from "next/navigation";

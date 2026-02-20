@@ -1,18 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { SectionResponse } from "@/lib/api/types";
+import "@/tests/helpers/tiptapMock";
 import { SectionList } from "../SectionList";
-
-vi.mock("@tiptap/react", () => ({
-  useEditor: vi.fn(() => null),
-  EditorContent: ({ editor }: { editor: unknown }) => (
-    <div data-testid="editor-content">{editor ? "rendered" : "no-editor"}</div>
-  ),
-}));
-
-vi.mock("@tiptap/starter-kit", () => ({
-  default: {},
-}));
 
 const mockSections: SectionResponse[] = [
   {
