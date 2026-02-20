@@ -1,13 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockSearchResults } from "@/mocks/data/search";
 import * as searchRepository from "../repositories/searchRepository";
 
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+vi.stubGlobal("fetch", fetchMock);
 
 describe("searchRepository", () => {
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   describe("search", () => {

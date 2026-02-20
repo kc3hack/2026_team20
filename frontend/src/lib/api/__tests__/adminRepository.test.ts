@@ -1,13 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ADMIN_FORBIDDEN_MESSAGE } from "@/mocks/data/admin";
 import * as adminRepository from "../repositories/adminRepository";
 
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+vi.stubGlobal("fetch", fetchMock);
 
 describe("adminRepository", () => {
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   describe("banUser", () => {

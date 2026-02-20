@@ -1,14 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockPlots } from "@/mocks/data/plots";
 import { mockCommentList, mockComments, mockStarList, mockThread } from "@/mocks/data/sns";
 import * as snsRepository from "../repositories/snsRepository";
 
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+vi.stubGlobal("fetch", fetchMock);
 
 describe("snsRepository", () => {
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   describe("getStars", () => {

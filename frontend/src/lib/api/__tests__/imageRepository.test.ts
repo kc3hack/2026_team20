@@ -1,13 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockImageUploadResponse } from "@/mocks/data/images";
 import * as imageRepository from "../repositories/imageRepository";
 
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+vi.stubGlobal("fetch", fetchMock);
 
 describe("imageRepository", () => {
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   describe("upload", () => {
@@ -71,7 +75,9 @@ describe("imageRepository", () => {
 
     it("should handle filenames with special characters", () => {
       const url = imageRepository.getUrl("スクリーンショット 2026.png");
-      expect(url).toBe("/api/v1/images/スクリーンショット 2026.png");
+      expect(url).toBe(
+        `/api/v1/images/${encodeURIComponent("スクリーンショット 2026.png")}`,
+      );
     });
   });
 });

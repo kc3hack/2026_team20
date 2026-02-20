@@ -6,5 +6,5 @@ export async function upload(file: File, token?: string): Promise<ImageUploadRes
 }
 
 export function getUrl(filename: string): string {
-  return `/api/v1/images/${filename}`;
+  return `/api/v1/images/${encodeURIComponent(filename)}`;
 }

@@ -1,13 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockSections } from "@/mocks/data/sections";
 import * as sectionRepository from "../repositories/sectionRepository";
 
 const fetchMock = vi.fn();
-global.fetch = fetchMock;
+vi.stubGlobal("fetch", fetchMock);
 
 describe("sectionRepository", () => {
   beforeEach(() => {
-    fetchMock.mockClear();
+    fetchMock.mockReset();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   describe("listByPlot", () => {
