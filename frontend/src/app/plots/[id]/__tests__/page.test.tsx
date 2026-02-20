@@ -9,6 +9,15 @@ vi.mock("@/lib/api/repositories/plotRepository", () => ({
 
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(),
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: false })),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn() },
 }));
 
 vi.mock("@tiptap/react", () => ({

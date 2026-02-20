@@ -18,14 +18,19 @@ export function SectionViewer({
   isBeingEdited = false,
   editedBy = null,
 }: SectionViewerProps) {
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: section.content,
-    editable: false,
-    immediatelyRender: false,
-  });
+  const hasContent = !!section.content;
 
-  if (!section.content) return null;
+  const editor = useEditor(
+    {
+      extensions: [StarterKit],
+      content: section.content,
+      editable: false,
+      immediatelyRender: false,
+    },
+    [hasContent],
+  );
+
+  if (!hasContent) return null;
 
   return (
     <div id={`section-${section.id}`} className={styles.container}>

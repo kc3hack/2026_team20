@@ -140,10 +140,18 @@ export function getMockPlotList(params?: {
 }
 
 export function getMockPlotDetail(id: string): PlotDetailResponse {
-  const plot = mockPlots.find((p) => p.id === id) ?? mockPlots[0];
+  const plot = mockPlots.find((p) => p.id === id);
+  if (!plot) {
+    throw new Error(`Plot not found: ${id}`);
+  }
+
+  const sections = mockSections
+    .filter((s) => s.plotId === id)
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
   return {
     ...plot,
-    sections: [],
+    sections,
     owner: {
       id: mockUsers.owner.id,
       displayName: mockUsers.owner.displayName,

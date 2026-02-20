@@ -317,12 +317,10 @@ describe("plotRepository (mock mode)", () => {
       expect(result.owner).toBeDefined();
     });
 
-    it("should fallback to first plot for unknown ID", async () => {
+    it("should throw Error for unknown ID", async () => {
       const mod = await import("../repositories/plotRepository");
-      const result = await mod.get("nonexistent-id");
 
-      expect(result.id).toBe(mockPlots[0].id);
-      expect(result.title).toBe(mockPlots[0].title);
+      await expect(mod.get("nonexistent-id")).rejects.toThrow("Plot not found: nonexistent-id");
     });
   });
 

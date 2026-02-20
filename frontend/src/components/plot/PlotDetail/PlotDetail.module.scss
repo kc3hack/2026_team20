@@ -25,6 +25,13 @@
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 0.75rem;
 }
 
@@ -84,6 +91,8 @@
 }
 
 .sidebar {
+  // モバイルでは非表示、md以上で表示
+  display: none;
   width: 240px;
   flex-shrink: 0;
   position: sticky;
@@ -91,7 +100,7 @@
   align-self: flex-start;
 
   @include respond-to(md) {
-    display: none;
+    display: block;
   }
 }
 

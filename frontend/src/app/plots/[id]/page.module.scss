@@ -1,3 +1,14 @@
+@use "@/styles/mixins" as *;
+
 .page {
   min-height: 100vh;
+  padding: 1rem;
+
+  @include respond-to(md) {
+    padding: 1.5rem 2rem;
+  }
+
+  @include respond-to(lg) {
+    padding: 2rem 3rem;
+  }
 }

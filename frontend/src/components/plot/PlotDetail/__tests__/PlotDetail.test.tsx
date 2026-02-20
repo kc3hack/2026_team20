@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { toast } from "sonner";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlotDetailResponse } from "@/lib/api/types";
 import { PlotDetail } from "../PlotDetail";
 
@@ -13,6 +14,21 @@ vi.mock("@tiptap/react", () => ({
 vi.mock("@tiptap/starter-kit", () => ({
   default: {},
 }));
+
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: vi.fn(() => ({ isAuthenticated: false })),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn() },
+}));
+
+import { useAuth } from "@/hooks/useAuth";
 
 const basePlot: PlotDetailResponse = {
   id: "plot-001",
@@ -50,6 +66,11 @@ const basePlot: PlotDetailResponse = {
 };
 
 describe("PlotDetail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
+  });
+
   it("タイトルが正しく表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
@@ -123,5 +144,31 @@ describe("PlotDetail", () => {
     render(<PlotDetail plot={{ ...basePlot, owner: null }} />);
 
     expect(screen.queryByText("テストオーナー")).not.toBeInTheDocument();
+  });
+
+  it("編集ボタンが表示される", () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    expect(screen.getByRole("button", { name: /編集する/ })).toBeInTheDocument();
+  });
+
+  it("未ログインで編集ボタンを押すと toast + ログインページ遷移", () => {
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
+    render(<PlotDetail plot={basePlot} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /編集する/ }));
+
+    expect(toast.error).toHaveBeenCalledWith("編集するにはログインが必要です");
+    expect(mockPush).toHaveBeenCalledWith("/auth/login?redirectTo=/plots/plot-001");
+  });
+
+  it("ログイン済みで編集ボタンを押しても遷移しない (Issue #9 TODO)", () => {
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true } as ReturnType<typeof useAuth>);
+    render(<PlotDetail plot={basePlot} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /編集する/ }));
+
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });
