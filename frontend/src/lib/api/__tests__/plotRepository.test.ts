@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockPlots } from "@/mocks/data/plots";
 import * as plotRepository from "../repositories/plotRepository";
 
@@ -279,6 +279,149 @@ describe("plotRepository", () => {
       expect(calledUrl).toContain("/api/v1/plots/new");
       expect(calledUrl).toContain("limit=5");
       expect(result).toEqual(mockResponse);
+    });
+  });
+});
+
+/**
+ * Mock モード (NEXT_PUBLIC_USE_MOCK=true) のテスト。
+ *
+ * USE_MOCK はモジュール読み込み時に評価されるため、
+ * vi.resetModules() + dynamic import で再読み込みし、
+ * 環境変数が "true" の状態でモジュールを初期化する。
+ */
+describe("plotRepository (mock mode)", () => {
+  const originalEnv = process.env.NEXT_PUBLIC_USE_MOCK;
+
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.NEXT_PUBLIC_USE_MOCK = "true";
+  });
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.NEXT_PUBLIC_USE_MOCK = originalEnv;
+    } else {
+      delete process.env.NEXT_PUBLIC_USE_MOCK;
+    }
+  });
+
+  describe("get", () => {
+    it("should return PlotDetailResponse for valid ID", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.get("plot-001");
+
+      expect(result.id).toBe("plot-001");
+      expect(result.title).toBe(mockPlots[0].title);
+      expect(result.sections).toBeDefined();
+      expect(result.owner).toBeDefined();
+    });
+
+    it("should fallback to first plot for unknown ID", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.get("nonexistent-id");
+
+      expect(result.id).toBe(mockPlots[0].id);
+      expect(result.title).toBe(mockPlots[0].title);
+    });
+  });
+
+  describe("list", () => {
+    it("should return PlotListResponse with default params", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.list();
+
+      expect(result.items.length).toBeGreaterThan(0);
+      expect(result.total).toBeGreaterThan(0);
+      expect(result.limit).toBe(20);
+      expect(result.offset).toBe(0);
+    });
+
+    it("should filter by tag", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.list({ tag: "テクノロジー" });
+
+      for (const plot of result.items) {
+        expect(plot.tags).toContain("テクノロジー");
+      }
+    });
+
+    it("should respect limit and offset", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.list({ limit: 2, offset: 1 });
+
+      expect(result.items.length).toBeLessThanOrEqual(2);
+      expect(result.limit).toBe(2);
+      expect(result.offset).toBe(1);
+    });
+  });
+
+  describe("create", () => {
+    it("should return PlotResponse with generated ID", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.create({ title: "テスト Plot", tags: ["テスト"] });
+
+      expect(result.id).toMatch(/^mock-/);
+      expect(result.title).toBe("テスト Plot");
+      expect(result.tags).toEqual(["テスト"]);
+      expect(result.starCount).toBe(0);
+    });
+  });
+
+  describe("update", () => {
+    it("should return updated PlotResponse", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.update("plot-001", { title: "更新後タイトル" });
+
+      expect(result.title).toBe("更新後タイトル");
+      expect(result.updatedAt).toBeDefined();
+    });
+  });
+
+  describe("remove", () => {
+    it("should return undefined", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.remove("plot-001");
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe("trending", () => {
+    it("should return plots sorted by starCount", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.trending({ limit: 3 });
+
+      expect(result.items.length).toBeLessThanOrEqual(3);
+      for (let i = 1; i < result.items.length; i++) {
+        expect(result.items[i - 1].starCount).toBeGreaterThanOrEqual(result.items[i].starCount);
+      }
+    });
+  });
+
+  describe("popular", () => {
+    it("should return plots sorted by starCount", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.popular({ limit: 3 });
+
+      expect(result.items.length).toBeLessThanOrEqual(3);
+      for (let i = 1; i < result.items.length; i++) {
+        expect(result.items[i - 1].starCount).toBeGreaterThanOrEqual(result.items[i].starCount);
+      }
+    });
+  });
+
+  describe("latest", () => {
+    it("should return plots sorted by createdAt descending", async () => {
+      const mod = await import("../repositories/plotRepository");
+      const result = await mod.latest({ limit: 3 });
+
+      expect(result.items.length).toBeLessThanOrEqual(3);
+      for (let i = 1; i < result.items.length; i++) {
+        const prev = new Date(result.items[i - 1].createdAt).getTime();
+        const curr = new Date(result.items[i].createdAt).getTime();
+        expect(prev).toBeGreaterThanOrEqual(curr);
+      }
     });
   });
 });
