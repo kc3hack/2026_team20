@@ -5,7 +5,7 @@ endpoint 層から呼び出され、DB 操作のみを担当する。
 このファイル内のクエリロジックのみ修正すれば良い。
 """
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.models import Plot, Star
@@ -21,28 +21,33 @@ def search_plots(
 
     戻り値は ((Plot, star_count) のリスト, total件数) のタプル。
     """
-    pattern = f"%{q}%"
+    # ILIKE ワイルドカード文字をエスケープし、DoS を防止する
+    escaped_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped_q}%"
 
-    query = db.query(Plot).filter(
-        or_(
-            Plot.title.ilike(pattern),
-            Plot.description.ilike(pattern),
-        )
+    filter_cond = or_(
+        Plot.title.ilike(pattern, escape="\\"),
+        Plot.description.ilike(pattern, escape="\\"),
     )
 
-    total = query.count()
+    total = db.query(Plot).filter(filter_cond).count()
 
-    plots = (
-        query
+    # スター数を1回のクエリで取得する（N+1 回避）。
+    # LEFT OUTER JOIN で Star テーブルを結合し、plot ごとに COUNT する。
+    star_count_subq = (
+        db.query(Star.plot_id, func.count(Star.id).label("star_count"))
+        .group_by(Star.plot_id)
+        .subquery()
+    )
+
+    items = (
+        db.query(Plot, func.coalesce(star_count_subq.c.star_count, 0))
+        .outerjoin(star_count_subq, Plot.id == star_count_subq.c.plot_id)
+        .filter(filter_cond)
         .order_by(Plot.created_at.desc())
         .offset(offset)
         .limit(limit)
         .all()
     )
 
-    items: list[tuple[Plot, int]] = []
-    for plot in plots:
-        star_count = db.query(Star).filter(Star.plot_id == plot.id).count()
-        items.append((plot, star_count))
-
-    return items, total
+    return [(plot, star_count) for plot, star_count in items], total

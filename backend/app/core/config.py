@@ -45,6 +45,24 @@ class Settings(BaseSettings):
             return f"{self.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
         return ""
 
+    @field_validator("supabase_secret_key")
+    @classmethod
+    def validate_supabase_secret_key(cls, v: SecretStr) -> SecretStr:
+        """SUPABASE_SECRET_KEYが空の場合に警告する。
+
+        本番環境では認証が失敗するため早期に気付けるよう警告を出す。
+        """
+        if not v.get_secret_value():
+            import warnings
+
+            warnings.warn(
+                "SUPABASE_SECRET_KEY is not set. Authentication may fail. "
+                "Set SUPABASE_SECRET_KEY in your environment.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return v
+
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, v: str) -> str:

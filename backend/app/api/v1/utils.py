@@ -34,7 +34,7 @@ def _require_admin(user: CurrentUser) -> None:
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from app.models import Plot, User
+    from app.models import Plot, Section, User
 
 
 def parse_uuid(value: str, field_name: str = "ID") -> uuid.UUID:
@@ -138,8 +138,6 @@ def section_to_response(section: "Section") -> SectionResponse:
     plots.py (PlotDetail), sections.py (CRUD), history.py (rollback)
     の3箇所で統一的に使用する。
     """
-    from app.models import Section  # noqa: F811 – 循環インポート回避
-
     return SectionResponse(
         id=str(section.id),
         plotId=str(section.plot_id),

@@ -33,13 +33,7 @@ def list_plots(
 
     total = query.count()
 
-    plots = (
-        query
-        .order_by(Plot.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    plots = query.order_by(Plot.created_at.desc()).offset(offset).limit(limit).all()
 
     return plots, total
 
@@ -136,16 +130,58 @@ def get_star_count(db: Session, plot_id: UUID) -> int:
     return db.query(Star).filter(Star.plot_id == plot_id).count()
 
 
+def get_star_counts_batch(
+    db: Session,
+    plot_ids: list[UUID],
+) -> dict[UUID, int]:
+    """複数 Plot のスター数を1回のクエリで取得する（N+1 回避）。
+
+    戻り値は {plot_id: star_count} の辞書。plot_ids に含まれるが
+    スターが 0 件の Plot も 0 で含まれる。
+    """
+    if not plot_ids:
+        return {}
+
+    rows = (
+        db.query(Star.plot_id, func.count(Star.id))
+        .filter(Star.plot_id.in_(plot_ids))
+        .group_by(Star.plot_id)
+        .all()
+    )
+    counts = {plot_id: count for plot_id, count in rows}
+    # スターが付いていない Plot にも 0 を返す
+    return {pid: counts.get(pid, 0) for pid in plot_ids}
+
+
 def is_starred_by(db: Session, plot_id: UUID, user_id: UUID | None) -> bool:
     """指定ユーザーが Plot にスターしているか判定する。"""
     if user_id is None:
         return False
     return (
-        db.query(Star)
-        .filter(Star.plot_id == plot_id, Star.user_id == user_id)
-        .first()
+        db.query(Star).filter(Star.plot_id == plot_id, Star.user_id == user_id).first()
         is not None
     )
+
+
+def get_starred_plot_ids_batch(
+    db: Session,
+    plot_ids: list[UUID],
+    user_id: UUID | None,
+) -> set[UUID]:
+    """指定ユーザーがスター済みの Plot ID を1回のクエリで取得する（N+1 回避）。
+
+    戻り値は user_id がスター済みの plot_id の set。
+    user_id が None の場合は空 set を返す。
+    """
+    if user_id is None or not plot_ids:
+        return set()
+
+    rows = (
+        db.query(Star.plot_id)
+        .filter(Star.plot_id.in_(plot_ids), Star.user_id == user_id)
+        .all()
+    )
+    return {row[0] for row in rows}
 
 
 def list_trending(db: Session, limit: int = 5) -> list[Plot]:
@@ -182,9 +218,4 @@ def list_popular(db: Session, limit: int = 5) -> list[Plot]:
 
 def list_new(db: Session, limit: int = 5) -> list[Plot]:
     """新規 Plot 一覧（作成日時の降順）。"""
-    return (
-        db.query(Plot)
-        .order_by(Plot.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    return db.query(Plot).order_by(Plot.created_at.desc()).limit(limit).all()

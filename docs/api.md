@@ -481,13 +481,11 @@ Plot検索（ILIKE部分一致検索、title / description 対象）
 #### DELETE /admin/bans
 BAN解除（要管理者権限）
 
-**Request Body**:
-```json
-{
-  "plotId": "uuid",
-  "userId": "uuid"
-}
-```
+**Query Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| plotId | uuid | Yes | Plot ID |
+| userId | uuid | Yes | User ID to unban |
 
 **Response**: `204 No Content`
 

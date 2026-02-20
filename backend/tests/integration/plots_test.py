@@ -115,15 +115,10 @@ class TestCreatePlot:
     def test_create_plot_title_exceeds_max(
         self, client: TestClient, test_user: User
     ) -> None:
-        """title が 201 文字 → 400/422（境界値: 超過）。
-
-        DB カラム String(200) に収まらないためエラーが望ましいが、
-        SQLite は長さ制約を強制しないため 201 が返る場合がある。
-        """
+        """title が 201 文字 → 422（Pydantic max_length バリデーション）。"""
         title_201 = "あ" * 201
         resp = client.post("/api/v1/plots/", json={"title": title_201})
-        # PostgreSQL: 400/422/500, SQLite: 201（長さ制約を無視）
-        assert resp.status_code in (201, 400, 422, 500)
+        assert resp.status_code == 422
 
     def test_create_plot_description_max_boundary(
         self, client: TestClient, test_user: User
@@ -140,18 +135,13 @@ class TestCreatePlot:
     def test_create_plot_description_exceeds_max(
         self, client: TestClient, test_user: User
     ) -> None:
-        """description が 2001 文字 → 400/422（境界値: 超過）。
-
-        DB カラム String(2000) に収まらないためエラーが望ましいが、
-        SQLite は長さ制約を強制しないため 201 が返る場合がある。
-        """
+        """description が 2001 文字 → 422（Pydantic max_length バリデーション）。"""
         desc_2001 = "x" * 2001
         resp = client.post(
             "/api/v1/plots/",
             json={"title": "Desc Fail", "description": desc_2001},
         )
-        # PostgreSQL: 400/422/500, SQLite: 201（長さ制約を無視）
-        assert resp.status_code in (201, 400, 422, 500)
+        assert resp.status_code == 422
 
     def test_create_plot_with_thumbnail_url(
         self, client: TestClient, test_user: User

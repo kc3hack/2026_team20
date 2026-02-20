@@ -31,7 +31,7 @@ class CreateSectionRequest(BaseModel):
 
 class UpdateSectionRequest(BaseModel):
     title: str | None = None
-    content: dict | None = ...  # sentinel: 未指定と明示的 null を区別
+    content: dict | None = None  # exclude_unset で「未指定」と「明示的 null」を区別
 
 
 class ReorderSectionRequest(BaseModel):
@@ -39,7 +39,6 @@ class ReorderSectionRequest(BaseModel):
 
 
 # Section シリアライズは utils.section_to_response() に統一
-
 
 
 # ─── エラーハンドリングヘルパー ────────────────────────────────
@@ -133,11 +132,14 @@ def update_section(
 ):
     """セクション更新（要認証）。Plotが一時停止中は 403。"""
     try:
+        # exclude_unset で「リクエストに含まれなかったフィールド」を検出し、
+        # service 層の sentinel（...）パターンと連携させる
+        update_data = body.model_dump(exclude_unset=True)
         section = section_service.update_section(
             db,
             section_id=section_id,
-            title=body.title,
-            content=body.content,
+            title=update_data.get("title"),
+            content=update_data.get("content", ...),  # 未指定なら ... sentinel
         )
     except (ValueError, PermissionError) as e:
         _handle_service_error(e)

@@ -10,6 +10,7 @@ endpoint 側で HTTPException に変換する。
   api.md では 403 Forbidden を返す仕様。
 """
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -98,9 +99,7 @@ def create_section(
         raise PermissionError("Plot is paused")
 
     # 上限チェック (api.md: 400 Bad Request)
-    current_count = (
-        db.query(Section).filter(Section.plot_id == plot_id).count()
-    )
+    current_count = db.query(Section).filter(Section.plot_id == plot_id).count()
     if current_count >= MAX_SECTIONS_PER_PLOT:
         raise ValueError("Section limit reached")
 
@@ -139,6 +138,10 @@ def create_section(
         order_index=target_order,
     )
     db.add(section)
+
+    # セクション変更を Plot.updated_at に反映（スナップショットスケジューラ連携）
+    plot.updated_at = datetime.now(UTC)
+
     db.commit()
     db.refresh(section)
     return section
@@ -182,6 +185,11 @@ def update_section(
 
     section.version = section.version + 1
 
+    # セクション変更を Plot.updated_at に反映（スナップショットスケジューラ連携）
+    plot = db.query(Plot).filter(Plot.id == section.plot_id).first()
+    if plot:
+        plot.updated_at = datetime.now(UTC)
+
     db.commit()
     db.refresh(section)
     return section
@@ -219,6 +227,11 @@ def delete_section(db: Session, section_id: UUID) -> None:
     for s in subsequent:
         s.order_index -= 1
 
+    # セクション変更を Plot.updated_at に反映（スナップショットスケジューラ連携）
+    plot = db.query(Plot).filter(Plot.id == plot_id).first()
+    if plot:
+        plot.updated_at = datetime.now(UTC)
+
     db.commit()
 
 
@@ -246,9 +259,7 @@ def reorder_section(db: Session, section_id: UUID, new_order: int) -> Section:
     old_order = section.order_index
 
     # 同一 Plot 内のセクション数を取得して範囲チェック
-    section_count = (
-        db.query(Section).filter(Section.plot_id == plot_id).count()
-    )
+    section_count = db.query(Section).filter(Section.plot_id == plot_id).count()
     if new_order < 0 or new_order >= section_count:
         raise ValueError("Invalid order")
 
@@ -283,6 +294,11 @@ def reorder_section(db: Session, section_id: UUID, new_order: int) -> Section:
             s.order_index -= 1
 
     section.order_index = new_order
+
+    # セクション変更を Plot.updated_at に反映（スナップショットスケジューラ連携）
+    plot = db.query(Plot).filter(Plot.id == plot_id).first()
+    if plot:
+        plot.updated_at = datetime.now(UTC)
 
     db.commit()
     db.refresh(section)

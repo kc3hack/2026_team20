@@ -180,10 +180,10 @@ class RollbackLog(Base):
     snapshot_version: Mapped[int] = mapped_column(
         Integer, nullable=False
     )  # Denormalized: preserves version info after snapshot pruning
-    user_id: Mapped[_uuid_mod.UUID] = mapped_column(
+    user_id: Mapped[_uuid_mod.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -194,7 +194,7 @@ class RollbackLog(Base):
     snapshot: Mapped["ColdSnapshot | None"] = relationship(
         "ColdSnapshot", back_populates="rollback_logs"
     )
-    user: Mapped["User"] = relationship("User")
+    user: Mapped["User | None"] = relationship("User")
 
 
 class Star(Base):

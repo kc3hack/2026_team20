@@ -20,10 +20,15 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api.v1.deps import AuthUser, DbSession, OptionalUser
-from app.api.v1.utils import _get_plot_or_404, _require_admin, plot_to_response, section_to_response
-from app.models import Plot, Section, User
+from app.api.v1.utils import (
+    _get_plot_or_404,
+    _require_admin,
+    plot_to_response,
+    section_to_response,
+)
+from app.models import Plot, User
 from app.schemas import MessageResponse, PauseRequest
-from app.services import plot_service
+from app.services import moderation_service, plot_service
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +47,10 @@ class UpdatePlotRequest(BaseModel):
     title: str | None = None
     description: str | None = None
     tags: list[str] | None = None
-    thumbnailUrl: str | None = ...  # noqa: N815 – sentinel: 未指定と明示的 null を区別
+    thumbnailUrl: str | None = None  # noqa: N815 – model_fields_set で未指定と明示的 null を区別
 
 
 # _serialize_section は utils.section_to_response() に統一済み
-
 
 
 def _serialize_user_brief(user: User | None) -> dict | None:
@@ -66,7 +70,9 @@ def _to_plot_dict(
     is_starred: bool = False,
 ) -> dict:
     """共通の plot_to_response() を使って PlotResponse dict を返す。"""
-    return plot_to_response(plot, star_count=star_count, is_starred=is_starred).model_dump()
+    return plot_to_response(
+        plot, star_count=star_count, is_starred=is_starred
+    ).model_dump()
 
 
 def _to_plot_detail_dict(
@@ -92,10 +98,35 @@ def _enrich_plot(
     plot: Plot,
     current_user_id: str | None,
 ) -> dict:
-    """Plot にスター数と isStarred を付与して PlotResponse に変換する。"""
+    """Plot にスター数と isStarred を付与して PlotResponse に変換する。
+
+    単一 Plot の場合に使用。リスト向けには _enrich_plots_batch() を使うこと。
+    """
     star_count = plot_service.get_star_count(db, plot.id)
     is_starred = plot_service.is_starred_by(db, plot.id, current_user_id)
     return _to_plot_dict(plot, star_count, is_starred)
+
+
+def _enrich_plots_batch(
+    db: DbSession,
+    plots: list[Plot],
+    current_user_id: str | None,
+) -> list[dict]:
+    """複数 Plot にスター数と isStarred を一括付与する（N+1 回避）。
+
+    バッチクエリで star_count と is_starred を取得し、
+    各 Plot を PlotResponse dict に変換して返す。
+    """
+    if not plots:
+        return []
+
+    plot_ids = [p.id for p in plots]
+    star_counts = plot_service.get_star_counts_batch(db, plot_ids)
+    starred_ids = plot_service.get_starred_plot_ids_batch(db, plot_ids, current_user_id)
+
+    return [
+        _to_plot_dict(p, star_counts.get(p.id, 0), p.id in starred_ids) for p in plots
+    ]
 
 
 def _enrich_plots_as_list(
@@ -107,7 +138,7 @@ def _enrich_plots_as_list(
     offset: int,
 ) -> dict:
     """Plot リストを PlotListResponse 形式に変換する。"""
-    items = [_enrich_plot(db, p, current_user_id) for p in plots]
+    items = _enrich_plots_batch(db, plots, current_user_id)
     return {
         "items": items,
         "total": total,
@@ -129,7 +160,7 @@ def list_trending(
     """急上昇 Plot 一覧（直近72時間のスター増加数でソート）。"""
     plots = plot_service.list_trending(db, limit)
     user_id = current_user.id if current_user else None
-    items = [_enrich_plot(db, p, user_id) for p in plots]
+    items = _enrich_plots_batch(db, plots, user_id)
     return {
         "items": items,
         "total": len(items),
@@ -148,7 +179,7 @@ def list_popular(
     """人気 Plot 一覧（全期間のスター総数でソート）。"""
     plots = plot_service.list_popular(db, limit)
     user_id = current_user.id if current_user else None
-    items = [_enrich_plot(db, p, user_id) for p in plots]
+    items = _enrich_plots_batch(db, plots, user_id)
     return {
         "items": items,
         "total": len(items),
@@ -167,7 +198,7 @@ def list_new(
     """新規 Plot 一覧（作成日時の降順）。"""
     plots = plot_service.list_new(db, limit)
     user_id = current_user.id if current_user else None
-    items = [_enrich_plot(db, p, user_id) for p in plots]
+    items = _enrich_plots_batch(db, plots, user_id)
     return {
         "items": items,
         "total": len(items),
@@ -217,7 +248,7 @@ def get_plot(plot_id: UUID, db: DbSession, current_user: OptionalUser):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
-        )
+        ) from e
 
     user_id = current_user.id if current_user else None
     star_count = plot_service.get_star_count(db, plot.id)
@@ -234,6 +265,12 @@ def update_plot(
     current_user: AuthUser,
 ):
     """Plot 更新（要認証・作成者のみ）。"""
+    # thumbnailUrl: model_fields_set で「未指定」と「明示的 null」を区別する。
+    # 未指定 → sentinel ... をサービス層に渡し更新スキップ、
+    # 明示的送信（null 含む）→ 実際の値を渡す。
+    thumbnail_url = (
+        body.thumbnailUrl if "thumbnailUrl" in body.model_fields_set else ...
+    )
     try:
         plot = plot_service.update_plot(
             db,
@@ -242,18 +279,18 @@ def update_plot(
             title=body.title,
             description=body.description,
             tags=body.tags,
-            thumbnail_url=body.thumbnailUrl,
+            thumbnail_url=thumbnail_url,
         )
     except ValueError as e:
         if "Forbidden" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=str(e),
-            )
+            ) from e
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
-        )
+        ) from e
 
     star_count = plot_service.get_star_count(db, plot.id)
     is_starred = plot_service.is_starred_by(db, plot.id, current_user.id)
@@ -271,11 +308,11 @@ def delete_plot(plot_id: UUID, db: DbSession, current_user: AuthUser):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=str(e),
-            )
+            ) from e
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
-        )
+        ) from e
 
 
 # ─── POST /plots/{plot_id}/pause ─────────────────────────────
@@ -291,15 +328,20 @@ def pause_plot(
 
     plot = _get_plot_or_404(db, plot_id)
 
-    if plot.is_paused:
+    try:
+        moderation_service.pause_plot(db, plot_id=plot.id, reason=body.reason)
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=msg,
+            ) from e
+        # "Plot is already paused"
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Plot is already paused",
-        )
-
-    plot.is_paused = True
-    plot.pause_reason = body.reason
-    db.commit()
+            detail=msg,
+        ) from e
 
     logger.info(
         "Admin %s paused plot %s (reason=%s)",
@@ -322,15 +364,20 @@ def resume_plot(
 
     plot = _get_plot_or_404(db, plot_id)
 
-    if not plot.is_paused:
+    try:
+        moderation_service.resume_plot(db, plot_id=plot.id)
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=msg,
+            ) from e
+        # "Plot is not paused"
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Plot is not paused",
-        )
-
-    plot.is_paused = False
-    plot.pause_reason = None
-    db.commit()
+            detail=msg,
+        ) from e
 
     logger.info(
         "Admin %s resumed plot %s",

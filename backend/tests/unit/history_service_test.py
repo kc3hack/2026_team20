@@ -1,7 +1,8 @@
 """history_service のユニットテスト。
 
 NOTE:
-- record_operation() は .returning() を使うため SQLite では動作しない → スキップ
+- record_operation() は .returning() を使うため SQLite では動作しない
+  → エラーパスは実DB、成功パスは db.execute をモックしてテスト
 - rollback_plot_to_snapshot() は with_for_update() を使うが SQLite は無視するため動作する
 - get_diff() は ColdSnapshot のバージョン検索を行う
 - delete_expired_hot_operations() は TTL ベースのクリーンアップ
@@ -9,8 +10,10 @@ NOTE:
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models import ColdSnapshot, HotOperation, Plot, RollbackLog, Section, User
@@ -18,22 +21,124 @@ from app.services import history_service
 from app.services.history_service import ConflictError
 
 
-class TestCreateOperation:
-    def test_create_operation(
-        self, db: Session, test_section: Section, test_user: User
-    ) -> None:
-        """record_operation は .returning() を使うため SQLite ではスキップ。"""
-        pytest.skip(
-            "record_operation uses .returning() which is not supported on SQLite"
-        )
+class TestRecordOperation:
+    """record_operation のテスト（SQLite .returning() 制約回避）。
 
-    def test_create_operation_invalid_type(
+    エラーパス（section/user not found）は実DBで検証。
+    成功パスは db.execute をモックして .returning() を回避。
+    """
+
+    def test_section_not_found(self, db: Session, test_user: User) -> None:
+        """存在しないセクションIDで ValueError が送出される。"""
+        with pytest.raises(ValueError, match="Section not found"):
+            history_service.record_operation(
+                db=db,
+                section_id=uuid.uuid4(),
+                user_id=test_user.id,
+                operation_type="insert",
+            )
+
+    def test_user_not_found(self, db: Session, test_section: Section) -> None:
+        """存在しないユーザーIDで ValueError が送出される。"""
+        with pytest.raises(ValueError, match="User not found"):
+            history_service.record_operation(
+                db=db,
+                section_id=test_section.id,
+                user_id=uuid.uuid4(),
+                operation_type="insert",
+            )
+
+    def test_success_mocked(
         self, db: Session, test_section: Section, test_user: User
     ) -> None:
-        """record_operation は .returning() を使うため SQLite ではスキップ。"""
-        pytest.skip(
-            "record_operation uses .returning() which is not supported on SQLite"
-        )
+        """成功パス: db.execute をモックして .returning() を回避。
+
+        バリデーション（section/user 存在チェック）は実DBで通過させ、
+        .returning() を含む UPDATE 文の実行のみモックする。
+        """
+        original_execute = db.execute
+
+        # Section.version の初期値は 1 なので、インクリメント後は 2
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = 2
+
+        def _patched_execute(stmt, *args, **kwargs):
+            # sa_update(Section)...returning() の呼び出しのみモック
+            # それ以外（SELECT クエリ等）はオリジナルに委譲
+            stmt_str = str(stmt)
+            if "sections" in stmt_str and "RETURNING" in stmt_str.upper():
+                return mock_result
+            return original_execute(stmt, *args, **kwargs)
+
+        with patch.object(db, "execute", side_effect=_patched_execute):
+            result = history_service.record_operation(
+                db=db,
+                section_id=test_section.id,
+                user_id=test_user.id,
+                operation_type="insert",
+                payload={"text": "hello"},
+            )
+
+        assert isinstance(result, HotOperation)
+        assert result.section_id == test_section.id
+        assert result.user_id == test_user.id
+        assert result.operation_type == "insert"
+        assert result.payload == {"text": "hello"}
+        assert result.version == 2
+
+    def test_success_payload_none(
+        self, db: Session, test_section: Section, test_user: User
+    ) -> None:
+        """payload が None でも正常に記録される。"""
+        original_execute = db.execute
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = 2
+
+        def _patched_execute(stmt, *args, **kwargs):
+            stmt_str = str(stmt)
+            if "sections" in stmt_str and "RETURNING" in stmt_str.upper():
+                return mock_result
+            return original_execute(stmt, *args, **kwargs)
+
+        with patch.object(db, "execute", side_effect=_patched_execute):
+            result = history_service.record_operation(
+                db=db,
+                section_id=test_section.id,
+                user_id=test_user.id,
+                operation_type="delete",
+            )
+
+        assert isinstance(result, HotOperation)
+        assert result.payload is None
+        assert result.operation_type == "delete"
+
+    def test_commit_failure_rolls_back(
+        self, db: Session, test_section: Section, test_user: User
+    ) -> None:
+        """db.commit() が SQLAlchemyError を送出した場合、ロールバックされる。"""
+        original_execute = db.execute
+        mock_result = MagicMock()
+        mock_result.scalar_one.return_value = 2
+
+        def _patched_execute(stmt, *args, **kwargs):
+            stmt_str = str(stmt)
+            if "sections" in stmt_str and "RETURNING" in stmt_str.upper():
+                return mock_result
+            return original_execute(stmt, *args, **kwargs)
+
+        with (
+            patch.object(db, "execute", side_effect=_patched_execute),
+            patch.object(db, "commit", side_effect=SQLAlchemyError("connection lost")),
+            patch.object(db, "rollback") as mock_rollback,
+        ):
+            with pytest.raises(SQLAlchemyError, match="connection lost"):
+                history_service.record_operation(
+                    db=db,
+                    section_id=test_section.id,
+                    user_id=test_user.id,
+                    operation_type="update",
+                )
+            mock_rollback.assert_called_once()
 
 
 class TestListOperations:
