@@ -381,14 +381,17 @@ export default function HomePage() {
 
 ##### 満たすべき要件
 - **Header:**
-  - PC: ロゴ（左）、検索バー（中央）、ログインボタン or UserMenu（右）
+  - PC: ロゴ（左）、検索バー（中央）、作成ボタン + ログインボタン or UserMenu（右）
+  - 作成ボタン（常時表示）: ログイン時は `/plots/new`、未ログイン時は `/auth/login?redirectTo=/plots/new` へ遷移
   - モバイル: ロゴ（左）、ハンバーガーメニュー（右）→ `<Sheet>` でナビゲーション表示
   - SearchBar と UserMenu は **スロット（children / props）で受け取る**。Step 2 以降で実体を注入。Step 1 時点ではプレースホルダーを表示。
   - `position: sticky; top: 0; z-index: $z-header`
 - **Footer:**
   - コピーライト、GitHub リンク
 - **MobileNav:**
-  - `<Sheet>` を使用。ナビゲーションリンク (ホーム, 検索, ログイン) を表示
+  - `<Sheet>` を使用。ナビゲーションリンク (ホーム, 検索, 作成, マイページ, ログイン/ログアウト) を表示
+  - 作成ボタン（常時表示）: ログイン時は `/plots/new`、未ログイン時は `/auth/login?redirectTo=/plots/new` へ遷移
+  - マイページ（ログイン時のみ）: `/profile/{user.id}` へ遷移（`user.id` 未定義時は非表示）
 - **TagBadge:**
   - Props: `tag: string`, `onClick?: (tag: string) => void`
   - クリック時にタグフィルタページへ遷移 or コールバック

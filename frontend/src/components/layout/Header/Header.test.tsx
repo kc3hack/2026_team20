@@ -9,6 +9,7 @@ vi.mock("@/hooks/useAuth", () => ({
 
 vi.mock("next/image", () => ({
   default: (props: { alt: string; [key: string]: unknown }) => (
+    // biome-ignore lint/performance/noImgElement: next/image mock for testing
     <img alt={props.alt} src={props.src as string} />
   ),
 }));
