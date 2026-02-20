@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, LogIn, LogOut, Menu, Plus, Search } from "lucide-react";
+import { Home, LogIn, LogOut, Menu, Plus, Search, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +15,9 @@ import { useAuth } from "@/hooks/useAuth";
 import styles from "./MobileNav.module.scss";
 
 export function MobileNav() {
-  const { isAuthenticated, signOut } = useAuth();
+  const { isAuthenticated, user, signOut } = useAuth();
+
+  const createHref = isAuthenticated ? "/plots/new" : "/auth/login?redirectTo=/plots/new";
 
   return (
     <Sheet>
@@ -45,22 +47,30 @@ export function MobileNav() {
             </Link>
           </SheetClose>
 
-          {isAuthenticated ? (
-            <>
-              <SheetClose asChild>
-                <Link href="/plots/new" className={styles.navItem}>
-                  <Plus size={20} />
-                  <span>作成</span>
-                </Link>
-              </SheetClose>
+          <SheetClose asChild>
+            <Link href={createHref} className={styles.navItem}>
+              <Plus size={20} />
+              <span>作成</span>
+            </Link>
+          </SheetClose>
 
-              <SheetClose asChild>
-                <button type="button" className={styles.navItem} onClick={() => signOut()}>
-                  <LogOut size={20} />
-                  <span>ログアウト</span>
-                </button>
-              </SheetClose>
-            </>
+          {/* /profile/undefined 防止: user.id が存在する場合のみマイページリンクを表示 */}
+          {isAuthenticated && user?.id && (
+            <SheetClose asChild>
+              <Link href={`/profile/${user.id}`} className={styles.navItem}>
+                <User size={20} />
+                <span>マイページ</span>
+              </Link>
+            </SheetClose>
+          )}
+
+          {isAuthenticated ? (
+            <SheetClose asChild>
+              <button type="button" className={styles.navItem} onClick={() => signOut()}>
+                <LogOut size={20} />
+                <span>ログアウト</span>
+              </button>
+            </SheetClose>
           ) : (
             <SheetClose asChild>
               <Link href="/auth/login" className={styles.navItem}>
