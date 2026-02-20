@@ -1,0 +1,595 @@
+# API 設計変更ドキュメント（2026-02-18）
+
+## 変更理由
+
+セクション（Section）概念の廃止により、以下の課題を解決する:
+
+1. **複雑性の排除**: セクション単位の管理（CRUD、並び替え、255個上限）はクライアント実装・サーバー実装の両方で不要な複雑性を生んでいた
+2. **データモデルの簡素化**: 1 Plot = 1 Document とすることで、リレーションが Plot → Document の1対1になり、セクション間の整合性管理が不要になる
+3. **リアルタイム編集の効率化**: セクション単位ではなくドキュメント全体で操作ログ（Hot Operation）とスナップショット（Cold Snapshot）を管理することで、同時編集の競合解決がシンプルになる
+4. **スケーラビリティ**: セクション単位の履歴管理からドキュメント単位のスナップショット方式に移行することで、ストレージ効率とクエリ性能が向上する
+
+## 設計方針
+
+### アーキテクチャ概要（案B: サーバー側 Hot Operation 生成）
+
+```
+┌──────────┐    ┌──────────┐
+│ Client A │    │ Client B │
+│  (Y.js)  │    │  (Y.js)  │
+└────┬─────┘    └────┬─────┘
+     │ WebSocket     │ WebSocket
+     │   (Y.js sync) │
+     ▼               ▼
+┌─────────────────────────┐
+│  Y.js Server Provider   │
+│  ・全クライアントの同期   │
+│  ・3秒デバウンス         │
+├─────────────────────────┤
+│  Hot Operation Writer   │
+│  ・DiffOp[]生成          │
+│  ・documents.content更新 │
+├─────────────────────────┤
+│  Cold Snapshot Worker   │
+│  ・数分ごとに自動生成     │
+└─────────────────────────┘
+```
+
+**ポイント:**
+
+- **クライアントは Y.js によるリアルタイム同期のみ**を担当。Hot Operation の送信は行わない
+- **サーバー側の Y.js Server Provider** が全クライアントの同期ハブとなり、Y.js ドキュメントの変更を検知
+- **3秒デバウンス**で diff を計算し、`DiffOp[]` を生成して `operations` テーブルに書き込む
+- **userId は Y.js awareness** から取得（各クライアントが接続時に awareness にユーザー情報をセット）
+- `documents.content` はサーバー側で Y.js ドキュメントから常に同期更新される
+
+### Document全体の構造
+
+- ドキュメント全体を1つの大きな Markdown + 色拡張テキストとして扱う
+- **1 Plot = 1 Document**（1対1の関係）
+- セクション分割はクライアント側の表示・編集UIの責務（APIは関与しない）
+- `content` フィールドはドキュメント全文を格納する
+
+### DiffOp 型（diff構造の詳細定義）
+
+操作ログ（Hot Operation）およびスナップショット（Cold Snapshot）で使用する差分表現の基本単位。
+
+```typescript
+interface DiffOp {
+  type: "retain" | "insert" | "delete";
+  count?: number;  // retain, delete で必須
+  text?: string;   // insert で必須, delete で必須（逆適用・差分表示用）
+}
+```
+
+| フィールド | 型 | 必須条件 | 説明 |
+|-----------|------|---------|------|
+| `type` | `"retain" \| "insert" \| "delete"` | 常に必須 | 操作種別 |
+| `count` | `number` | retain, delete で必須 | 保持/削除する文字数 |
+| `text` | `string` | insert で必須, delete で必須 | 挿入テキスト / 削除されたテキスト |
+
+**制約:**
+
+- 配列は左から右に順次適用する（相対位置方式）
+- 適用前テキスト長 = `retain` の `count` 合計 + `delete` の `count` 合計
+- 適用後テキスト長 = `retain` の `count` 合計 + `insert` の `text` 長合計
+- 末尾の `retain`（残りテキスト分）は省略可能
+- `delete` に `text` を含めることで、逆適用（undo）と差分表示の両方に対応
+
+**例:**
+
+```jsonc
+// "Hello World" → "Hello, Beautiful World"
+[
+  { "type": "retain", "count": 5 },
+  { "type": "insert", "text": ", Beautiful" },
+  { "type": "retain", "count": 6 }
+]
+
+// "Hello World" → "Hi World"
+[
+  { "type": "retain", "count": 1 },
+  { "type": "delete", "count": 4, "text": "ello" },
+  { "type": "insert", "text": "i" },
+  { "type": "retain", "count": 6 }
+]
+```
+
+**選定理由:** OT（Operational Transformation）系の標準的な表現。Y.js の delta 形式とほぼ同一構造のため、サーバー側での Y.js delta → DiffOp 変換コストが低い。
+
+### Hot Operation
+
+- **目的**: 誰がどこをどう編集したかの細かい操作ログ
+- **TTL**: 72時間（期限切れ後に自動削除）
+- **生成方式**: **サーバー側で自動生成**（Y.js Server Provider が Y.js ドキュメントの変更を検知し、3秒デバウンス後に DiffOp[] を生成）
+- **クライアントの役割**: Y.js によるリアルタイム同期のみ。Hot Operation の送信は行わない
+- **用途**: 直近の編集履歴表示、短期ロールバック、ctrl-Z
+- **粒度**: Y.js ドキュメントの変更が3秒間停止したらサーバー側でdiff計算
+- **operationType**: `"edit"` のみ（コメントは Thread/Comment API で別管理）
+- **contents**: `DiffOp[]`（上記の DiffOp 配列）
+- **userId**: Y.js awareness から取得（最後に編集したユーザー）
+
+```json
+// サーバー内部で生成されるレコード（クライアントから送信するものではない）
+{
+  "id": "uuid",
+  "plotId": "uuid",
+  "userId": "uuid (Y.js awarenessから取得)",
+  "operationType": "edit",
+  "contents": [
+    { "type": "retain", "count": 5 },
+    { "type": "insert", "text": ", Beautiful" },
+    { "type": "retain", "count": 6 }
+  ],
+  "createdAt": "2026-02-18T12:00:00Z"
+}
+```
+
+### Cold Snapshot
+
+- **目的**: ドキュメント全体のdiffスナップショット
+- **保持期間**: 永続（削除しない）
+- **取得間隔**: 数分ごと（サーバー側で自動生成）
+- **用途**: 長期履歴、ロールバック、差分比較
+- **content**: `DiffOp[]`（前回スナップショットからの差分）
+- **parentSnapshotId**: 前回スナップショットのID（チェーン管理用。初回は `null`）
+
+```json
+{
+  "id": "uuid",
+  "plotId": "uuid",
+  "parentSnapshotId": "uuid | null",
+  "content": [
+    { "type": "retain", "count": 100 },
+    { "type": "delete", "count": 20, "text": "削除されたテキスト" },
+    { "type": "insert", "text": "新しいテキスト" },
+    { "type": "retain", "count": 500 }
+  ],
+  "createdBy": "system | userId",
+  "createdAt": "2026-02-18T12:00:00Z"
+}
+```
+
+**初回スナップショット** (`parentSnapshotId: null`): 空文字列からの全文挿入として表現する。
+
+```json
+{
+  "content": [{ "type": "insert", "text": "ドキュメント全文..." }],
+  "parentSnapshotId": null
+}
+```
+
+### 分散実行の仕組み
+
+- Cold Snapshot の生成はUUIDベースのオフセットを使い、複数ワーカーで分散実行する
+- 各ワーカーはUUID空間の一定範囲を担当し、対象Plotのスナップショットを生成
+- 衝突回避: UUIDの先頭ビットでワーカーを振り分け
+- **排他制御**: 同一 plot_id に対するスナップショット生成は `SELECT ... FOR UPDATE` またはアドバイザリーロックで直列化する（`parentSnapshotId` チェーンの分岐を防止）
+
+### diff構造の詳細仕様
+
+#### 位置指定方式
+
+DiffOp 配列は「相対位置方式」を採用。配列の各要素は前の要素の適用結果に対する位置を表す。
+テキスト内の絶対位置は `retain` の `count` 累計で算出する。
+
+```
+元テキスト: "ABCDEFGH" (長さ8)
+操作: offset=3 に "XY" を挿入
+
+DiffOp[]:
+  [
+    { "type": "retain", "count": 3 },   // "ABC" をスキップ
+    { "type": "insert", "text": "XY" }, // "XY" を挿入
+    { "type": "retain", "count": 5 }    // "DEFGH" をスキップ（省略可）
+  ]
+結果: "ABCXYDEFGH"
+```
+
+#### 逆適用（Undo）ルール
+
+`DiffOp[]` の逆操作は以下の変換で生成する:
+
+| 元の操作 | 逆操作 |
+|---------|--------|
+| `retain(count)` | `retain(count)` |
+| `insert(text)` | `delete(count=text.length, text=text)` |
+| `delete(count, text)` | `insert(text)` |
+
+逆適用は配列を逆順に処理する必要はなく、上記の変換を適用した新しい `DiffOp[]` を生成すれば、そのまま順次適用可能。
+
+#### Y.js delta との変換
+
+Y.js の delta 形式と DiffOp の対応:
+
+```typescript
+// Y.js delta → DiffOp[]
+function yDeltaToDiffOps(delta: Y.Delta[]): DiffOp[] {
+  return delta.map(op => {
+    if (op.retain) return { type: "retain", count: op.retain };
+    if (op.insert) return { type: "insert", text: op.insert as string };
+    if (op.delete) return { type: "delete", count: op.delete };
+    // 注意: Y.js の delete には元テキストが含まれないため、
+    // サーバー側で documents.content から該当部分を補完する必要がある
+    throw new Error("Unknown delta operation");
+  });
+}
+```
+
+### 全文復元方法
+
+#### 基本方針
+
+- `documents.content` は常に最新の全文を保持する（サーバー側 Hot Operation Writer が Y.js ドキュメントから更新）
+- 過去時点の全文復元は、スナップショットチェーンの前方適用で行う
+
+#### 復元アルゴリズム
+
+```python
+def restore_full_text(target_snapshot_id: str) -> str:
+    """指定スナップショット時点の全文を復元する"""
+    # 1. target から root（parentSnapshotId=null）まで遡ってチェーンを取得
+    chain = []
+    current = get_snapshot(target_snapshot_id)
+    while current is not None:
+        chain.append(current)
+        current = get_snapshot(current.parent_snapshot_id) if current.parent_snapshot_id else None
+
+    # 2. root から target まで順に DiffOp を適用
+    chain.reverse()  # root → target の順にする
+    text = ""  # 初回スナップショットは空文字列から開始
+    for snapshot in chain:
+        text = apply_diff_ops(text, snapshot.content)
+
+    return text
+
+def apply_diff_ops(text: str, ops: list[DiffOp]) -> str:
+    """DiffOp[] をテキストに適用する"""
+    result = []
+    pos = 0
+    for op in ops:
+        if op.type == "retain":
+            result.append(text[pos:pos + op.count])
+            pos += op.count
+        elif op.type == "insert":
+            result.append(op.text)
+        elif op.type == "delete":
+            pos += op.count  # 削除分をスキップ
+    # 残りのテキスト（末尾 retain 省略時）
+    result.append(text[pos:])
+    return "".join(result)
+```
+
+### ロールバック方式
+
+#### 手順（5ステップ）
+
+1. 指定された `snapshotId` の時点の全文を復元する（上記「全文復元方法」を使用）
+2. 復元された全文と現在の `documents.content` の差分を計算し、`DiffOp[]` を生成
+3. `documents.content` を復元された全文で上書きする
+4. 新しいスナップショットを生成（`parentSnapshotId` = 最新スナップショットのID、`content` = ステップ2の差分、`createdBy` = 操作ユーザーID）
+5. ロールバック操作を Hot Operation として記録（`operationType: "edit"`, `contents` = ステップ2の差分）
+
+#### コメント（スレッド）のロールバック時の扱い
+
+| ケース | 挙動 |
+|-------|------|
+| anchor なしスレッド | 影響なし（Plot全体に紐づくコメント） |
+| anchor ありスレッド（対象テキストが存在） | `currentStartOffset` / `currentEndOffset` が再計算される |
+| anchor ありスレッド（対象テキストが消失） | `isOrphaned: true` になる。スレッド自体は削除しない |
+
+### コメントのインラインアンカー
+
+#### 設計思想
+
+- コメントは Hot Operation（`operationType: "edit"`）とは**完全に分離**。Thread/Comment API で管理する
+- インラインコメントの位置情報は `anchor` フィールドで Thread に紐づける
+- anchor はスレッド作成時のスナップショット位置を基準に記録する（immutable）
+
+#### Thread 作成リクエスト
+
+```json
+{
+  "plotId": "uuid",
+  "anchor": {
+    "snapshotId": "uuid",
+    "startOffset": 42,
+    "endOffset": 67,
+    "quotedText": "選択されたテキスト"
+  }
+}
+```
+
+#### ThreadResponse
+
+```json
+{
+  "id": "uuid",
+  "plotId": "uuid",
+  "anchor": {
+    "snapshotId": "uuid",
+    "startOffset": 42,
+    "endOffset": 67,
+    "quotedText": "選択されたテキスト",
+    "currentStartOffset": 45,
+    "currentEndOffset": 70,
+    "isOrphaned": false
+  } | null,
+  "commentCount": 10,
+  "createdAt": "2026-02-16T00:00:00Z"
+}
+```
+
+#### anchor 構造（保存時）
+
+```typescript
+interface ThreadAnchor {
+  snapshotId: string;       // 作成時の最新スナップショットID
+  startOffset: number;      // テキスト開始位置（スナップショット時点）
+  endOffset: number;        // テキスト終了位置（スナップショット時点）
+  quotedText: string;       // 選択テキスト（表示用・orphan判定の補助）
+}
+```
+
+#### ThreadResponse の anchor（返却時）
+
+```typescript
+interface ThreadResponseAnchor extends ThreadAnchor {
+  currentStartOffset: number | null;  // 最新テキストでの開始位置（算出値）
+  currentEndOffset: number | null;    // 最新テキストでの終了位置（算出値）
+  isOrphaned: boolean;                // 対象テキストが消失したか
+}
+```
+
+#### オフセット変換アルゴリズム
+
+```python
+def transform_offset(offset: int, ops: list[DiffOp]) -> int | None:
+    """スナップショット間のオフセット変換（1スナップショット分）"""
+    current_pos = 0  # 元テキストでの位置
+    new_pos = 0      # 新テキストでの位置
+
+    for op in ops:
+        if current_pos >= offset:
+            break
+        if op.type == "retain":
+            advance = min(op.count, offset - current_pos)
+            current_pos += advance
+            new_pos += advance
+        elif op.type == "insert":
+            new_pos += len(op.text)
+        elif op.type == "delete":
+            deleted = min(op.count, offset - current_pos)
+            current_pos += deleted
+            # offset が削除範囲内に入った場合
+            if current_pos >= offset:
+                return None  # orphaned
+    return new_pos
+
+def transform_anchor(anchor: dict, from_snapshot_id: str) -> dict:
+    """anchor を最新位置に変換する"""
+    # from_snapshot_id から最新スナップショットまでのチェーンを取得
+    snapshots = get_snapshot_chain(from_snapshot_id, to_latest=True)
+
+    start = anchor["startOffset"]
+    end = anchor["endOffset"]
+
+    for snapshot in snapshots[1:]:  # 最初のスナップショットはスキップ（基準点）
+        new_start = transform_offset(start, snapshot.content)
+        new_end = transform_offset(end, snapshot.content)
+        if new_start is None or new_end is None:
+            return {**anchor, "currentStartOffset": None, "currentEndOffset": None, "isOrphaned": True}
+        start = new_start
+        end = new_end
+
+    return {**anchor, "currentStartOffset": start, "currentEndOffset": end, "isOrphaned": False}
+```
+
+**パフォーマンス考慮事項**: スレッド数 × スナップショットチェーン長の計算が必要になるため、以下の最適化を検討する:
+- anchor 変換結果のキャッシュ（スナップショット生成時に一括変換）
+- 長いチェーンの定期的な圧縮（中間スナップショットを統合）
+
+---
+
+## エンドポイント変更一覧
+
+### 削除されるエンドポイント（6本）
+
+| # | エンドポイント | 旧用途 | 削除理由 |
+|---|---------------|--------|---------|
+| 1 | `GET /plots/{plotId}/sections` | セクション一覧取得 | セクション概念廃止 |
+| 2 | `POST /plots/{plotId}/sections` | セクション作成 | セクション概念廃止 |
+| 3 | `GET /sections/{sectionId}` | セクション詳細取得 | セクション概念廃止 |
+| 4 | `PUT /sections/{sectionId}` | セクション更新 | セクション概念廃止 |
+| 5 | `DELETE /sections/{sectionId}` | セクション削除 | セクション概念廃止 |
+| 6 | `POST /sections/{sectionId}/reorder` | セクション並び替え | セクション概念廃止 |
+
+### 変更されるエンドポイント（3本）
+
+| # | 旧エンドポイント | 新エンドポイント | 変更内容 |
+|---|-----------------|-----------------|---------|
+| 1 | `GET /sections/{sectionId}/history` | `GET /plots/{plotId}/history` | セクション→Plot単位に変更。レスポンスの各項目から `version` を削除し `snapshotId` に変更 |
+| 2 | `POST /sections/{sectionId}/rollback/{version}` | `POST /plots/{plotId}/rollback/{snapshotId}` | パス変数が version→snapshotId に変更。ロールバックは前方適用で全文復元後、新スナップショットを生成 |
+| 3 | `GET /sections/{sectionId}/diff/{fromVersion}/{toVersion}` | `GET /plots/{plotId}/diff/{fromSnapshotId}/{toSnapshotId}` | パス変数が version→snapshotId に変更。レスポンスのdiff形式は `DiffOp[]` |
+
+> **注**: 旧 `POST /sections/{sectionId}/operations` は廃止。案Bではクライアントは Hot Operation を送信せず、**サーバー側の Hot Operation Writer が Y.js ドキュメントの変更を検知して自動生成**するため、外部 API としては不要。
+
+### 追加されるエンドポイント（3本）
+
+| # | エンドポイント | 用途 |
+|---|---------------|------|
+| 1 | `GET /plots/{plotId}/document` | ドキュメント全文取得 |
+| 2 | `PUT /plots/{plotId}/document` | ドキュメント全文更新 |
+| 3 | `GET /plots/{plotId}/snapshots` | スナップショット一覧取得（各スナップショットは `{ id, plotId, parentSnapshotId, content: DiffOp[], createdBy, createdAt }` 形式） |
+
+---
+
+## スキーマ変更一覧
+
+### 削除
+
+| スキーマ名 | 旧用途 |
+|-----------|--------|
+| `SectionResponse` | セクション詳細 |
+| `SectionListResponse` | セクション一覧 |
+
+### 追加
+
+| スキーマ名 | 用途 | 定義 |
+|-----------|------|------|
+| `DocumentResponse` | ドキュメント全文取得レスポンス | `{ id, plotId, content, updatedAt }` |
+| `SnapshotResponse` | スナップショット詳細 | `{ id, plotId, parentSnapshotId, content: DiffOp[], createdBy: "system \| userId", createdAt }` |
+| `SnapshotListResponse` | スナップショット一覧レスポンス | `{ items: [SnapshotResponse], total }` |
+| `DiffOp` | 差分操作の基本単位 | `{ type: "retain" \| "insert" \| "delete", count?: number, text?: string }` |
+
+> **注**: 旧設計にあった `OperationRequest` スキーマ（クライアントからの Hot Operation 送信用）は廃止。案Bではサーバー側で Hot Operation を自動生成するため不要。
+
+### 変更
+
+| スキーマ名 | 変更内容 |
+|-----------|---------|
+| `PlotResponse` | `editingUsers[].sectionId` を削除 |
+| `PlotDetailResponse` | `sections` フィールドを削除、`document` フィールドを追加 |
+| `HistoryListResponse` | `items[].sectionId` を `items[].plotId` に変更、`items[].version` を `items[].snapshotId` に変更。各項目に `createdBy` を追加 |
+| `DiffResponse` | `fromVersion/toVersion` を `fromSnapshotId/toSnapshotId` に変更。旧 `additions`/`deletions` 形式を廃止し、`diff: DiffOp[]` に統一 |
+| `ThreadResponse` | `sectionId` フィールドを削除。`anchor` フィールドを追加（オプション、インラインコメント用） |
+
+---
+
+## DBテーブル変更
+
+### 削除するテーブル
+
+| テーブル名 | 旧用途 |
+|-----------|--------|
+| `sections` | セクションデータ格納 |
+
+### 新規テーブル
+
+| テーブル名 | 用途 | 主要カラム |
+|-----------|------|-----------|
+| `documents` | Plot全文データ | `id`, `plot_id` (unique), `content` (text), `updated_at` |
+| `snapshots` | Cold Snapshot（diff形式） | `id`, `plot_id`, `parent_snapshot_id` (uuid, nullable, FK→snapshots), `content` (jsonb, DiffOp[]), `created_by` (text, "system" or userId), `created_at` |
+
+#### snapshots テーブル DDL
+
+```sql
+CREATE TABLE snapshots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plot_id UUID NOT NULL REFERENCES plots(id) ON DELETE CASCADE,
+    parent_snapshot_id UUID REFERENCES snapshots(id) DEFAULT NULL,
+    content JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_by TEXT NOT NULL DEFAULT 'system',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_snapshots_plot_created ON snapshots(plot_id, created_at);
+```
+
+### 変更するテーブル
+
+| テーブル名 | 変更内容 |
+|-----------|---------|
+| `operations` (旧 `operation_logs`) | `section_id` カラムを `plot_id` に変更。`operation_type` を `'edit'` のみに変更。`position`, `content`, `length` カラムを削除し `contents` (jsonb, DiffOp[]) カラムを追加。`user_id` は **Y.js awareness から取得**してサーバー側で設定する（クライアントからのリクエストではなく、Y.js Server Provider が awareness 情報を参照して書き込む） |
+| `threads` | `section_id` カラムを削除。`anchor` (jsonb, nullable) カラムを追加。anchor = `{ "snapshotId", "startOffset", "endOffset", "quotedText" }` |
+
+#### threads テーブル変更 DDL
+
+```sql
+ALTER TABLE threads DROP COLUMN section_id;
+ALTER TABLE threads ADD COLUMN anchor JSONB DEFAULT NULL;
+-- anchor = {"snapshotId": "uuid", "startOffset": int, "endOffset": int, "quotedText": "string"}
+```
+
+---
+
+## 矛盾チェック結果
+
+### 既存APIとの整合性
+
+| 項目 | 状態 | 詳細 |
+|------|------|------|
+| Plots CRUD | 問題なし | 変更なし（GET/POST/PUT/DELETE /plots 系はそのまま） |
+| Plots トレンド/人気/新着 | 問題なし | 変更なし |
+| Images | 問題なし | セクションに依存していない |
+| Stars | 問題なし | Plot単位のまま |
+| Fork | 要確認 | フォーク時にセクションをコピーする処理 → ドキュメント全文コピーに変更が必要。スナップショットはdiff形式のため、フォーク先の初回スナップショットは全文→空からのdiffとして生成する |
+| Threads | 要変更 | `POST /threads` の `sectionId` パラメータを削除。`anchor` フィールドを追加（インラインコメントの位置情報） |
+| Search | 問題なし | 全文検索はPlot単位のまま（`documents` テーブルの `content` を検索対象に変更） |
+| Admin | 問題なし | セクションに依存していない |
+| Auth | 問題なし | セクションに依存していない |
+
+### スキーマの整合性
+
+| 項目 | 状態 | 詳細 |
+|------|------|------|
+| `PlotResponse.editingUsers` | 要変更 | `sectionId` を削除 → 編集中ユーザーはPlot単位で表示 |
+| `PlotDetailResponse` | 要変更 | `sections` → `document` に置換 |
+| `ThreadResponse` | 要変更 | `sectionId` 削除。`anchor` フィールド追加（`{ snapshotId, startOffset, endOffset, quotedText }` + 算出フィールド `currentStartOffset`, `currentEndOffset`, `isOrphaned`） |
+| `POST /threads` リクエスト | 要変更 | `sectionId` パラメータ削除 |
+| `OperationRequest` (旧設計で存在) | 廃止 | 案Bではクライアントから Hot Operation を送信しないため、`OperationRequest` スキーマは不要。サーバー側の Hot Operation Writer が Y.js awareness 情報と合わせて内部的に生成する |
+| `SnapshotResponse` (新規) | 確認済み | `{ id, plotId, parentSnapshotId, content: DiffOp[], createdBy, createdAt }` で設計方針と整合 |
+| `DiffOp` (新規) | 確認済み | `{ type: "retain" \| "insert" \| "delete", count?: number, text?: string }` で設計方針と整合 |
+| `DiffResponse` | 確認済み | `fromSnapshotId/toSnapshotId` + `diff: DiffOp[]` 形式に統一 |
+
+### 動作上の注意点
+
+1. **ロールバックの粒度変更**: 旧APIでは `version` (整数連番) を指定していたが、新APIでは `snapshotId` (UUID) を指定する。クライアントはスナップショット一覧から対象を選ぶUIに変更が必要。ロールバックは `parentSnapshotId` チェーンを辿ってスナップショットを前方適用し、対象時点の全文を復元した上で新スナップショットを生成する方式
+2. **Hot Operation のサーバー側自動生成（案B）**: クライアントは Hot Operation を送信しない。サーバー側の Y.js Server Provider が Y.js ドキュメントの変更を検知し、3秒デバウンス後に `DiffOp[]` を計算して `operations` テーブルに書き込む。`userId` は Y.js awareness から取得する。`operationType` は `"edit"` のみ（コメントは Thread/Comment API で別管理）
+3. **Cold Snapshot の生成**: サーバー側で数分ごとに自動生成。`content` は前回スナップショットからの `DiffOp[]` 形式。`parentSnapshotId` で前回スナップショットへのチェーンを保持。`createdBy` は自動生成の場合 `"system"`、手動保存の場合はユーザーIDが入る
+4. **全文復元**: 特定時点の全文を復元するには、初回スナップショット（`parentSnapshotId: null`）から対象スナップショットまでの `DiffOp[]` チェーンを順に前方適用する。`documents` テーブルの `content` は常に最新全文を保持しており、最新状態の取得には復元不要
+5. **編集一時停止（pause）**: ドキュメント全体に対して適用される（旧仕様でもPlot単位だったので変更なし）
+6. **コメントアンカーのオフセット変換**: インラインコメント（`anchor` 付きスレッド）は、スレッド作成時のスナップショット位置を基準に保存する。最新位置への変換はサーバー側で DiffOp チェーンを辿って算出し、`currentStartOffset` / `currentEndOffset` / `isOrphaned` として返却する。変換コストが高いため、スレッド一覧取得時のパフォーマンスに注意
+
+---
+
+## 移行ガイド
+
+### Phase 1: DB マイグレーション
+
+1. `documents` テーブルを作成（`id`, `plot_id` (unique), `content` (text), `updated_at`）
+2. `snapshots` テーブルを作成（`id`, `plot_id`, `parent_snapshot_id` (uuid, nullable, FK→snapshots), `content` (jsonb, DiffOp[]), `created_by` (text), `created_at`）
+3. 既存の `sections` データを `documents` テーブルに統合（各Plotのセクションを `orderIndex` 順に結合して1つの `content` に変換）
+4. `operations` テーブルの `section_id` を `plot_id` に変換（セクションのPlotIdを参照）
+5. `operations` テーブルの `operation_type` を `'edit'` のみに変更し、`position`, `content`, `length` カラムを削除して `contents` (jsonb, DiffOp[]) カラムを追加。既存データは旧形式から `DiffOp[]` 形式に変換する
+6. `threads` テーブルの `section_id` カラムを削除。`anchor` (jsonb, nullable) カラムを追加
+7. `sections` テーブルをバックアップ後に削除
+8. 移行完了後、各Plotの初回スナップショットを `snapshots` テーブルに生成（`content` は `[{ "type": "insert", "text": "全文" }]`、`parentSnapshotId: null`、`created_by` は `"system"`）
+
+### Phase 2: バックエンド API 変更
+
+1. 新エンドポイント追加（`GET/PUT /plots/{plotId}/document`, `GET /plots/{plotId}/snapshots`）
+2. 変更エンドポイント更新（history, rollback, diff を Plot単位に）
+3. 旧 `POST /sections/{sectionId}/operations` を廃止（案Bでは外部APIとして不要）
+4. 旧エンドポイント削除（6本のセクション系エンドポイント）
+5. フォーク処理をドキュメント全文コピーに変更（フォーク先の初回スナップショットも生成）
+6. スレッド作成APIから `sectionId` パラメータを削除。`anchor` パラメータ（オプション）を追加
+7. **Y.js Server Provider の実装**（全クライアントの同期ハブ、WebSocket 経由）
+8. **Hot Operation Writer の実装**（Y.js ドキュメント変更の3秒デバウンス → DiffOp[] 生成 → `operations` テーブル書き込み → `documents.content` 更新。`userId` は Y.js awareness から取得）
+9. Cold Snapshot 自動生成ワーカーを実装（`DiffOp[]` 形式で保存、`parentSnapshotId` チェーン管理、`created_by` = `"system"`、排他制御付き）
+10. ロールバックAPIの実装を前方適用方式に変更（`parentSnapshotId` チェーンを辿って全文復元→新スナップショット生成）
+11. スレッド取得APIに `anchor` オフセット変換ロジックを追加（`currentStartOffset`, `currentEndOffset`, `isOrphaned` の算出）
+
+### Phase 3: フロントエンド変更
+
+1. セクション一覧UI → ドキュメント全文エディタに変更
+2. セクション操作（作成/削除/並び替え）UIの削除
+3. **Y.js Provider 接続の実装**（WebSocket 経由で Y.js Server Provider に接続。クライアントは Y.js によるリアルタイム同期のみ担当）
+4. **Y.js awareness にユーザー情報をセット**（userId, userName など。サーバー側で Hot Operation の `userId` 取得に使用される）
+5. ~~Hot Operation のバッファリング・バッチ送信~~ → **不要**（案Bではサーバー側で自動生成）
+6. ~~Y.js の delta 形式 → DiffOp[] 変換レイヤー~~ → **クライアント側では不要**（サーバー側で変換）
+7. スナップショット一覧・ロールバックUIの実装（`snapshotId` ベース、`createdBy` の表示に対応）
+8. スレッドUIから `sectionId` 関連を削除
+9. インラインコメント（anchor）UIの実装（テキスト選択→スレッド作成、`currentStartOffset` / `currentEndOffset` による位置ハイライト、`isOrphaned` 表示）
+10. 編集中ユーザー表示からセクション情報を削除
+
+### Phase 4: テスト & デプロイ
+
+1. 統合テストの更新（旧セクション系テストの削除、新ドキュメント系テストの追加）
+2. **Y.js Server Provider の同期テスト**（複数クライアント接続、awareness 情報の伝播）
+3. **Hot Operation Writer のテスト**（3秒デバウンス、DiffOp[] 生成精度、`userId` の Y.js awareness からの取得、`documents.content` の更新）
+4. Cold Snapshot の `DiffOp[]` 生成・`parentSnapshotId` チェーン整合性・全文復元テストの追加
+5. `createdBy` フィールドの正しい設定（system / userId）のテスト
+6. anchor オフセット変換の正確性テスト（挿入/削除後のオフセットずれ、`isOrphaned` 判定）
+7. E2Eテストの更新（インラインコメントUI含む）
+8. ステージング環境でのマイグレーション検証（特に `DiffOp[]` 変換の正確性と `parentSnapshotId` チェーン構築）
+9. 本番デプロイ（ダウンタイムあり: DB マイグレーションの関係）

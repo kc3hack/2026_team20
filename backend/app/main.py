@@ -9,7 +9,6 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -17,6 +16,8 @@ from app.api.v1.api import api_router
 from app.core.config import get_settings
 from app.core.database import get_engine, get_session_local
 from app.core.supabase import get_supabase_client
+from app.services.snapshot_cleanup import start_snapshot_cleanup
+from app.services.snapshot_scheduler import start_snapshot_scheduler
 
 settings = get_settings()
 
@@ -73,6 +74,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             "Image upload will not work.",
             _images_dir,
         )
+
+    start_snapshot_scheduler()
+    start_snapshot_cleanup()
 
     yield
 
@@ -198,10 +202,6 @@ async def request_middleware(request: Request, call_next):
 #  Router
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 app.include_router(api_router, prefix="/api/v1")
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  Static files
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-app.mount("/api/v1/images", StaticFiles(directory=str(_images_dir)), name="images")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -222,4 +222,3 @@ async def health() -> dict[str, str]:
         db_status = "error"
     overall = "ok" if db_status == "ok" else "degraded"
     return {"status": overall, "database": db_status}
-
