@@ -14,6 +14,6 @@
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     user-select: none;
 }

@@ -1,8 +1,7 @@
 @use "variables" as *;
 
 .footer {
-    border-top: 1px solid hsl(var(--border));
-    background-color: hsl(var(--background));
+    background-color: var(--background);
     padding: 1.5rem 1rem;
 }
 
@@ -16,19 +15,19 @@
 
 .copyright {
     font-size: 0.875rem;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
 }
 
 .githubLink {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     text-decoration: none;
     font-size: 0.875rem;
     transition: color 0.15s ease;
 
     &:hover {
-        color: hsl(var(--foreground));
+        color: var(--foreground);
     }
 }

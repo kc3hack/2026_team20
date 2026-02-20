@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { UserMenu } from "@/components/auth/UserMenu/UserMenu";
 import { Footer } from "@/components/layout/Footer/Footer";
 import { Header } from "@/components/layout/Header/Header";
+import { SearchBar } from "@/components/search/SearchBar/SearchBar";
 import Providers from "@/providers/Providers";
 
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default function RootLayout({
       <body className={styles.body}>
         <Providers>
           {/* Header は useAuth を使用しているため、必ず Providers の子としてレンダリングする必要がある */}
-          <Header userMenuSlot={<UserMenu />} />
+          <Header searchSlot={<SearchBar />} userMenuSlot={<UserMenu />} />
           <main className={styles.main}>{children}</main>
           <Footer />
         </Providers>

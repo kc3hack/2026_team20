@@ -10,20 +10,20 @@
 }
 
 .icon {
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     margin-bottom: 1rem;
 }
 
 .title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     margin-bottom: 0.5rem;
 }
 
 .description {
     font-size: 0.875rem;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     max-width: 24rem;
     margin-bottom: 1rem;
 }

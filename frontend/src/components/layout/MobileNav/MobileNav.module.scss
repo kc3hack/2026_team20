@@ -13,7 +13,7 @@
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     text-decoration: none;
     font-size: 0.9375rem;
     font-weight: 500;
@@ -25,6 +25,6 @@
     transition: background-color 0.15s ease;
 
     &:hover {
-        background-color: hsl(var(--accent));
+        background-color: var(--accent);
     }
 }

@@ -1,0 +1,13 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.skeletonItem {
+    height: 10rem;
+    border-radius: 0.75rem;
+}
