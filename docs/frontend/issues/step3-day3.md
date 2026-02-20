@@ -81,8 +81,6 @@
 - `src/lib/realtime/types.ts` — **SectionAwarenessState, YjsSyncMessage 型定義**
 - `src/styles/_typography.scss` の拡充（Tiptap コンテンツのスタイル: h1-h3, p, ul, ol, a, blockquote, code 等）
 
-> **⚠️ ハッカソン注意: エディタは沼。** まず「文字が打てて保存できる + ロックが動く」を実現する。ツールバー装飾とリアルタイム同期の完成度は後。
-
 ##### 満たすべき要件
 
 **Phase 1 — MVP（このIssueで必ず完了させる）:**

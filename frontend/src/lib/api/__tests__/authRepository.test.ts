@@ -7,12 +7,24 @@ import {
 } from "@/mocks/data/users";
 import * as authRepository from "../repositories/authRepository";
 
+// fetch mock（getUserProfile / getUserPlots / getUserContributions で使う）
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
+
+// Supabase SDK mock（getCurrentUser で使う）
+const mockGetUser = vi.fn();
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({
+    auth: {
+      getUser: mockGetUser,
+    },
+  }),
+}));
 
 describe("authRepository", () => {
   beforeEach(() => {
     fetchMock.mockReset();
+    mockGetUser.mockReset();
   });
 
   afterAll(() => {
@@ -20,49 +32,44 @@ describe("authRepository", () => {
   });
 
   describe("getCurrentUser", () => {
-    it("should call GET /auth/me", async () => {
-      fetchMock.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockCurrentUser,
-        headers: new Headers({ "content-type": "application/json" }),
+    it("should return user from Supabase auth.getUser()", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: {
+          user: {
+            id: mockCurrentUser.id,
+            email: mockCurrentUser.email,
+            user_metadata: {
+              full_name: mockCurrentUser.displayName,
+              avatar_url: mockCurrentUser.avatarUrl,
+            },
+            created_at: mockCurrentUser.createdAt,
+          },
+        },
+        error: null,
       });
 
-      const result = await authRepository.getCurrentUser("test-token");
+      const result = await authRepository.getCurrentUser();
 
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/api/v1/auth/me"),
-        expect.objectContaining({ headers: expect.any(Headers) }),
-      );
+      expect(mockGetUser).toHaveBeenCalledOnce();
       expect(result).toEqual(mockCurrentUser);
     });
 
-    it("should include Authorization header", async () => {
-      fetchMock.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockCurrentUser,
-        headers: new Headers({ "content-type": "application/json" }),
+    it("should throw when Supabase returns error", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: "Invalid token" },
       });
 
-      await authRepository.getCurrentUser("my-token");
-
-      const headers = fetchMock.mock.calls[0][1].headers as Headers;
-      expect(headers.get("Authorization")).toBe("Bearer my-token");
+      await expect(authRepository.getCurrentUser()).rejects.toThrow("Invalid token");
     });
 
-    it("should throw ApiError(401) when no token (unauthenticated)", async () => {
-      fetchMock.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: async () => ({ detail: "Unauthorized" }),
-        headers: new Headers({ "content-type": "application/json" }),
+    it("should throw when no user is returned", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: null,
       });
 
-      await expect(authRepository.getCurrentUser()).rejects.toMatchObject({
-        status: 401,
-        detail: "Unauthorized",
-      });
+      await expect(authRepository.getCurrentUser()).rejects.toThrow("Not authenticated");
     });
   });
 
