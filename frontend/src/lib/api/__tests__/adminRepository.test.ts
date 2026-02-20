@@ -14,8 +14,9 @@ describe("adminRepository", () => {
     it("should call POST /admin/bans with body", async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        status: 204,
-        headers: new Headers(),
+        status: 201,
+        json: async () => ({}),
+        headers: new Headers({ "content-type": "application/json" }),
       });
 
       const body = { plotId: "plot-001", userId: "user-001", reason: "荒らし行為" };
@@ -26,14 +27,15 @@ describe("adminRepository", () => {
       const request = fetchMock.mock.calls[0][1];
       expect(request.method).toBe("POST");
       expect(JSON.parse(request.body as string)).toEqual(body);
-      expect(result).toBeUndefined();
+      expect(result).toEqual({});
     });
 
     it("should include Authorization header", async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        status: 204,
-        headers: new Headers(),
+        status: 201,
+        json: async () => ({}),
+        headers: new Headers({ "content-type": "application/json" }),
       });
 
       await adminRepository.banUser({ plotId: "plot-001", userId: "user-001" }, "admin-token");
@@ -99,8 +101,9 @@ describe("adminRepository", () => {
     it("should call POST /plots/{plotId}/pause with body", async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        status: 204,
-        headers: new Headers(),
+        status: 200,
+        json: async () => ({}),
+        headers: new Headers({ "content-type": "application/json" }),
       });
 
       const body = { reason: "不適切なコンテンツ" };
@@ -111,14 +114,15 @@ describe("adminRepository", () => {
       const request = fetchMock.mock.calls[0][1];
       expect(request.method).toBe("POST");
       expect(JSON.parse(request.body as string)).toEqual(body);
-      expect(result).toBeUndefined();
+      expect(result).toEqual({});
     });
 
     it("should work with empty body (no reason)", async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        status: 204,
-        headers: new Headers(),
+        status: 200,
+        json: async () => ({}),
+        headers: new Headers({ "content-type": "application/json" }),
       });
 
       await adminRepository.pausePlot("plot-001", undefined, "admin-token");
@@ -148,8 +152,9 @@ describe("adminRepository", () => {
     it("should call DELETE /plots/{plotId}/pause", async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        status: 204,
-        headers: new Headers(),
+        status: 200,
+        json: async () => ({}),
+        headers: new Headers({ "content-type": "application/json" }),
       });
 
       const result = await adminRepository.resumePlot("plot-001", "admin-token");
@@ -158,7 +163,7 @@ describe("adminRepository", () => {
       expect(calledUrl).toContain("/api/v1/plots/plot-001/pause");
       const request = fetchMock.mock.calls[0][1];
       expect(request.method).toBe("DELETE");
-      expect(result).toBeUndefined();
+      expect(result).toEqual({});
     });
 
     it("should throw ApiError(403) when not admin", async () => {

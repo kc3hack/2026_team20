@@ -16,7 +16,7 @@ export class ApiError extends Error {
   }
 }
 
-type RequestOptions = RequestInit & {
+type RequestOptions = Omit<RequestInit, "body"> & {
   token?: string;
   params?: Record<string, string | number | boolean | undefined>;
   // biome-ignore lint/suspicious/noExplicitAny: Body can be any JSON-serializable value

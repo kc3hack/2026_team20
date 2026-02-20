@@ -5,8 +5,8 @@ export async function saveOperation(
   sectionId: string,
   body: SaveOperationRequest,
   token?: string,
-): Promise<Record<string, never>> {
-  return apiClient<Record<string, never>>(`/sections/${sectionId}/operations`, {
+): Promise<void> {
+  return apiClient<void>(`/sections/${sectionId}/operations`, {
     method: "POST",
     body,
     token,
