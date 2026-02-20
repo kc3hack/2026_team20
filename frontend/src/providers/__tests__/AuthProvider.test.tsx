@@ -32,11 +32,25 @@ function TestConsumer() {
       <span data-testid="loading">{String(auth.isLoading)}</span>
       <span data-testid="authenticated">{String(auth.isAuthenticated)}</span>
       <span data-testid="user">{auth.user ? auth.user.displayName : "null"}</span>
-      <button type="button" onClick={auth.signInWithGitHub} data-testid="github-btn">
+      <button type="button" onClick={() => auth.signInWithGitHub()} data-testid="github-btn">
         GitHub
       </button>
-      <button type="button" onClick={auth.signInWithGoogle} data-testid="google-btn">
+      <button type="button" onClick={() => auth.signInWithGoogle()} data-testid="google-btn">
         Google
+      </button>
+      <button
+        type="button"
+        onClick={() => auth.signInWithGitHub("/plots/new")}
+        data-testid="github-redirect-btn"
+      >
+        GitHub with redirect
+      </button>
+      <button
+        type="button"
+        onClick={() => auth.signInWithGoogle("/dashboard")}
+        data-testid="google-redirect-btn"
+      >
+        Google with redirect
       </button>
       <button type="button" onClick={auth.signOut} data-testid="signout-btn">
         SignOut
@@ -357,6 +371,77 @@ describe("AuthProvider", () => {
       expect(mockToastError).toHaveBeenCalledWith("ログアウト処理中にエラーが発生しました");
       expect(screen.getByTestId("authenticated").textContent).toBe("false");
       expect(screen.getByTestId("user").textContent).toBe("null");
+    });
+  });
+
+  it("signInWithGitHub passes redirectTo as next param in callback URL", async () => {
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading").textContent).toBe("false");
+    });
+
+    screen.getByTestId("github-redirect-btn").click();
+
+    await waitFor(() => {
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "github",
+          options: expect.objectContaining({
+            redirectTo: expect.stringContaining("next=%2Fplots%2Fnew"),
+          }),
+        }),
+      );
+    });
+  });
+
+  it("signInWithGoogle passes redirectTo as next param in callback URL", async () => {
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading").textContent).toBe("false");
+    });
+
+    screen.getByTestId("google-redirect-btn").click();
+
+    await waitFor(() => {
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "google",
+          options: expect.objectContaining({
+            redirectTo: expect.stringContaining("next=%2Fdashboard"),
+          }),
+        }),
+      );
+    });
+  });
+
+  it("signInWithGitHub without redirectTo uses callback URL without next param", async () => {
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading").textContent).toBe("false");
+    });
+
+    screen.getByTestId("github-btn").click();
+
+    await waitFor(() => {
+      const callArg = mockSignInWithOAuth.mock.calls[0][0];
+      expect(callArg.provider).toBe("github");
+      expect(callArg.options.redirectTo).toContain("/auth/callback");
+      expect(callArg.options.redirectTo).not.toContain("next=");
     });
   });
 });
