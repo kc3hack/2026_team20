@@ -1,0 +1,27 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.trigger {
+  cursor: pointer;
+  border-radius: 9999px;
+
+  @include focus-ring;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.displayName {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.email {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  @include text-ellipsis;
+  max-width: 12rem;
+}
