@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -28,6 +29,8 @@ type HeaderProps = {
 export function Header({ searchSlot, userMenuSlot }: HeaderProps) {
   const { isLoading, isAuthenticated } = useAuth();
 
+  const createHref = isAuthenticated ? "/plots/new" : "/auth/login?redirectTo=/plots/new";
+
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -38,6 +41,13 @@ export function Header({ searchSlot, userMenuSlot }: HeaderProps) {
         <div className={styles.center}>{searchSlot ?? <Skeleton className="h-10 w-64" />}</div>
 
         <div className={styles.right}>
+          <Button asChild variant="ghost" size="sm">
+            <Link href={createHref}>
+              <Plus size={16} />
+              作成
+            </Link>
+          </Button>
+
           {isLoading ? (
             <Skeleton className="h-8 w-8 rounded-full" />
           ) : isAuthenticated ? (
