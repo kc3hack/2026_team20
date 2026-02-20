@@ -16,10 +16,11 @@ export class ApiError extends Error {
   }
 }
 
-type RequestOptions = Omit<RequestInit, "body"> & {
+type RequestOptions = RequestInit & {
   token?: string;
   params?: Record<string, string | number | boolean | undefined>;
-  body?: Record<string, unknown> | FormData | string | null;
+  // biome-ignore lint/suspicious/noExplicitAny: Body can be any JSON-serializable value
+  body?: any;
   timeout?: number;
 };
 
