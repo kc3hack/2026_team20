@@ -39,6 +39,7 @@
 .right {
     display: none;
     align-items: center;
+    gap: 0.5rem;
 
     @include respond-to(lg) {
         display: flex;
