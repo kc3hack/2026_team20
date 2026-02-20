@@ -1,4 +1,5 @@
 import type { PlotDetailResponse, PlotListResponse, PlotResponse } from "@/lib/api/types";
+import { mockSections } from "./sections";
 import { mockUsers } from "./users";
 
 export const mockPlots: PlotResponse[] = [
@@ -143,6 +144,27 @@ export function getMockPlotDetail(id: string): PlotDetailResponse {
   return {
     ...plot,
     sections: [],
+    owner: {
+      id: mockUsers.owner.id,
+      displayName: mockUsers.owner.displayName,
+      avatarUrl: mockUsers.owner.avatarUrl,
+    },
+  };
+}
+
+export function getMockPlotDetailWithSections(id: string): PlotDetailResponse {
+  const plot = mockPlots.find((p) => p.id === id);
+  if (!plot) {
+    throw new Error(`Plot not found: ${id}`);
+  }
+
+  const sections = mockSections
+    .filter((s) => s.plotId === id)
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  return {
+    ...plot,
+    sections,
     owner: {
       id: mockUsers.owner.id,
       displayName: mockUsers.owner.displayName,
