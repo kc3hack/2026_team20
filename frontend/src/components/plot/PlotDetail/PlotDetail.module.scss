@@ -87,20 +87,25 @@
 
 .body {
   display: flex;
+  flex-direction: column;
   gap: 2rem;
+
+  @include respond-to(md) {
+    flex-direction: row;
+  }
 }
 
 .sidebar {
-  // モバイルでは非表示、md以上で表示
-  display: none;
-  width: 240px;
+  // モバイルでは上部に表示、md以上でサイドバーとして表示
+  display: block;
+  width: 100%;
   flex-shrink: 0;
-  position: sticky;
-  top: 5rem;
-  align-self: flex-start;
 
   @include respond-to(md) {
-    display: block;
+    width: 240px;
+    position: sticky;
+    top: 5rem;
+    align-self: flex-start;
   }
 }
 
