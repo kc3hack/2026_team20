@@ -49,6 +49,11 @@ export type SectionListResponse = {
   total: number;
 };
 
+/**
+ * 編集操作のペイロード。
+ * - `content` は delete 操作時に `null` となる
+ * - `position` / `length` は操作タイプに応じて省略可能
+ */
 export type OperationPayload = {
   position: number | null;
   content: string | null;
