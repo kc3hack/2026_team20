@@ -25,6 +25,17 @@ requires-python = ">=3.13"
 dev = ["ruff", "basedpyright"]
 
 # ============================================================
+# pytest
+# ============================================================
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra --tb=short"
+
+# ============================================================
 # Ruff (Linter + Formatter)
 # ============================================================
 [tool.ruff]

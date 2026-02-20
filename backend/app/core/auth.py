@@ -17,7 +17,10 @@ from app.schemas import CurrentUser
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-security = HTTPBearer()
+# auto_error=False にして、未認証時は 401 を返すように手動制御する。
+# FastAPI の HTTPBearer デフォルト (auto_error=True) は 403 を返すが、
+# HTTP 仕様上、認証が必要なリソースへの未認証リクエストは 401 が正しい。
+security = HTTPBearer(auto_error=False)
 
 
 # ─── JWKS キャッシュ ───────────────────────────────────────────
@@ -70,12 +73,17 @@ def _verify_jwks(token: str) -> dict:
 
 # ─── FastAPI Dependencies ────────────────────────────────────
 def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
 ) -> CurrentUser:
     """
     JWT を検証して CurrentUser を返す。
     JWKS エンドポイントの公開鍵で検証
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
     token = credentials.credentials
     try:
         logger.debug("Verifying token with JWKS/ES256")

@@ -71,3 +71,18 @@ tasks:
     desc: 現在のマイグレーションバージョンを表示
     cmds:
       - "{{.INFISICAL_RUN}} uv run alembic current"
+
+  test:
+    desc: pytestでテストを実行
+    cmds:
+      - uv run pytest {{.CLI_ARGS}}
+
+  test:unit:
+    desc: ユニットテストのみ実行
+    cmds:
+      - uv run pytest tests/unit {{.CLI_ARGS}}
+
+  test:integration:
+    desc: 統合テストのみ実行
+    cmds:
+      - uv run pytest tests/integration {{.CLI_ARGS}}
