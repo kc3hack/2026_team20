@@ -5,12 +5,7 @@ import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import styles from "./AuthGuard.module.scss";
-
-type AuthGuardProps = {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-  redirectTo?: string;
-};
+import type { AuthGuardProps } from "./types";
 
 export function AuthGuard({ children, fallback, redirectTo = "/auth/login" }: AuthGuardProps) {
   const { isLoading, isAuthenticated } = useAuth();
