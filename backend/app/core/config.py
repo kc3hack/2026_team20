@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # App
     app_name: str = "Plot Platform API"
-    debug: bool = False
+    debug: bool = True
     allowed_origins: list[str] = ["http://localhost:3000"]
     log_level: str = "INFO"
     log_format: str = "json"  # "json" or "text"
