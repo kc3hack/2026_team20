@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { GitHubIcon, GoogleIcon } from "@/components/icons";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,9 +28,9 @@ export function LoginButton({ provider, redirectTo, className }: LoginButtonProp
 
   const { label, Icon, variant, styleClass } = providerConfig[provider];
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     void (provider === "github" ? signInWithGitHub(redirectTo) : signInWithGoogle(redirectTo));
-  };
+  }, [provider, signInWithGitHub, signInWithGoogle, redirectTo]);
 
   return (
     <Button variant={variant} size="lg" className={cn(styleClass, className)} onClick={handleClick}>

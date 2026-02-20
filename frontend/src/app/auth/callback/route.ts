@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const errorUrl = new URL("/auth/login", origin);
   errorUrl.searchParams.set("error", "auth_callback_error");
   if (next !== "/") {
-    errorUrl.searchParams.set("next", rawNext);
+    errorUrl.searchParams.set("next", next);
   }
   return NextResponse.redirect(errorUrl.toString());
 }

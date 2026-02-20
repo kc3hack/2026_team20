@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { LoginButton } from "@/components/auth/LoginButton/LoginButton";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,9 +19,11 @@ export default function LoginPage() {
 
   const error = searchParams.get("error");
   const searchParamsString = searchParams.toString();
+  const hasShownErrorToast = useRef(false);
 
   useEffect(() => {
-    if (error) {
+    if (error && !hasShownErrorToast.current) {
+      hasShownErrorToast.current = true;
       toast.error("ログインに失敗しました。もう一度お試しください。");
       const cleaned = new URLSearchParams(searchParamsString);
       cleaned.delete("error");

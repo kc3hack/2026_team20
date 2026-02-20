@@ -20,7 +20,7 @@ function getInitials(displayName: string): string {
   if (!displayName.trim()) return "?";
   return displayName
     .split(/\s+/)
-    .map((word) => word[0])
+    .map((word) => Array.from(word)[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);

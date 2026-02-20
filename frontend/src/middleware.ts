@@ -10,6 +10,10 @@ import { updateSession } from "@/lib/supabase/middleware";
  * 使い分けの方針:
  * - middleware: 認証必須ページの保護（ページ自体にアクセスさせない）
  * - AuthGuard: 認証状態に応じた UI の出し分け（ページ内の部分的な保護）
+ *
+ * パターンマッチの挙動:
+ * - "/plots/new" は /plots/new と /plots/new/* にマッチ
+ * - "/plots/new" は /plots/newsletter にはマッチしない（厳密なプレフィックスマッチ）
  */
 const PROTECTED_PATTERNS = ["/plots/new"];
 
