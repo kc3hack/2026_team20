@@ -48,21 +48,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  const signInWithGitHub = useCallback(async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: { redirectTo: `${getBaseUrl()}/auth/callback` },
-    });
-    if (error) toast.error(`GitHub ログインに失敗しました: ${error.message}`);
-  }, [supabase]);
+  const signInWithOAuth = useCallback(
+    async (provider: "github" | "google", redirectTo?: string) => {
+      const callbackUrl = new URL("/auth/callback", getBaseUrl());
+      if (redirectTo) {
+        callbackUrl.searchParams.set("next", redirectTo);
+      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: callbackUrl.toString() },
+      });
+      if (error) {
+        const label = provider === "github" ? "GitHub" : "Google";
+        toast.error(`${label} ログインに失敗しました: ${error.message}`);
+      }
+    },
+    [supabase],
+  );
 
-  const signInWithGoogle = useCallback(async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${getBaseUrl()}/auth/callback` },
-    });
-    if (error) toast.error(`Google ログインに失敗しました: ${error.message}`);
-  }, [supabase]);
+  const signInWithGitHub = useCallback(
+    (redirectTo?: string) => signInWithOAuth("github", redirectTo),
+    [signInWithOAuth],
+  );
+
+  const signInWithGoogle = useCallback(
+    (redirectTo?: string) => signInWithOAuth("google", redirectTo),
+    [signInWithOAuth],
+  );
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();

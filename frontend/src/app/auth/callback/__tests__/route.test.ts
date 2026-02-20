@@ -62,6 +62,22 @@ describe("GET /auth/callback", () => {
     );
   });
 
+  it("preserves next parameter on error redirect", async () => {
+    mockExchangeCodeForSession.mockResolvedValue({
+      error: { message: "Invalid code" },
+    });
+
+    const request = buildRequest(
+      "http://localhost:3000/auth/callback?code=bad-code&next=/plots/new",
+    );
+    const response = await GET(request);
+
+    expect(response.status).toBe(307);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toContain("error=auth_callback_error");
+    expect(location).toContain("next=%2Fplots%2Fnew");
+  });
+
   it("redirects to login with error when no code is provided", async () => {
     const request = buildRequest("http://localhost:3000/auth/callback");
     const response = await GET(request);
@@ -89,6 +105,17 @@ describe("GET /auth/callback", () => {
 
     const request = buildRequest(
       "http://localhost:3000/auth/callback?code=test-code&next=https://evil.com",
+    );
+    const response = await GET(request);
+
+    expect(response.headers.get("location")).toBe("http://localhost:3000/");
+  });
+
+  it("ignores backslash next param to prevent open redirect", async () => {
+    mockExchangeCodeForSession.mockResolvedValue({ error: null });
+
+    const request = buildRequest(
+      "http://localhost:3000/auth/callback?code=test-code&next=/\\evil.com",
     );
     const response = await GET(request);
 

@@ -1,0 +1,9 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+}

@@ -1,0 +1,30 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.github {
+  background-color: #24292f;
+  color: #fff;
+  border: 1px solid #24292f;
+
+  &:hover {
+    background-color: #32383f;
+    border-color: #32383f;
+  }
+}
+
+.google {
+  background-color: #fff;
+  color: #1f1f1f;
+  border: 1px solid hsl(var(--border));
+
+  &:hover {
+    background-color: #f8f9fa;
+  }
+}
+
+.icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}

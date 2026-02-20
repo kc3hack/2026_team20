@@ -6,8 +6,8 @@ export type AuthContextValue = {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  signInWithGitHub: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGitHub: (redirectTo?: string) => Promise<void>;
+  signInWithGoogle: (redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
   handleUnauthorized: () => Promise<void>;
 };
