@@ -31,7 +31,7 @@ export async function get(plotId: string, token?: string): Promise<PlotDetailRes
 
 export async function create(body: CreatePlotRequest, token?: string): Promise<PlotResponse> {
   if (USE_MOCK) {
-    const { mockPlots } = await import("@/mocks/data/plots");
+    await import("@/mocks/data/plots");
     return {
       id: `mock-${Date.now()}`,
       title: body.title,
