@@ -1,0 +1,74 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.card {
+    height: 100%;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
+    }
+}
+
+.title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    @include text-ellipsis(2);
+
+    // CardTitle 内の h3 セマンティクスを維持しつつ、
+    // ブラウザデフォルトスタイルをリセットしてビジュアルを統一する
+    h3 {
+        margin: 0;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+    }
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.description {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    line-height: 1.5;
+    @include text-ellipsis(2);
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+}
+
+.stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.date {
+    white-space: nowrap;
+}

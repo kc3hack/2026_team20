@@ -17,6 +17,6 @@
     transition: color 0.2s ease;
 
     &:hover {
-        color: hsl(var(--primary));
+        color: var(--primary);
     }
 }

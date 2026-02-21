@@ -1,8 +1,14 @@
 @use "variables" as *;
 @use "mixins" as *;
 
-.link {
-    text-decoration: none;
+.button {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    cursor: pointer;
+    display: inline-block;
 }
 
 .badge {

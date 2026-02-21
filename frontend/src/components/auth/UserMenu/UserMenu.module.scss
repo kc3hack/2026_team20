@@ -21,7 +21,7 @@
 
 .email {
   font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   @include text-ellipsis;
   max-width: 12rem;
 }

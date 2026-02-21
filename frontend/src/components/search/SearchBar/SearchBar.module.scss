@@ -1,0 +1,41 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.form {
+    display: flex;
+    width: 100%;
+}
+
+.container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    width: 100%;
+}
+
+.icon {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--muted-foreground);
+    pointer-events: none;
+}
+
+.input {
+    padding-left: 2.5rem;
+}
+
+.button {
+    flex-shrink: 0;
+
+    @include respond-to(md) {
+        display: inline-flex;
+    }
+}
+
+// モバイルではボタンを非表示にしてEnterで検索
+@media (max-width: #{$breakpoint-md - 1px}) {
+    .button {
+        display: none;
+    }
+}

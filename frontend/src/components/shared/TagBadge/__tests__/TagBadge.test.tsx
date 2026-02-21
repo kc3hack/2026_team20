@@ -1,25 +1,20 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TagBadge } from "../TagBadge";
 
-vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-    onClick,
-  }: {
-    children: React.ReactNode;
-    href: string;
-    onClick?: () => void;
-  }) => (
-    <a href={href} onClick={onClick}>
-      {children}
-    </a>
-  ),
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }));
 
 describe("TagBadge", () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+  });
+
   it("タグ名が正しく表示される", () => {
     render(<TagBadge tag="TypeScript" />);
     expect(screen.getByText("TypeScript")).toBeInTheDocument();
@@ -33,17 +28,40 @@ describe("TagBadge", () => {
     await user.click(screen.getByText("React"));
 
     expect(handleClick).toHaveBeenCalledWith("React");
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("リンクが正しい href を持つ", () => {
+  it("onClickが未指定の場合、クリックで正しいURLに遷移する", async () => {
+    const user = userEvent.setup();
+
     render(<TagBadge tag="Next.js" />);
-    const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/plots?tag=Next.js");
+    await user.click(screen.getByRole("button"));
+
+    expect(mockPush).toHaveBeenCalledWith("/plots?tag=Next.js");
   });
 
-  it("特殊文字を含むタグ名が正しくエンコードされる", () => {
+  it("特殊文字を含むタグ名が正しくエンコードされる", async () => {
+    const user = userEvent.setup();
+
     render(<TagBadge tag="C++" />);
-    const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/plots?tag=C%2B%2B");
+    await user.click(screen.getByRole("button"));
+
+    expect(mockPush).toHaveBeenCalledWith("/plots?tag=C%2B%2B");
+  });
+
+  it("クリック時にstopPropagationが呼ばれ、親要素へのイベント伝播を防ぐ", async () => {
+    const parentClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      // biome-ignore lint/a11y/useKeyWithClickEvents: テスト用の親要素のため不要
+      // biome-ignore lint/a11y/noStaticElementInteractions: テスト用の親要素のため不要
+      <div onClick={parentClick}>
+        <TagBadge tag="React" />
+      </div>,
+    );
+    await user.click(screen.getByRole("button"));
+
+    expect(parentClick).not.toHaveBeenCalled();
   });
 });

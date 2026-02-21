@@ -2,11 +2,10 @@
 @use "mixins" as *;
 
 .header {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: $z-header;
-    background-color: hsl(var(--background));
-    border-bottom: 1px solid hsl(var(--border));
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border);
 }
 
 .inner {

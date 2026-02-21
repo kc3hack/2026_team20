@@ -18,9 +18,9 @@
   width: 100%;
   max-width: 24rem;
   padding: 2.5rem 2rem;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background-color: hsl(var(--card));
+  background-color: var(--card);
 }
 
 .title {
@@ -31,7 +31,7 @@
 
 .description {
   font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   text-align: center;
 }
 

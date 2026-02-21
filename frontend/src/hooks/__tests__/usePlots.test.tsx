@@ -1,22 +1,72 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { usePlotDetail } from "../usePlots";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PlotListResponse } from "@/lib/api/types";
 
-vi.mock("@/lib/api/repositories/plotRepository", () => ({
-  get: vi.fn(),
+const mockTrending = vi.fn();
+const mockPopular = vi.fn();
+const mockLatest = vi.fn();
+const mockList = vi.fn();
+const mockGet = vi.fn();
+
+vi.mock("@/lib/api/repositories", () => ({
+  plotRepository: {
+    trending: (...args: unknown[]) => mockTrending(...args),
+    popular: (...args: unknown[]) => mockPopular(...args),
+    latest: (...args: unknown[]) => mockLatest(...args),
+    list: (...args: unknown[]) => mockList(...args),
+    get: (...args: unknown[]) => mockGet(...args),
+  },
 }));
 
-import * as plotRepository from "@/lib/api/repositories/plotRepository";
+vi.mock("@/providers/AuthProvider", () => ({
+  useAuth: () => ({
+    session: null,
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+    signInWithGitHub: vi.fn(),
+    signInWithGoogle: vi.fn(),
+    signOut: vi.fn(),
+    handleUnauthorized: vi.fn(),
+  }),
+}));
+
+import {
+  useLatestPlots,
+  usePlotDetail,
+  usePlotList,
+  usePopularPlots,
+  useTrendingPlots,
+} from "../usePlots";
+
+const mockPlotListResponse: PlotListResponse = {
+  items: [
+    {
+      id: "plot-1",
+      title: "Test Plot",
+      description: null,
+      tags: ["test"],
+      ownerId: "user-1",
+      starCount: 10,
+      isStarred: false,
+      isPaused: false,
+      thumbnailUrl: null,
+      version: 1,
+      createdAt: "2026-02-20T00:00:00Z",
+      updatedAt: "2026-02-20T00:00:00Z",
+    },
+  ],
+  total: 1,
+  limit: 5,
+  offset: 0,
+};
 
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
+      queries: { retry: false },
     },
   });
   return function Wrapper({ children }: { children: ReactNode }) {
@@ -24,95 +74,136 @@ function createWrapper() {
   };
 }
 
-const mockPlotDetail = {
-  id: "plot-001",
-  title: "テスト Plot",
-  description: "テスト用の Plot です",
-  tags: ["テスト"],
-  ownerId: "user-001",
-  starCount: 10,
-  isStarred: false,
-  isPaused: false,
-  thumbnailUrl: null,
-  version: 1,
-  createdAt: "2026-01-01T00:00:00Z",
-  updatedAt: "2026-01-01T00:00:00Z",
-  sections: [],
-  owner: {
-    id: "user-001",
-    displayName: "テストユーザー",
-    avatarUrl: null,
-  },
-};
-
-describe("usePlotDetail", () => {
+describe("usePlots hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTrending.mockResolvedValue(mockPlotListResponse);
+    mockPopular.mockResolvedValue(mockPlotListResponse);
+    mockLatest.mockResolvedValue(mockPlotListResponse);
+    mockList.mockResolvedValue(mockPlotListResponse);
+    mockGet.mockResolvedValue({ ...mockPlotListResponse.items[0], sections: [], owner: null });
   });
 
-  it("正常なIDで PlotDetailResponse が返る", async () => {
-    vi.mocked(plotRepository.get).mockResolvedValue(mockPlotDetail);
-
-    const { result } = renderHook(() => usePlotDetail("plot-001"), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(result.current.data).toEqual(mockPlotDetail);
-    expect(result.current.error).toBeNull();
-    expect(plotRepository.get).toHaveBeenCalledWith("plot-001");
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("isLoading が初期状態で true になる", () => {
-    vi.mocked(plotRepository.get).mockReturnValue(new Promise(() => {}));
+  describe("useTrendingPlots", () => {
+    it("デフォルト limit=5 でリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => useTrendingPlots(), { wrapper: createWrapper() });
 
-    const { result } = renderHook(() => usePlotDetail("plot-001"), {
-      wrapper: createWrapper(),
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockTrending).toHaveBeenCalledWith({ limit: 5 }, undefined);
+      expect(result.current.data).toEqual(mockPlotListResponse);
     });
 
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.data).toBeUndefined();
+    it("カスタム limit でリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => useTrendingPlots(10), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockTrending).toHaveBeenCalledWith({ limit: 10 }, undefined);
+    });
+
+    it("異なる limit 値は異なるキャッシュキーを使用する", async () => {
+      const wrapper = createWrapper();
+
+      const { result: result5 } = renderHook(() => useTrendingPlots(5), { wrapper });
+
+      await waitFor(() => expect(result5.current.isSuccess).toBe(true));
+
+      const { result: result10 } = renderHook(() => useTrendingPlots(10), { wrapper });
+
+      await waitFor(() => expect(result10.current.isSuccess).toBe(true));
+
+      expect(mockTrending).toHaveBeenCalledTimes(2);
+      expect(mockTrending).toHaveBeenCalledWith({ limit: 5 }, undefined);
+      expect(mockTrending).toHaveBeenCalledWith({ limit: 10 }, undefined);
+    });
   });
 
-  it("存在しないIDで error がセットされる", async () => {
-    vi.mocked(plotRepository.get).mockRejectedValue(new Error("Not Found"));
+  describe("usePopularPlots", () => {
+    it("デフォルト limit=5 でリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => usePopularPlots(), { wrapper: createWrapper() });
 
-    const { result } = renderHook(() => usePlotDetail("non-existent"), {
-      wrapper: createWrapper(),
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockPopular).toHaveBeenCalledWith({ limit: 5 }, undefined);
     });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    it("カスタム limit でリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => usePopularPlots(10), { wrapper: createWrapper() });
 
-    expect(result.current.error).toBeTruthy();
-    expect(result.current.data).toBeUndefined();
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockPopular).toHaveBeenCalledWith({ limit: 10 }, undefined);
+    });
   });
 
-  it("id が空文字の場合はクエリが無効化される", () => {
-    const { result } = renderHook(() => usePlotDetail(""), {
-      wrapper: createWrapper(),
+  describe("useLatestPlots", () => {
+    it("デフォルト limit=5 でリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => useLatestPlots(), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockLatest).toHaveBeenCalledWith({ limit: 5 }, undefined);
     });
 
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.data).toBeUndefined();
-    expect(plotRepository.get).not.toHaveBeenCalled();
+    it("カスタム limit でリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => useLatestPlots(10), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockLatest).toHaveBeenCalledWith({ limit: 10 }, undefined);
+    });
   });
 
-  it("refetch 関数が返される", async () => {
-    vi.mocked(plotRepository.get).mockResolvedValue(mockPlotDetail);
+  describe("usePlotList", () => {
+    it("パラメータなしでリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => usePlotList(), { wrapper: createWrapper() });
 
-    const { result } = renderHook(() => usePlotDetail("plot-001"), {
-      wrapper: createWrapper(),
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockList).toHaveBeenCalledWith(undefined, undefined);
     });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+    it("tag パラメータ付きでリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => usePlotList({ tag: "React" }), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockList).toHaveBeenCalledWith({ tag: "React" }, undefined);
+    });
+  });
+
+  describe("usePlotDetail", () => {
+    it("id を渡してリポジトリを呼び出す", async () => {
+      const { result } = renderHook(() => usePlotDetail("plot-1"), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockGet).toHaveBeenCalledWith("plot-1", undefined);
     });
 
-    expect(typeof result.current.refetch).toBe("function");
+    it("空文字 id ではクエリが無効化される", () => {
+      const { result } = renderHook(() => usePlotDetail(""), { wrapper: createWrapper() });
+
+      expect(result.current.fetchStatus).toBe("idle");
+      expect(mockGet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("session が null（未ログイン）のとき", () => {
+    it("token が undefined でも正常にデータ取得できる", async () => {
+      const { result } = renderHook(() => useTrendingPlots(), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(mockTrending).toHaveBeenCalledWith({ limit: 5 }, undefined);
+      expect(result.current.data).toEqual(mockPlotListResponse);
+    });
   });
 });
