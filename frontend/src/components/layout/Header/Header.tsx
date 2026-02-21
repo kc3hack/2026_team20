@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ThemeToggle } from "@/components/common/ThemeToggle/ThemeToggle";
 import { MobileNav } from "@/components/layout/MobileNav/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,6 +58,8 @@ export function Header({ searchSlot, userMenuSlot }: HeaderProps) {
               <Link href="/auth/login">ログイン</Link>
             </Button>
           )}
+
+          <ThemeToggle />
         </div>
 
         <div className={styles.mobileMenu}>

@@ -1,7 +1,9 @@
 "use client";
 
-import { Home, LogIn, LogOut, Menu, Plus, Search, User } from "lucide-react";
+import { Check, Home, LogIn, LogOut, Menu, Monitor, Moon, Plus, Search, Sun, User } from "lucide-react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -16,6 +18,12 @@ import styles from "./MobileNav.module.scss";
 
 export function MobileNav() {
   const { isAuthenticated, user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const createHref = isAuthenticated ? "/plots/new" : "/auth/login?redirectTo=/plots/new";
 
@@ -79,6 +87,31 @@ export function MobileNav() {
               </Link>
             </SheetClose>
           )}
+
+          <div className={styles.themeSection}>
+            <span className={styles.themeSectionLabel}>テーマ</span>
+            <div className={styles.themeButtons}>
+              {([
+                { value: "light", label: "ライト", icon: Sun },
+                { value: "dark", label: "ダーク", icon: Moon },
+                { value: "system", label: "システム", icon: Monitor },
+              ] as const).map(({ value, label, icon: Icon }) => (
+                <SheetClose asChild key={value}>
+                  <button
+                    type="button"
+                    className={styles.navItem}
+                    onClick={() => setTheme(value)}
+                  >
+                    <Icon size={20} />
+                    <span>{label}</span>
+                    {mounted && theme === value && (
+                      <Check size={16} className={styles.checkIcon} />
+                    )}
+                  </button>
+                </SheetClose>
+              ))}
+            </div>
+          </div>
         </nav>
       </SheetContent>
     </Sheet>
