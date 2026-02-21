@@ -9,6 +9,15 @@ export interface SectionAwarenessState {
   };
   /** null = 閲覧のみ（ロック未取得） */
   editingSectionId: string | null;
+  /**
+   * ロック要求のメタ情報。
+   * 同時クリック競合時に全クライアントで同じ勝者を決めるために使う。
+   */
+  lockClaim?: {
+    requestedAt: number;
+    ownerClientId: number;
+    token: string;
+  };
 }
 
 /** Supabase Realtime Broadcast 経由の Y.js 同期メッセージ */

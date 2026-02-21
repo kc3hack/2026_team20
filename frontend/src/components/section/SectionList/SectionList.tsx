@@ -6,6 +6,7 @@ import { SectionViewer } from "@/components/section/SectionViewer/SectionViewer"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SectionResponse } from "@/lib/api/types";
 import type { ConnectionStatus, LockState, SectionAwarenessState } from "@/lib/realtime/types";
+import type { SupabaseBroadcastProvider } from "@/lib/realtime/yjsProvider";
 import styles from "./SectionList.module.scss";
 
 type LockInfo = {
@@ -18,6 +19,7 @@ type SectionListProps = {
   isLoading?: boolean;
   lockStates?: Map<string, LockInfo>;
   connectionStatus?: ConnectionStatus;
+  provider?: SupabaseBroadcastProvider | null;
 };
 
 export function SectionList({
@@ -25,6 +27,7 @@ export function SectionList({
   isLoading = false,
   lockStates,
   connectionStatus,
+  provider,
 }: SectionListProps) {
   const sorted = useMemo(
     () => [...sections].sort((a, b) => a.orderIndex - b.orderIndex),
@@ -80,15 +83,14 @@ export function SectionList({
         const lockInfo = lockStates?.get(section.id);
         const isBeingEdited = lockInfo?.lockState === "locked-by-other";
         const editedBy = isBeingEdited ? lockInfo?.lockedBy ?? null : null;
-        const enableRealtime = isBeingEdited;
 
         return (
           <SectionViewer
             key={section.id}
             section={section}
-            enableRealtime={enableRealtime}
             isBeingEdited={isBeingEdited}
             editedBy={editedBy}
+            provider={provider}
           />
         );
       })}

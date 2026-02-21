@@ -1,4 +1,4 @@
-import SupabaseProvider from "y-supabase";
+import { SupabaseBroadcastProvider } from "./yjsProvider";
 import * as Y from "yjs";
 import type { ConnectionStatus } from "./types";
 
@@ -6,15 +6,11 @@ export interface RealtimeProviderOptions {
   plotId: string;
   supabaseClient: unknown;
   useMock?: boolean;
-  /** @default "yjs_documents" */
-  tableName?: string;
-  /** @default "data" */
-  columnName?: string;
 }
 
 export interface RealtimeProviderState {
   doc: Y.Doc;
-  provider: SupabaseProvider | null;
+  provider: SupabaseBroadcastProvider | null;
   channelName: string;
   isMock: boolean;
   status: ConnectionStatus;
@@ -27,8 +23,6 @@ export function createRealtimeProvider(
     plotId,
     supabaseClient,
     useMock = false,
-    tableName = "yjs_documents",
-    columnName = "data",
   } = options;
 
   if (!plotId) {
@@ -48,12 +42,14 @@ export function createRealtimeProvider(
     };
   }
 
-  const provider = new SupabaseProvider(doc, supabaseClient as never, {
-    channel: channelName,
-    tableName,
-    columnName,
-    id: plotId,
-  });
+  // SupabaseBroadcastProvider は Supabase Realtime Broadcast で
+  // Y.js ドキュメント更新と Awareness をリアルタイム同期する。
+  // DB テーブルへの永続化は行わず、既存の REST API で管理する。
+  const provider = new SupabaseBroadcastProvider(
+    doc,
+    supabaseClient as never,
+    { channel: channelName },
+  );
 
   return {
     doc,

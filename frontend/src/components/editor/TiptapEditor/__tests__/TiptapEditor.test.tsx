@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { useEditor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import StarterKit from "@tiptap/starter-kit";
 import { Doc } from "yjs";
 import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
@@ -52,11 +51,14 @@ describe("TiptapEditor", () => {
   });
 
   describe("Collaboration 拡張", () => {
-    it("ydoc が渡された場合、Collaboration.configure が呼ばれる", () => {
+    it("ydoc と useCollaboration が渡された場合、Collaboration.configure が呼ばれる（CollaborationCursor は使用しない）", () => {
       const ydoc = new Doc();
-      render(<TiptapEditor ydoc={ydoc} />);
+      render(<TiptapEditor ydoc={ydoc} useCollaboration={true} />);
 
-      expect(Collaboration.configure).toHaveBeenCalledWith({ document: ydoc });
+      expect(Collaboration.configure).toHaveBeenCalledWith({
+        document: ydoc,
+        field: undefined,
+      });
     });
 
     it("ydoc が渡されない場合、Collaboration.configure は document 引数で呼ばれない", () => {
@@ -71,31 +73,23 @@ describe("TiptapEditor", () => {
 
     it("ydoc が渡された場合、StarterKit の undoRedo が false になる", () => {
       const ydoc = new Doc();
-      render(<TiptapEditor ydoc={ydoc} />);
+      render(<TiptapEditor ydoc={ydoc} useCollaboration={true} />);
 
       expect(StarterKit.configure).toHaveBeenCalledWith(
         expect.objectContaining({ undoRedo: false }),
       );
     });
 
-    it("ydoc と provider が両方渡された場合、CollaborationCursor.configure が呼ばれる", () => {
+    it("collaborationField が渡された場合、Collaboration.configure に field が渡される", () => {
       const ydoc = new Doc();
-      const mockProvider = { awareness: {} };
-      render(<TiptapEditor ydoc={ydoc} provider={mockProvider as never} />);
-
-      expect(CollaborationCursor.configure).toHaveBeenCalledWith({
-        provider: mockProvider,
-      });
-    });
-
-    it("ydoc のみで provider がない場合、CollaborationCursor.configure は provider 引数で呼ばれない", () => {
-      const cursorConfigure = vi.mocked(CollaborationCursor.configure);
-      render(<TiptapEditor ydoc={new Doc()} />);
-
-      const calledWithProvider = cursorConfigure.mock.calls.some(
-        (args) => args[0] && typeof args[0] === "object" && "provider" in args[0],
+      render(
+        <TiptapEditor ydoc={ydoc} collaborationField="section-1" useCollaboration={true} />,
       );
-      expect(calledWithProvider).toBe(false);
+
+      expect(Collaboration.configure).toHaveBeenCalledWith({
+        document: ydoc,
+        field: "section-1",
+      });
     });
   });
 });

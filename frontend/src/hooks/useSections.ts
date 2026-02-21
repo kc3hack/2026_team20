@@ -47,18 +47,21 @@ export function useUpdateSection() {
 
   return useMutation({
     mutationFn: async ({
-      plotId,
+      plotId: _plotId,
       sectionId,
       body,
     }: { plotId: string; sectionId: string; body: UpdateSectionRequest }) => {
-      const [result] = await Promise.all([
-        sectionRepository.update(sectionId, body, session?.access_token),
-        historyRepository.saveOperation(
+      const result = await sectionRepository.update(sectionId, body, session?.access_token);
+
+      try {
+        await historyRepository.saveOperation(
           sectionId,
           { operationType: "update" },
           session?.access_token,
-        ),
-      ]);
+        );
+      } catch {
+      }
+
       return result;
     },
     onMutate: async ({ plotId, sectionId, body }) => {

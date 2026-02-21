@@ -44,3 +44,6 @@ export type {
   RealtimeProviderOptions,
   RealtimeProviderState,
 } from "./provider";
+
+export { SupabaseBroadcastProvider } from "./yjsProvider";
+export type { BroadcastProviderConfig } from "./yjsProvider";

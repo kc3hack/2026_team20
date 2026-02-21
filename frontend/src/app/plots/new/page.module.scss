@@ -1,0 +1,40 @@
+@use "mixins" as *;
+
+.page {
+  min-height: 100vh;
+  padding: 1rem;
+
+  @include respond-to(md) {
+    padding: 1.5rem 2rem;
+  }
+}
+
+.container {
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  background-color: hsl(var(--card));
+
+  @include respond-to(md) {
+    padding: 1.5rem;
+  }
+}
+
+.header {
+  margin-bottom: 1.25rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.description {
+  margin-top: 0.5rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.95rem;
+}

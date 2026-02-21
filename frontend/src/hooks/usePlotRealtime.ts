@@ -18,7 +18,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
 
 function isMockMode(): boolean {
-  return process.env.NEXT_PUBLIC_USE_MOCK === "true";
+  return (
+    process.env.NODE_ENV === "test" &&
+    process.env.NEXT_PUBLIC_USE_MOCK === "true"
+  );
 }
 
 export interface UsePlotRealtimeReturn {
@@ -44,9 +47,10 @@ const NO_PLOT_RETURN: UsePlotRealtimeReturn = {
 
 function computeLockStatesFromAwareness(
   awareness: AwarenessLike,
-  currentUserId: string,
+  currentUserId: string | null,
 ): Map<string, { lockState: LockState; lockedBy: SectionAwarenessState["user"] | null }> {
   const states = awareness.getStates();
+  const normalizedCurrentUserId = currentUserId ?? "__anonymous_viewer__";
   const newLockStates = new Map<
     string,
     { lockState: LockState; lockedBy: SectionAwarenessState["user"] | null }
@@ -56,7 +60,7 @@ function computeLockStatesFromAwareness(
     if (!awarenessState?.editingSectionId) continue;
     const sectionId = awarenessState.editingSectionId;
 
-    const lockState = getLockState(awareness, sectionId, currentUserId);
+    const lockState = getLockState(awareness, sectionId, normalizedCurrentUserId);
     const lockedByUser = getLockedBy(awareness, sectionId);
     newLockStates.set(sectionId, { lockState, lockedBy: lockedByUser });
   }
@@ -82,8 +86,8 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
   // provider/awareness の初期化完了より user の解決が遅い場合に
   // lockStates が空のまま残る問題を防ぐ。
   useEffect(() => {
-    if (!user || !awarenessRef.current) return;
-    setLockStates(computeLockStatesFromAwareness(awarenessRef.current, user.id));
+    if (!awarenessRef.current) return;
+    setLockStates(computeLockStatesFromAwareness(awarenessRef.current, user?.id ?? null));
   }, [user]);
 
   // モックモード: BroadcastChannel ベースのAwarenessでタブ間ロック同期を実現
@@ -95,8 +99,7 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
     setConnectionStatus("connected");
 
     const recompute = () => {
-      if (!userRef.current) return;
-      setLockStates(computeLockStatesFromAwareness(awareness, userRef.current.id));
+      setLockStates(computeLockStatesFromAwareness(awareness, userRef.current?.id ?? null));
     };
 
     recompute();
@@ -112,11 +115,11 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
     };
   }, [plotId]);
 
-  // 本番モード: y-supabase SupabaseProvider 経由のAwareness
+  // 本番モード: SupabaseBroadcastProvider 経由のリアルタイム同期・Awareness
   useEffect(() => {
     if (isMockMode() || !plotId) return;
-
     const supabaseClient = createClient();
+
     const state = createRealtimeProvider({
       plotId,
       supabaseClient,
@@ -127,15 +130,42 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
     setConnectionStatus(state.status);
 
     let cleanupAwareness: (() => void) | undefined;
+    let cleanupProviderEvents: (() => void) | undefined;
 
-    if (state.provider?.awareness) {
-      // y-protocols の Awareness は {[x: string]: any} 型 → AwarenessLike にキャスト
-      const awareness = state.provider.awareness as unknown as AwarenessLike;
+    const provider = state.provider;
+
+    if (provider) {
+      const handleStatus = (statusObj: { status?: ConnectionStatus }) => {
+        if (statusObj?.status) {
+          setConnectionStatus(statusObj.status);
+        }
+      };
+
+      const handleError = (...args: unknown[]) => {
+        console.error("[usePlotRealtime] Realtime error:", args);
+        setConnectionStatus("disconnected");
+      };
+
+      const handleConnect = () => {
+        console.info("[usePlotRealtime] Connected to Supabase Realtime channel");
+      };
+
+      provider.on("status", handleStatus);
+      provider.on("error", handleError);
+      provider.on("connect", handleConnect);
+
+      cleanupProviderEvents = () => {
+        provider.off("status", handleStatus);
+        provider.off("error", handleError);
+        provider.off("connect", handleConnect);
+      };
+
+      // Awareness をフックに接続
+      const awareness = provider.awareness as unknown as AwarenessLike;
       awarenessRef.current = awareness;
 
       const recompute = () => {
-        if (!userRef.current) return;
-        setLockStates(computeLockStatesFromAwareness(awareness, userRef.current.id));
+        setLockStates(computeLockStatesFromAwareness(awareness, userRef.current?.id ?? null));
       };
 
       recompute();
@@ -144,6 +174,7 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
 
     return () => {
       cleanupAwareness?.();
+      cleanupProviderEvents?.();
       destroyRealtimeProvider(state);
       providerStateRef.current = null;
       awarenessRef.current = null;

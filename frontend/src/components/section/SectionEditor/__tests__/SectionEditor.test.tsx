@@ -1,8 +1,19 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Doc } from "yjs";
 import type { SectionResponse } from "@/lib/api/types";
 import { SectionEditor } from "../SectionEditor";
+
+vi.mock("sonner", () => ({
+  toast: {
+    warning: vi.fn(),
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}));
+
+// sonner mock のインスタンスへの参照を取得
+import { toast as mockToast } from "sonner";
 
 let capturedTiptapProps: Record<string, unknown> = {};
 
@@ -38,7 +49,7 @@ describe("SectionEditor", () => {
     section: mockSection,
     lockState: "unlocked" as const,
     lockedBy: null,
-    onSave: vi.fn(),
+    onSave: vi.fn().mockResolvedValue(true),
     onEditStart: vi.fn(),
     onEditEnd: vi.fn(),
   };
@@ -79,13 +90,15 @@ describe("SectionEditor", () => {
     expect(screen.getByRole("button", { name: /編集完了/ })).toBeInTheDocument();
   });
 
-  it("lockState が locked-by-me で編集完了クリック時、onSave と onEditEnd が呼ばれる", () => {
+  it("lockState が locked-by-me で編集完了クリック時、onSave と onEditEnd が呼ばれる", async () => {
     render(<SectionEditor {...defaultProps} lockState="locked-by-me" />);
 
     fireEvent.click(screen.getByRole("button", { name: /編集完了/ }));
 
-    expect(defaultProps.onSave).toHaveBeenCalledTimes(1);
-    expect(defaultProps.onEditEnd).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(defaultProps.onSave).toHaveBeenCalledTimes(1);
+      expect(defaultProps.onEditEnd).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("lockState が locked-by-other の場合、閲覧表示と SectionLockBadge が表示される", () => {
@@ -130,31 +143,27 @@ describe("SectionEditor", () => {
   });
 
   describe("ydoc / provider の受け渡し", () => {
-    it("ydoc と provider が TiptapEditor に渡される", () => {
+    it("ydoc が TiptapEditor に渡される（provider は Collaboration 用に不要）", () => {
       const ydoc = new Doc();
-      const mockProvider = { awareness: {} };
 
       render(
         <SectionEditor
           {...defaultProps}
           lockState="locked-by-me"
           ydoc={ydoc}
-          provider={mockProvider as never}
         />,
       );
 
       expect(capturedTiptapProps.ydoc).toBe(ydoc);
-      expect(capturedTiptapProps.provider).toBe(mockProvider);
     });
 
-    it("ydoc / provider が省略された場合、undefined が渡される", () => {
+    it("ydoc が省略された場合、undefined が渡される", () => {
       render(<SectionEditor {...defaultProps} lockState="locked-by-me" />);
 
       expect(capturedTiptapProps.ydoc).toBeUndefined();
-      expect(capturedTiptapProps.provider).toBeUndefined();
     });
 
-    it("lockState が unlocked のとき、TiptapEditor はレンダリングされない", () => {
+    it("lockState が unlocked のとき、read-only TiptapEditor に ydoc は渡されない（JSON 直接同期を使うため）", () => {
       const ydoc = new Doc();
 
       render(
@@ -162,6 +171,57 @@ describe("SectionEditor", () => {
       );
 
       expect(capturedTiptapProps.ydoc).toBeUndefined();
+    });
+  });
+
+  describe("強制編集中断（ロック喪失）", () => {
+    it("lockState が locked-by-me から locked-by-other に変わった場合、onSave を呼び toast.warning を表示する", async () => {
+      const onLockRevoked = vi.fn();
+      const { rerender } = render(
+        <SectionEditor
+          {...defaultProps}
+          lockState="locked-by-me"
+          lockedBy={null}
+          onLockRevoked={onLockRevoked}
+        />,
+      );
+
+      rerender(
+        <SectionEditor
+          {...defaultProps}
+          lockState="locked-by-other"
+          lockedBy={mockLockedBy}
+          onLockRevoked={onLockRevoked}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(defaultProps.onSave).toHaveBeenCalledWith(
+          "概要",
+          expect.any(Object),
+          { silent: true },
+        );
+      });
+
+      expect(mockToast.warning).toHaveBeenCalledWith(
+        expect.stringContaining("他のユーザー"),
+      );
+      expect(onLockRevoked).toHaveBeenCalledTimes(1);
+    });
+
+    it("lockState が locked-by-me から locked-by-other に変わった場合、閲覧モードに戻る", () => {
+      const { rerender } = render(
+        <SectionEditor {...defaultProps} lockState="locked-by-me" lockedBy={null} />,
+      );
+
+      expect(screen.getByRole("button", { name: /編集完了/ })).toBeInTheDocument();
+
+      rerender(
+        <SectionEditor {...defaultProps} lockState="locked-by-other" lockedBy={mockLockedBy} />,
+      );
+
+      expect(screen.queryByRole("button", { name: /編集完了/ })).not.toBeInTheDocument();
+      expect(screen.getByText("他のユーザー が編集中")).toBeInTheDocument();
     });
   });
 });

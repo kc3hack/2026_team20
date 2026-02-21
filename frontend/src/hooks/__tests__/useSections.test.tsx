@@ -156,7 +156,7 @@ describe("useSections hooks", () => {
       );
     });
 
-    it("更新時に HotOperation を保存する（保存と履歴記録が並列実行される）", async () => {
+    it("更新時に HotOperation を保存する", async () => {
       const wrapper = createWrapper();
       const { result } = renderHook(() => useUpdateSection(), { wrapper });
 
@@ -174,6 +174,26 @@ describe("useSections hooks", () => {
         { operationType: "update" },
         "mock-token",
       );
+    });
+
+    it("履歴保存が失敗しても本文保存は成功扱いになる", async () => {
+      const wrapper = createWrapper();
+      mockUpdate.mockResolvedValue({ ...mockSection, title: "更新済み" });
+      mockSaveOperation.mockRejectedValue(new Error("history failed"));
+
+      const { result } = renderHook(() => useUpdateSection(), { wrapper });
+
+      await act(async () => {
+        result.current.mutate({
+          plotId: "plot-1",
+          sectionId: "section-1",
+          body: { title: "更新済み" },
+        });
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(mockSaveOperation).toHaveBeenCalledTimes(1);
     });
 
     it("楽観的更新: mutate 直後にキャッシュが即座に更新される", async () => {

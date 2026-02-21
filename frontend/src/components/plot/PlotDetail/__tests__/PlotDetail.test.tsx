@@ -129,6 +129,12 @@ describe("PlotDetail", () => {
     expect(statsArea?.textContent).toContain("前");
   });
 
+  it("createdAt が不正な場合、日時不明を表示する", () => {
+    render(<PlotDetail plot={{ ...basePlot, createdAt: "invalid-date" }} />);
+
+    expect(screen.getByText("日時不明")).toBeInTheDocument();
+  });
+
   it("isPaused が true の場合、一時停止バナーが表示される", () => {
     render(<PlotDetail plot={{ ...basePlot, isPaused: true }} />);
 

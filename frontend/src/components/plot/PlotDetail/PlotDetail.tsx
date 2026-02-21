@@ -35,10 +35,13 @@ export function PlotDetail({ plot }: PlotDetailProps) {
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   const ownerInitials = plot.owner?.displayName.slice(0, 2) ?? "??";
-  const createdAgo = formatDistanceToNow(new Date(plot.createdAt), {
-    addSuffix: true,
-    locale: ja,
-  });
+  const createdAtDate = new Date(plot.createdAt);
+  const createdAgo = Number.isNaN(createdAtDate.getTime())
+    ? "日時不明"
+    : formatDistanceToNow(createdAtDate, {
+        addSuffix: true,
+        locale: ja,
+      });
 
   const sortedSections = useMemo(
     () => [...plot.sections].sort((a, b) => a.orderIndex - b.orderIndex),
@@ -124,16 +127,26 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                   plotId={plot.id}
                   isPaused={plot.isPaused}
                   awareness={awareness}
-                  lockStates={lockStates}
                   ydoc={ydoc}
                   provider={provider}
                   onEditingSectionChange={setEditingSectionId}
-                  onSave={(title, content) => {
-                    updateSection.mutate({
-                      plotId: plot.id,
-                      sectionId: section.id,
-                      body: { title, content },
-                    });
+                  onSave={async (title, content, options) => {
+                    try {
+                      await updateSection.mutateAsync({
+                        plotId: plot.id,
+                        sectionId: section.id,
+                        body: { title, content },
+                      });
+                      if (!options?.silent) {
+                        toast.success("セクションを保存しました");
+                      }
+                      return true;
+                    } catch {
+                      if (!options?.silent) {
+                        toast.error("セクションの保存に失敗しました");
+                      }
+                      return false;
+                    }
                   }}
                 />
               ))}
@@ -155,6 +168,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
               sections={plot.sections}
               lockStates={lockStates}
               connectionStatus={connectionStatus}
+              provider={provider}
             />
           )}
         </main>
@@ -168,7 +182,6 @@ function SectionEditorWithLock({
   plotId,
   isPaused,
   awareness,
-  lockStates,
   ydoc,
   provider,
   onEditingSectionChange,
@@ -178,11 +191,10 @@ function SectionEditorWithLock({
   plotId: string;
   isPaused: boolean;
   awareness: ReturnType<typeof usePlotRealtime>["awareness"];
-  lockStates: Map<string, { lockState: LockState; lockedBy: SectionAwarenessState["user"] | null }>;
   ydoc: ReturnType<typeof usePlotRealtime>["ydoc"];
   provider: ReturnType<typeof usePlotRealtime>["provider"];
   onEditingSectionChange: (id: string | null) => void;
-  onSave: (title: string, content: Record<string, unknown>) => void;
+  onSave: (title: string, content: Record<string, unknown>, options?: { silent?: boolean }) => Promise<boolean>;
 }) {
   const {
     lockState: hookLockState,
@@ -191,13 +203,10 @@ function SectionEditorWithLock({
     releaseLock,
   } = useSectionLock(plotId, section.id, {
     awareness,
+    provider,
   });
-
-  // lockStates Map（グローバル管理）に値があればそれを使い、
-  // なければ useSectionLock が返す個別の状態をフォールバックとして使う
-  const lockInfo = lockStates.get(section.id);
-  const lockState: LockState = lockInfo?.lockState ?? hookLockState;
-  const lockedBy = lockInfo?.lockedBy ?? hookLockedBy;
+  const lockState: LockState = hookLockState;
+  const lockedBy: SectionAwarenessState["user"] | null = hookLockedBy;
 
   const handleEditStart = useCallback(async () => {
     if (isPaused) {
@@ -210,6 +219,8 @@ function SectionEditorWithLock({
       onEditingSectionChange(section.id);
     } else if (lockedBy) {
       toast.error(`このセクションは ${lockedBy.displayName} が編集中です`);
+    } else {
+      toast.error("このセクションは現在編集できません。少し待って再試行してください");
     }
   }, [
     isPaused,
@@ -224,6 +235,12 @@ function SectionEditorWithLock({
     onEditingSectionChange(null);
   }, [releaseLock, onEditingSectionChange]);
 
+  const handleLockRevoked = useCallback(() => {
+    // ロックが奪われた場合は releaseLock を呼ばない（内部で処理済み）
+    // 親の editing 状態だけリセットする
+    onEditingSectionChange(null);
+  }, [onEditingSectionChange]);
+
   return (
     <SectionEditor
       section={section}
@@ -234,6 +251,7 @@ function SectionEditorWithLock({
       onSave={onSave}
       onEditStart={handleEditStart}
       onEditEnd={handleEditEnd}
+      onLockRevoked={handleLockRevoked}
     />
   );
 }

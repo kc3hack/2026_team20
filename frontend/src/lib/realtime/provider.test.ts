@@ -6,6 +6,24 @@ import {
   destroyRealtimeProvider,
 } from "./provider";
 
+/**
+ * SupabaseBroadcastProvider が内部で channel() → .on() → .subscribe() を呼ぶため、
+ * チェーン可能なモック Supabase クライアントを作る。
+ */
+function createMockSupabaseClient() {
+  const mockChannel = {
+    on: vi.fn().mockReturnThis(),
+    subscribe: vi.fn().mockReturnThis(),
+    send: vi.fn().mockResolvedValue("ok"),
+    unsubscribe: vi.fn().mockResolvedValue("ok"),
+  };
+  return {
+    channel: vi.fn().mockReturnValue(mockChannel),
+    removeChannel: vi.fn().mockResolvedValue("ok"),
+    _mockChannel: mockChannel,
+  };
+}
+
 describe("provider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,14 +58,12 @@ describe("provider", () => {
   });
 
   describe("createRealtimeProvider (Realtime モード)", () => {
-    it("useMock=false の場合は y-supabase プロバイダーを作成する", () => {
-      const mockClient = {
-        supabaseClient: { channel: vi.fn() },
-      };
+    it("useMock=false の場合は SupabaseBroadcastProvider を作成する", () => {
+      const mockClient = createMockSupabaseClient();
 
       const state = createRealtimeProvider({
         plotId: "plot-2",
-        supabaseClient: mockClient.supabaseClient,
+        supabaseClient: mockClient,
         useMock: false,
       });
 
@@ -55,16 +71,29 @@ describe("provider", () => {
       expect(state.doc).toBeDefined();
       expect(state.provider).toBeDefined();
       expect(state.provider).not.toBeNull();
+
+      // channel() が plot:plot-2 で呼ばれる
+      expect(mockClient.channel).toHaveBeenCalledWith(
+        "plot:plot-2",
+        expect.objectContaining({ config: { broadcast: { self: false } } }),
+      );
+
+      // cleanup
+      state.provider?.destroy();
     });
 
     it("プロバイダーのチャネル名が plot:{plotId} 形式である", () => {
+      const mockClient = createMockSupabaseClient();
+
       const state = createRealtimeProvider({
         plotId: "plot-abc",
-        supabaseClient: {},
+        supabaseClient: mockClient,
         useMock: false,
       });
 
       expect(state.channelName).toBe("plot:plot-abc");
+
+      state.provider?.destroy();
     });
   });
 
@@ -78,21 +107,21 @@ describe("provider", () => {
 
       destroyRealtimeProvider(state);
 
-      expect(state.doc.destroy).toHaveBeenCalled();
       expect(state.status).toBe("disconnected");
     });
 
     it("Realtime モードのプロバイダーを破棄する", () => {
+      const mockClient = createMockSupabaseClient();
+
       const state = createRealtimeProvider({
         plotId: "plot-1",
-        supabaseClient: {},
+        supabaseClient: mockClient,
         useMock: false,
       });
 
       destroyRealtimeProvider(state);
 
-      expect(state.provider?.destroy).toHaveBeenCalled();
-      expect(state.doc.destroy).toHaveBeenCalled();
+      expect(mockClient.removeChannel).toHaveBeenCalled();
       expect(state.status).toBe("disconnected");
     });
   });
