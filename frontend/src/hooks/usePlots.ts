@@ -1,10 +1,10 @@
 "use client";
 
+import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { plotRepository } from "@/lib/api/repositories";
 import type { CreatePlotRequest, UpdatePlotRequest } from "@/lib/api/types";
 import { queryKeys } from "@/lib/query-keys";
-import { useAuth } from "@/providers/AuthProvider";
 
 // ────────────────────────────────────────────────────────────────
 // 認証について:
