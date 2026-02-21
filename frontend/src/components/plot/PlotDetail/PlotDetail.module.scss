@@ -1,0 +1,115 @@
+@use "@/styles/mixins" as *;
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.pausedBanner {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid hsl(var(--destructive));
+  border-radius: 0.5rem;
+  background-color: hsl(var(--destructive) / 0.1);
+  text-align: center;
+}
+
+.header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.description {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1rem;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ownerName {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.starCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.createdAt {
+  color: hsl(var(--muted-foreground));
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+
+  @include respond-to(md) {
+    flex-direction: row;
+  }
+}
+
+.sidebar {
+  // モバイルでは上部に表示、md以上でサイドバーとして表示
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+
+  @include respond-to(md) {
+    width: 240px;
+    position: sticky;
+    top: 5rem;
+    align-self: flex-start;
+  }
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}

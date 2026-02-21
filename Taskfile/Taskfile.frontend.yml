@@ -68,6 +68,10 @@ tasks:
     desc: Lintのみ実行
     cmd: pnpm biome lint .
 
+  typecheck:
+    desc: TypeScript 型チェック
+    cmd: pnpm tsc --noEmit
+
   test:
     desc: Unitテスト実行 (Vitest)
     deps: [install]

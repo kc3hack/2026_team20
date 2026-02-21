@@ -75,9 +75,7 @@ describe("imageRepository", () => {
 
     it("should handle filenames with special characters", () => {
       const url = imageRepository.getUrl("スクリーンショット 2026.png");
-      expect(url).toBe(
-        `/api/v1/images/${encodeURIComponent("スクリーンショット 2026.png")}`,
-      );
+      expect(url).toBe(`/api/v1/images/${encodeURIComponent("スクリーンショット 2026.png")}`);
     });
   });
 });

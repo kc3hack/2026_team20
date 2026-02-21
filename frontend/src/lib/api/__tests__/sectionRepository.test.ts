@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockSections } from "@/mocks/data/sections";
 import * as sectionRepository from "../repositories/sectionRepository";
 
@@ -239,6 +239,116 @@ describe("sectionRepository", () => {
         status: 403,
         detail: "This plot is paused",
       });
+    });
+  });
+});
+
+/**
+ * Mock モード (NEXT_PUBLIC_USE_MOCK=true) のテスト。
+ *
+ * USE_MOCK はモジュール読み込み時に評価されるため、
+ * vi.resetModules() + dynamic import で再読み込みし、
+ * 環境変数が "true" の状態でモジュールを初期化する。
+ */
+describe("sectionRepository (mock mode)", () => {
+  const originalEnv = process.env.NEXT_PUBLIC_USE_MOCK;
+
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.NEXT_PUBLIC_USE_MOCK = "true";
+  });
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.NEXT_PUBLIC_USE_MOCK = originalEnv;
+    } else {
+      delete process.env.NEXT_PUBLIC_USE_MOCK;
+    }
+  });
+
+  describe("listByPlot", () => {
+    it("should return SectionListResponse for valid plotId", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.listByPlot("plot-001");
+
+      expect(result.items.length).toBeGreaterThan(0);
+      expect(result.total).toBe(result.items.length);
+      for (const section of result.items) {
+        expect(section.plotId).toBe("plot-001");
+      }
+    });
+
+    it("should return empty list for plotId with no sections", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.listByPlot("plot-nonexistent");
+
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+  });
+
+  describe("get", () => {
+    it("should return SectionResponse for valid sectionId", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.get("section-001");
+
+      expect(result.id).toBe("section-001");
+      expect(result.plotId).toBe("plot-001");
+      expect(result.title).toBeDefined();
+    });
+
+    it("should throw Error for non-existent sectionId", async () => {
+      const mod = await import("../repositories/sectionRepository");
+
+      await expect(mod.get("nonexistent")).rejects.toThrow("Section not found: nonexistent");
+    });
+  });
+
+  describe("create", () => {
+    it("should return SectionResponse with generated ID", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.create("plot-001", { title: "新規セクション" });
+
+      expect(result.id).toMatch(/^mock-section-/);
+      expect(result.plotId).toBe("plot-001");
+      expect(result.title).toBe("新規セクション");
+      expect(result.version).toBe(1);
+    });
+
+    it("should respect orderIndex when provided", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.create("plot-001", { title: "順序付き", orderIndex: 5 });
+
+      expect(result.orderIndex).toBe(5);
+    });
+  });
+
+  describe("update", () => {
+    it("should return updated SectionResponse", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.update("section-001", { title: "更新タイトル" });
+
+      expect(result.title).toBe("更新タイトル");
+      expect(result.updatedAt).toBeDefined();
+    });
+  });
+
+  describe("remove", () => {
+    it("should return undefined", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.remove("section-001");
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe("reorder", () => {
+    it("should return SectionResponse with updated orderIndex", async () => {
+      const mod = await import("../repositories/sectionRepository");
+      const result = await mod.reorder("section-001", { newOrder: 3 });
+
+      expect(result.orderIndex).toBe(3);
+      expect(result.updatedAt).toBeDefined();
     });
   });
 });

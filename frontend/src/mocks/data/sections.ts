@@ -98,4 +98,32 @@ export const mockSections: SectionResponse[] = [
     createdAt: "2026-02-10T14:00:00Z",
     updatedAt: "2026-02-10T14:00:00Z",
   },
+  ...Array.from({ length: 15 }).map((_, i) => ({
+    id: `section-test-scroll-${i + 1}`,
+    plotId: "plot-test-scroll",
+    title: `第 ${i + 1} 章：テストセクション ${i + 1}`,
+    content: {
+      type: "doc",
+      content: [
+        {
+          type: "heading",
+          attrs: { level: 2 },
+          content: [{ type: "text", text: `第 ${i + 1} 章の概要` }],
+        },
+        ...Array.from({ length: 10 }).map((_, j) => ({
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: `これはテスト用の長文テキストです。スクロール量を稼ぐために段落を複数生成しています。第 ${i + 1} 章の ${j + 1} 番目の段落です。目次をクリックした際の Intersection Observer の挙動確認や、スムーズスクロール時の動作テストとして利用してください。画面が十分に長くないとスクロールのテストにならないため、このように適当な文章を大量に並べて長さを稼ぎます。`,
+            },
+          ],
+        })),
+      ],
+    },
+    orderIndex: i,
+    version: 1,
+    createdAt: "2026-02-21T00:00:00Z",
+    updatedAt: "2026-02-21T00:00:00Z",
+  })),
 ];
