@@ -57,14 +57,14 @@ describe("UserMenu", () => {
     expect(mockSignOut).toHaveBeenCalled();
   });
 
-  it("プロフィールリンクが正しい href で表示される", async () => {
+  it("マイページリンクが正しい href で表示される", async () => {
     const user = userEvent.setup();
 
     render(<UserMenu />);
 
     await user.click(screen.getByRole("button"));
 
-    const profileLink = screen.getByRole("menuitem", { name: "プロフィール" });
+    const profileLink = screen.getByRole("menuitem", { name: "マイページ" });
     expect(profileLink).toBeInTheDocument();
     expect(profileLink).toHaveAttribute("href", "/profile/user-1");
   });
