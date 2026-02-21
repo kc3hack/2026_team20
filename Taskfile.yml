@@ -38,7 +38,6 @@ tasks:
     cmd: "{{.INFISICAL_CMD}} task dev:start"
 
   dev:start:
-    internal: true
     deps:
       - task: backend:dev
       - task: frontend:dev

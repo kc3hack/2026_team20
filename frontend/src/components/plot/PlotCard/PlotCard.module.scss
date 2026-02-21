@@ -14,7 +14,7 @@
 
     &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px color-mix(in oklch, var(--foreground) 8%, transparent);
+        box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
     }
 }
 

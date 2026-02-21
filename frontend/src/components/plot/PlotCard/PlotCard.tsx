@@ -3,6 +3,7 @@ import { ja } from "date-fns/locale";
 import { Star } from "lucide-react";
 import Link from "next/link";
 import { TagBadge } from "@/components/shared/TagBadge/TagBadge";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PlotResponse } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
@@ -44,10 +45,10 @@ export function PlotCard({ plot }: PlotCardProps) {
         </CardContent>
 
         <CardFooter className={styles.footer}>
-          <span className={styles.stars}>
+          <Badge variant="secondary" className={cn(styles.stars)}>
             <Star size={14} />
             {plot.starCount}
-          </span>
+          </Badge>
           <time dateTime={plot.createdAt} className={styles.date}>
             {createdAtLabel}
           </time>

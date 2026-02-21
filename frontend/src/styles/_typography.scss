@@ -59,7 +59,7 @@
         text-underline-offset: 4px;
 
         &:hover {
-            color: color-mix(in oklch, var(--primary) 80%, transparent);
+            color: hsl(var(--primary) / 0.8);
         }
     }
 }

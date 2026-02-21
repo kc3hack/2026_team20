@@ -56,6 +56,14 @@ describe("PlotCard", () => {
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 
+  it("スター数がBadgeコンポーネント内に表示される", () => {
+    const { container } = render(<PlotCard plot={mockPlot} />);
+    const badges = container.querySelectorAll("[data-slot='badge'][data-variant='secondary']");
+    const starBadge = Array.from(badges).find((badge) => badge.textContent?.includes("42"));
+    expect(starBadge).toBeDefined();
+    expect(starBadge?.querySelector("svg")).toBeTruthy();
+  });
+
   it("リンク先が正しい (/plots/{id})", () => {
     render(<PlotCard plot={mockPlot} />);
     const links = screen.getAllByRole("link");
@@ -73,14 +81,14 @@ describe("PlotCard", () => {
     expect(screen.queryByText("これはテスト用の説明文です。")).not.toBeInTheDocument();
   });
 
-  it("タグが空配列の場合はタグ領域が表示されない", () => {
+  it("タグが空配列の場合はタグ用Badgeが表示されない", () => {
     const plotWithoutTags: PlotResponse = {
       ...mockPlot,
       tags: [],
     };
     const { container } = render(<PlotCard plot={plotWithoutTags} />);
-    // TagBadge がレンダリングされないことを確認
-    expect(container.querySelectorAll("[data-slot='badge']")).toHaveLength(0);
+    const allBadges = container.querySelectorAll("[data-slot='badge']");
+    expect(allBadges).toHaveLength(1);
   });
 
   it("作成日が相対時間で表示される", () => {
