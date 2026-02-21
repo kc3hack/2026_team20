@@ -36,7 +36,8 @@ export function Header({ searchSlot, userMenuSlot }: HeaderProps) {
     <header className={styles.header}>
       <div className={styles.inner}>
         <Link href="/" className={styles.logo}>
-          <Image src="/logo.svg" alt="Plot Platform" width={120} height={32} priority />
+          <Image src="/header-logo.png" alt="Plot Platform" width={50} height={32} priority />
+          <span className={styles.logoText}>WikiPlots</span>
         </Link>
 
         <div className={styles.center}>{searchSlot ?? <Skeleton className="h-10 w-64" />}</div>
