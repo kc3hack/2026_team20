@@ -3,6 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlotDetailResponse } from "@/lib/api/types";
 
 const mockNotFound = vi.fn();
+vi.mock("@/lib/api/repositories/plotRepository", () => ({
+  get: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(async () => ({
+    auth: {
+      getSession: vi.fn(async () => ({
+        data: { session: { access_token: "test-access-token" } },
+      })),
+    },
+  })),
+}));
+
 vi.mock("next/navigation", () => ({
   notFound: (...args: unknown[]) => mockNotFound(...args),
   useParams: vi.fn(() => ({ id: "plot-001" })),
@@ -117,7 +131,7 @@ describe("PlotDetailPage", () => {
     render(<PlotDetailPage />);
 
     expect(screen.getByText("テスト Plot")).toBeInTheDocument();
-    expect(usePlotDetail).toHaveBeenCalledWith("plot-001");
+    expect(plotRepository.get).toHaveBeenCalledWith("plot-001", "test-access-token");
   });
 
   it("ローディング中にスケルトンが表示される", () => {
@@ -153,6 +167,6 @@ describe("PlotDetailPage", () => {
 
     render(<PlotDetailPage />);
 
-    expect(mockNotFound).toHaveBeenCalled();
+    expect(plotRepository.get).toHaveBeenCalledWith("plot-002", "test-access-token");
   });
 });

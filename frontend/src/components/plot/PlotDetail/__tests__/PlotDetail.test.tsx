@@ -161,17 +161,16 @@ describe("PlotDetail", () => {
     expect(screen.getByText("テストオーナー")).toBeInTheDocument();
   });
 
-  it("スター数が表示される", () => {
+  it("StarButton にスター数が表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
-    expect(screen.getAllByText("42").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("star-button")).toHaveTextContent("42");
   });
 
   it("作成日が相対時間で表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
-    const statsArea = screen.getAllByText("42")[0].parentElement?.parentElement;
-    expect(statsArea?.textContent).toContain("前");
+    expect(screen.getByText(/前/)).toBeInTheDocument();
   });
 
   it("createdAt が不正な場合、日時不明を表示する", () => {

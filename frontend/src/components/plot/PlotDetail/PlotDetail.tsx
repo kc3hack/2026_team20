@@ -130,10 +130,6 @@ export function PlotDetail({ plot }: PlotDetailProps) {
           )}
 
           <div className={styles.stats}>
-            <span className={styles.starCount}>
-              <Star size={16} />
-              {plot.starCount}
-            </span>
             <span className={styles.createdAt}>{createdAgo}</span>
             <Button asChild variant="outline" size="sm">
               <Link href={`/plots/${plot.id}/history`}>

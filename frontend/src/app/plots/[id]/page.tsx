@@ -4,13 +4,22 @@ import { notFound, useParams } from "next/navigation";
 import { PlotDetail } from "@/components/plot/PlotDetail/PlotDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePlotDetail } from "@/hooks/usePlots";
+import { ApiError } from "@/lib/api/client";
+import * as plotRepository from "@/lib/api/repositories/plotRepository";
+import { createClient } from "@/lib/supabase/server";
 import styles from "./page.module.scss";
 
 export default function PlotDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: plot, isLoading, error } = usePlotDetail(id);
 
-  if (isLoading) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const plot = await plotRepository.get(id, session?.access_token);
     return (
       <div className={styles.page}>
         <PlotDetailSkeleton />
