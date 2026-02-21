@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SearchBar } from "../SearchBar";
 
 const pushMock = vi.fn();
@@ -29,7 +29,9 @@ describe("SearchBar", () => {
     render(<SearchBar />);
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "テスト" } });
-    fireEvent.submit(input.closest("form")!);
+    const form = input.closest("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
     expect(pushMock).toHaveBeenCalledWith(`/search?q=${encodeURIComponent("テスト")}`);
   });
 
@@ -53,7 +55,9 @@ describe("SearchBar", () => {
     render(<SearchBar />);
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "   " } });
-    fireEvent.submit(input.closest("form")!);
+    const form = input.closest("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
     expect(pushMock).not.toHaveBeenCalled();
   });
 });

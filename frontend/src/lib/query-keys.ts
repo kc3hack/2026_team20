@@ -14,5 +14,20 @@ export const queryKeys = {
     byPlot: (plotId: string) => ["sections", "byPlot", plotId] as const,
     // TODO: Issue #3 以降で detail などを追加
   },
-  // TODO: Issue #3 以降で history, comments, search, users などを追加
+  stars: {
+    byPlot: (plotId: string) => ["stars", "byPlot", plotId] as const,
+  },
+  threads: {
+    byPlot: (plotId: string) => ["threads", "byPlot", plotId] as const,
+  },
+  comments: {
+    byThread: (threadId: string) => ["comments", "byThread", threadId] as const,
+  },
+  // TODO: Issue #3 以降で history, search, users などを追加
+  search: {
+    all: ["search"] as const,
+    results: (params: { q: string; limit?: number; offset?: number }) =>
+      ["search", "results", params] as const,
+  },
+  // TODO: Issue #3 以降で history, comments, users などを追加
 } as const;

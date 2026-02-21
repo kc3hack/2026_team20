@@ -1,23 +1,30 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Plus, Star } from "lucide-react";
+import { History, Pencil, Plus, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { SectionEditor } from "@/components/section/SectionEditor/SectionEditor";
 import { SectionList } from "@/components/section/SectionList/SectionList";
 import { TableOfContents } from "@/components/section/TableOfContents/TableOfContents";
 import { TagBadge } from "@/components/shared/TagBadge/TagBadge";
+import { CommentForm } from "@/components/sns/CommentForm/CommentForm";
+import { CommentThread } from "@/components/sns/CommentThread/CommentThread";
+import { ForkButton } from "@/components/sns/ForkButton/ForkButton";
+import { StarButton } from "@/components/sns/StarButton/StarButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { useComments, useCreateThread } from "@/hooks/useComments";
 import { usePlotRealtime } from "@/hooks/usePlotRealtime";
 import { useSectionLock } from "@/hooks/useSectionLock";
 import { useCreateSection, useUpdateSection } from "@/hooks/useSections";
-import type { PlotDetailResponse, SectionResponse } from "@/lib/api/types";
+import type { CommentResponse, PlotDetailResponse, SectionResponse } from "@/lib/api/types";
 import type { LockState, SectionAwarenessState } from "@/lib/realtime/types";
 import styles from "./PlotDetail.module.scss";
 
@@ -33,6 +40,28 @@ export function PlotDetail({ plot }: PlotDetailProps) {
   const createSection = useCreateSection();
 
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+
+  // スレッド管理 — Plot全体コメント用スレッド (sectionId=null) をマウント時に自動作成する。
+  // PlotDetailResponse に threadId が含まれないため、初回アクセス時に POST /threads で作成し、
+  // useState で保持する。本番API繋ぎ込み時（Issue #16）で GET /plots/{plotId}/threads による
+  // 既存スレッド取得に対応予定。
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [replyTarget, setReplyTarget] = useState<CommentResponse | null>(null);
+  const { createThread } = useCreateThread();
+
+  // マウント時にPlot全体コメント用スレッドを自動作成（1回のみ実行）
+  // createThread は毎レンダー新しい参照になるため、useRef で多重実行を防ぐ
+  const threadInitialized = useRef(false);
+  useEffect(() => {
+    if (threadInitialized.current) return;
+    threadInitialized.current = true;
+
+    createThread(plot.id)
+      .then((thread) => setThreadId(thread.id))
+      .catch(() => toast.error("コメントスレッドの読み込みに失敗しました"));
+  }, [createThread, plot.id]);
+
+  const { comments } = useComments(threadId ?? "");
 
   const ownerInitials = plot.owner?.displayName.slice(0, 2) ?? "??";
   const createdAtDate = new Date(plot.createdAt);
@@ -65,6 +94,11 @@ export function PlotDetail({ plot }: PlotDetailProps) {
         title: `新しいセクション ${sortedSections.length + 1}`,
       },
     });
+  };
+
+  const handleReply = (parentCommentId: string) => {
+    const comment = comments.find((c) => c.id === parentCommentId);
+    setReplyTarget(comment ?? null);
   };
 
   return (
@@ -101,7 +135,22 @@ export function PlotDetail({ plot }: PlotDetailProps) {
               {plot.starCount}
             </span>
             <span className={styles.createdAt}>{createdAgo}</span>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/plots/${plot.id}/history`}>
+                <History size={16} />
+                履歴
+              </Link>
+            </Button>
           </div>
+        </div>
+
+        <div className={styles.actions}>
+          <StarButton
+            plotId={plot.id}
+            initialCount={plot.starCount}
+            initialIsStarred={plot.isStarred}
+          />
+          <ForkButton plotId={plot.id} />
         </div>
 
         {plot.tags.length > 0 && (
@@ -173,6 +222,27 @@ export function PlotDetail({ plot }: PlotDetailProps) {
           )}
         </main>
       </div>
+
+      <section className={styles.commentSection}>
+        <h2>コメント</h2>
+        {threadId ? (
+          <>
+            <CommentForm
+              threadId={threadId}
+              parentCommentId={replyTarget?.id}
+              parentCommentUser={replyTarget?.user.displayName}
+              onCancelReply={() => setReplyTarget(null)}
+            />
+            <CommentThread threadId={threadId} onReply={handleReply} />
+          </>
+        ) : (
+          <div className={styles.commentLoading}>
+            <Skeleton className={styles.commentSkeleton} />
+            <Skeleton className={styles.commentSkeleton} />
+            <Skeleton className={styles.commentSkeleton} />
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -203,7 +273,6 @@ function SectionEditorWithLock({
     releaseLock,
   } = useSectionLock(plotId, section.id, {
     awareness,
-    provider,
   });
   const lockState: LockState = hookLockState;
   const lockedBy: SectionAwarenessState["user"] | null = hookLockedBy;

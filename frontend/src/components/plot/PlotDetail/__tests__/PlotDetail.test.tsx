@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlotDetailResponse } from "@/lib/api/types";
 import { PlotDetail } from "../PlotDetail";
@@ -13,7 +14,44 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { error: vi.fn() },
+  toast: { error: vi.fn(), success: vi.fn() },
+}));
+
+const mockCreateThread = vi.fn().mockResolvedValue({
+  id: "mock-thread-id",
+  plotId: "plot-001",
+  sectionId: null,
+  commentCount: 0,
+  createdAt: "2026-02-20T00:00:00Z",
+});
+
+vi.mock("@/hooks/useComments", () => ({
+  useComments: vi.fn(() => ({ comments: [], total: 0, isLoading: false, error: null })),
+  useCreateThread: vi.fn(() => ({ createThread: mockCreateThread, isPending: false })),
+}));
+
+vi.mock("@/components/sns/StarButton/StarButton", () => ({
+  StarButton: ({ plotId, initialCount }: { plotId: string; initialCount: number }) => (
+    <button type="button" data-testid="star-button" data-plot-id={plotId}>
+      {initialCount}
+    </button>
+  ),
+}));
+
+vi.mock("@/components/sns/ForkButton/ForkButton", () => ({
+  ForkButton: ({ plotId }: { plotId: string }) => (
+    <button type="button" data-testid="fork-button" data-plot-id={plotId}>
+      フォーク
+    </button>
+  ),
+}));
+
+vi.mock("@/components/sns/CommentForm/CommentForm", () => ({
+  CommentForm: () => <div data-testid="comment-form" />,
+}));
+
+vi.mock("@/components/sns/CommentThread/CommentThread", () => ({
+  CommentThread: () => <div data-testid="comment-thread" />,
 }));
 
 const mockCreateMutate = vi.fn();
@@ -88,6 +126,13 @@ const basePlot: PlotDetailResponse = {
 describe("PlotDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateThread.mockResolvedValue({
+      id: "mock-thread-id",
+      plotId: "plot-001",
+      sectionId: null,
+      commentCount: 0,
+      createdAt: "2026-02-20T00:00:00Z",
+    });
     vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
   });
 
@@ -119,13 +164,13 @@ describe("PlotDetail", () => {
   it("スター数が表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
-    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getAllByText("42").length).toBeGreaterThanOrEqual(1);
   });
 
   it("作成日が相対時間で表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
-    const statsArea = screen.getByText("42").parentElement?.parentElement;
+    const statsArea = screen.getAllByText("42")[0].parentElement?.parentElement;
     expect(statsArea?.textContent).toContain("前");
   });
 
@@ -228,6 +273,49 @@ describe("PlotDetail", () => {
       render(<PlotDetail plot={{ ...basePlot, isPaused: true }} />);
 
       expect(screen.queryByRole("button", { name: /セクション追加/ })).not.toBeInTheDocument();
+    });
+  });
+
+  it("StarButton が表示される", () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    const starButton = screen.getByTestId("star-button");
+    expect(starButton).toBeInTheDocument();
+    expect(starButton).toHaveTextContent("42");
+  });
+
+  it("ForkButton が表示される", () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    expect(screen.getByTestId("fork-button")).toBeInTheDocument();
+    expect(screen.getByTestId("fork-button")).toHaveTextContent("フォーク");
+  });
+
+  it("コメントセクションのヘッダーが表示される", () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "コメント" })).toBeInTheDocument();
+  });
+
+  it("マウント時にスレッドが自動作成され、コメント欄が常時表示される", async () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    // useEffect でスレッドが自動作成される
+    expect(mockCreateThread).toHaveBeenCalledWith("plot-001");
+
+    // スレッド作成後、CommentForm と CommentThread が表示される
+    await waitFor(() => {
+      expect(screen.getByTestId("comment-form")).toBeInTheDocument();
+      expect(screen.getByTestId("comment-thread")).toBeInTheDocument();
+    });
+  });
+
+  it("スレッド作成に失敗した場合、エラートーストが表示される", async () => {
+    mockCreateThread.mockRejectedValueOnce(new Error("Network error"));
+    render(<PlotDetail plot={basePlot} />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("コメントスレッドの読み込みに失敗しました");
     });
   });
 });

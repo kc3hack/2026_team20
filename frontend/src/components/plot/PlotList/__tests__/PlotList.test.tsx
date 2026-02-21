@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { PlotResponse } from "@/lib/api/types";
+import { createMockPlot } from "@/__tests__/helpers/mockData";
 import { PlotList } from "../PlotList";
 
 vi.mock("next/link", () => ({
@@ -12,22 +12,6 @@ vi.mock("next/link", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
-
-const createMockPlot = (overrides: Partial<PlotResponse> = {}): PlotResponse => ({
-  id: "plot-001",
-  title: "テスト用Plot",
-  description: "テスト用の説明文です。",
-  tags: ["TypeScript"],
-  ownerId: "user-001",
-  starCount: 10,
-  isStarred: false,
-  isPaused: false,
-  thumbnailUrl: null,
-  version: 1,
-  createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
 
 describe("PlotList", () => {
   it("isLoading=true でSkeletonが3つ表示される", () => {
