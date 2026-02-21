@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { plotRepository } from "@/lib/api/repositories";
+import type { CreatePlotRequest, UpdatePlotRequest } from "@/lib/api/types";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -84,5 +85,38 @@ export function usePlotDetail(id: string) {
     queryKey: queryKeys.plots.detail(id),
     queryFn: () => plotRepository.get(id, session?.access_token),
     enabled: !!id,
+  });
+}
+
+/**
+ * Plot 作成ミューテーション。
+ * 成功時に plots キャッシュを無効化して一覧を最新化する。
+ */
+export function useCreatePlot() {
+  const queryClient = useQueryClient();
+  const { session } = useAuth();
+
+  return useMutation({
+    mutationFn: (data: CreatePlotRequest) => plotRepository.create(data, session?.access_token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.plots.all });
+    },
+  });
+}
+
+/**
+ * Plot 更新ミューテーション。
+ * 成功時に plots キャッシュを無効化して一覧・詳細を最新化する。
+ */
+export function useUpdatePlot() {
+  const queryClient = useQueryClient();
+  const { session } = useAuth();
+
+  return useMutation({
+    mutationFn: ({ plotId, data }: { plotId: string; data: UpdatePlotRequest }) =>
+      plotRepository.update(plotId, data, session?.access_token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.plots.all });
+    },
   });
 }
