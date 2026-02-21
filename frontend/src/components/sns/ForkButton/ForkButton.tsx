@@ -14,8 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/useAuth";
 import { snsRepository } from "@/lib/api/repositories";
-import { useAuth } from "@/providers/AuthProvider";
 
 type ForkButtonProps = {
   plotId: string;

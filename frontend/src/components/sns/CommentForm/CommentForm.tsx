@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/useAuth";
 import { useAddComment } from "@/hooks/useComments";
-import { useAuth } from "@/providers/AuthProvider";
 import styles from "./CommentForm.module.scss";
 
 const MAX_LENGTH = 5000;

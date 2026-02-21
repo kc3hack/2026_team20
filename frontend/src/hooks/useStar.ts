@@ -4,9 +4,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { snsRepository } from "@/lib/api/repositories";
 import { queryKeys } from "@/lib/query-keys";
-import { useAuth } from "@/providers/AuthProvider";
 
 export function useStar(plotId: string, initialCount: number, initialIsStarred: boolean) {
   const { isAuthenticated, session } = useAuth();

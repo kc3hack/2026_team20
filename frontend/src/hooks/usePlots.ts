@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { plotRepository } from "@/lib/api/repositories";
 import { queryKeys } from "@/lib/query-keys";
-import { useAuth } from "@/providers/AuthProvider";
 
 // ────────────────────────────────────────────────────────────────
 // 認証について:

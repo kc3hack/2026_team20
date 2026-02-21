@@ -17,7 +17,8 @@ export function PlotList({ items, isLoading, showEmptyState = true }: PlotListPr
     return (
       <div className={styles.list}>
         {Array.from({ length: SKELETON_COUNT }, (_, i) => (
-          <Skeleton key={i} className={styles.skeletonItem} />
+          // biome-ignore lint/suspicious/noArrayIndexKey: Skeleton placeholders are static and never reorder
+          <Skeleton key={`skeleton-${i}`} className={styles.skeletonItem} />
         ))}
       </div>
     );

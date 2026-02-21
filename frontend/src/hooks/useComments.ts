@@ -3,10 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { snsRepository } from "@/lib/api/repositories";
 import type { ThreadResponse } from "@/lib/api/types";
 import { queryKeys } from "@/lib/query-keys";
-import { useAuth } from "@/providers/AuthProvider";
 
 export function useComments(threadId: string) {
   const { session } = useAuth();

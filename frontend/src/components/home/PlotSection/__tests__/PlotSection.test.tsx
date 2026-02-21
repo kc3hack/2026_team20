@@ -47,14 +47,24 @@ const mockPlots: PlotResponse[] = [
 describe("PlotSection", () => {
   it("セクションタイトルが正しく表示される", () => {
     render(
-      <PlotSection title="🔥 急上昇" plots={mockPlots} isLoading={false} moreHref="/plots?sort=trending" />,
+      <PlotSection
+        title="🔥 急上昇"
+        plots={mockPlots}
+        isLoading={false}
+        moreHref="/plots?sort=trending"
+      />,
     );
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("🔥 急上昇");
   });
 
   it("「もっと見る →」リンクが正しい href を持つ", () => {
     render(
-      <PlotSection title="🔥 急上昇" plots={mockPlots} isLoading={false} moreHref="/plots?sort=trending" />,
+      <PlotSection
+        title="🔥 急上昇"
+        plots={mockPlots}
+        isLoading={false}
+        moreHref="/plots?sort=trending"
+      />,
     );
     const moreLink = screen.getByText("もっと見る →");
     expect(moreLink).toBeInTheDocument();
@@ -63,7 +73,12 @@ describe("PlotSection", () => {
 
   it("plots が渡されると PlotCard が表示される", () => {
     render(
-      <PlotSection title="⭐ 人気" plots={mockPlots} isLoading={false} moreHref="/plots?sort=popular" />,
+      <PlotSection
+        title="⭐ 人気"
+        plots={mockPlots}
+        isLoading={false}
+        moreHref="/plots?sort=popular"
+      />,
     );
     expect(screen.getByText("テスト Plot 1")).toBeInTheDocument();
     expect(screen.getByText("テスト Plot 2")).toBeInTheDocument();
@@ -91,7 +106,12 @@ describe("PlotSection", () => {
 
   it("section 要素としてレンダリングされる", () => {
     const { container } = render(
-      <PlotSection title="🔥 急上昇" plots={mockPlots} isLoading={false} moreHref="/plots?sort=trending" />,
+      <PlotSection
+        title="🔥 急上昇"
+        plots={mockPlots}
+        isLoading={false}
+        moreHref="/plots?sort=trending"
+      />,
     );
     const section = container.querySelector("section");
     expect(section).toBeInTheDocument();
@@ -99,7 +119,12 @@ describe("PlotSection", () => {
 
   it("異なる moreHref が正しく反映される", () => {
     render(
-      <PlotSection title="🆕 新着" plots={mockPlots} isLoading={false} moreHref="/plots?sort=new" />,
+      <PlotSection
+        title="🆕 新着"
+        plots={mockPlots}
+        isLoading={false}
+        moreHref="/plots?sort=new"
+      />,
     );
     const moreLink = screen.getByText("もっと見る →");
     expect(moreLink.closest("a")).toHaveAttribute("href", "/plots?sort=new");
