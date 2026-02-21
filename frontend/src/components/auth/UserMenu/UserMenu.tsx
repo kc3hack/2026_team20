@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
 import styles from "./UserMenu.module.scss";
 
 /**
@@ -54,7 +55,9 @@ export function UserMenu() {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem disabled>プロフィール（実装中...）</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/profile/${user.id}`}>マイページ</Link>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 

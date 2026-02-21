@@ -1,0 +1,25 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: hsl(var(--accent));
+  }
+
+  @include focus-ring;
+}
+
+.displayName {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}

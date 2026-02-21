@@ -57,13 +57,15 @@ describe("UserMenu", () => {
     expect(mockSignOut).toHaveBeenCalled();
   });
 
-  it("プロフィールメニュー項目が disabled で表示される", async () => {
+  it("プロフィールリンクが正しい href で表示される", async () => {
     const user = userEvent.setup();
 
     render(<UserMenu />);
 
     await user.click(screen.getByRole("button"));
 
-    expect(screen.getByText(/プロフィール/)).toBeInTheDocument();
+    const profileLink = screen.getByRole("menuitem", { name: "プロフィール" });
+    expect(profileLink).toBeInTheDocument();
+    expect(profileLink).toHaveAttribute("href", "/profile/user-1");
   });
 });
