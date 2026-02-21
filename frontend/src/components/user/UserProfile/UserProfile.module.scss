@@ -28,6 +28,60 @@
   }
 }
 
+.avatarWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatarEditOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: hsl(0 0% 0% / 0);
+  color: hsl(0 0% 100% / 0);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+
+  &:hover,
+  &:focus-visible {
+    background: hsl(0 0% 0% / 0.5);
+    color: hsl(0 0% 100% / 0.9);
+  }
+
+  &:disabled {
+    cursor: wait;
+    background: hsl(0 0% 0% / 0.5);
+    color: hsl(0 0% 100% / 0.9);
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fileInput {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .info {
   text-align: center;
 

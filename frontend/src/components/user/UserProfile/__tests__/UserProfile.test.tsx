@@ -1,6 +1,30 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UserProfileResponse } from "@/lib/api/types";
+
+const mockMutate = vi.fn();
+
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: vi.fn(() => ({
+    user: null,
+    session: null,
+    isLoading: false,
+    isAuthenticated: false,
+    signInWithGitHub: vi.fn(),
+    signInWithGoogle: vi.fn(),
+    signOut: vi.fn(),
+    handleUnauthorized: vi.fn(),
+  })),
+}));
+
+vi.mock("@/hooks/useUser", () => ({
+  useUpdateAvatar: () => ({
+    mutate: mockMutate,
+    isPending: false,
+  }),
+}));
+
+import { useAuth } from "@/hooks/useAuth";
 import { UserProfile } from "../UserProfile";
 
 const mockProfile: UserProfileResponse = {
@@ -63,5 +87,45 @@ describe("UserProfile", () => {
     };
     render(<UserProfile profile={profileWithInvalidDate} />);
     expect(screen.getByText("日時不明 に参加")).toBeInTheDocument();
+  });
+
+  it("他人のプロフィールにはアバター編集ボタンが表示されない", () => {
+    render(<UserProfile profile={mockProfile} />);
+    expect(screen.queryByLabelText("アバター画像を変更")).not.toBeInTheDocument();
+  });
+});
+
+describe("UserProfile（本人表示）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        id: "user-001",
+        email: "test@example.com",
+        displayName: "田中太郎",
+        avatarUrl: null,
+        createdAt: "2026-01-15T09:00:00Z",
+      },
+      session: { access_token: "token" } as ReturnType<typeof useAuth>["session"],
+      isLoading: false,
+      isAuthenticated: true,
+      signInWithGitHub: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      signOut: vi.fn(),
+      handleUnauthorized: vi.fn(),
+    });
+  });
+
+  it("本人のプロフィールにはアバター編集ボタンが表示される", () => {
+    render(<UserProfile profile={mockProfile} />);
+    expect(screen.getByLabelText("アバター画像を変更")).toBeInTheDocument();
+  });
+
+  it("ファイル選択時にupdateAvatarが呼び出される", () => {
+    render(<UserProfile profile={mockProfile} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const testFile = new File(["test"], "test.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+    expect(mockMutate).toHaveBeenCalledWith(testFile);
   });
 });

@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
+import { resolveSafeAvatarUrl } from "@/lib/api/avatar-url";
 import Link from "next/link";
 import styles from "./UserMenu.module.scss";
 
@@ -34,7 +35,7 @@ export function UserMenu() {
 
   const displayName = user.displayName ?? "";
   const email = user.email ?? "";
-  const avatarUrl = user.avatarUrl ?? undefined;
+  const avatarUrl = resolveSafeAvatarUrl(user.avatarUrl) ?? undefined;
 
   return (
     <DropdownMenu>

@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/client";
 import { apiClient } from "../client";
-import type { PlotListResponse, UserProfileResponse, UserResponse } from "../types";
+import type {
+  PlotListResponse,
+  UpdateProfileRequest,
+  UserProfileResponse,
+  UserResponse,
+} from "../types";
 
 // 🔀 環境変数で Mock / 実 API を切り替え
 // ⚠️ getCurrentUser は Supabase SDK を直接使用（Mock 対象外）
@@ -64,4 +69,21 @@ export async function getUserContributions(
   return apiClient<PlotListResponse>(`/auth/users/${username}/contributions`, {
     token,
   });
+}
+
+export async function updateProfile(
+  body: UpdateProfileRequest,
+  token?: string,
+): Promise<UserResponse> {
+  if (USE_MOCK) {
+    const { mockUserProfile } = await import("@/mocks/data/users");
+    return {
+      id: mockUserProfile.id,
+      email: "mock@example.com",
+      displayName: body.displayName ?? mockUserProfile.displayName,
+      avatarUrl: body.avatarUrl !== undefined ? body.avatarUrl : mockUserProfile.avatarUrl,
+      createdAt: mockUserProfile.createdAt,
+    };
+  }
+  return apiClient<UserResponse>("/auth/me", { method: "PUT", body, token });
 }

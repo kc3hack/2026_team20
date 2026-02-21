@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveSafeAvatarUrl } from "@/lib/api/avatar-url";
 import type { ReactNode } from "react";
 import styles from "./UserAvatarLink.module.scss";
 
@@ -35,10 +36,11 @@ export function UserAvatarLink({
   children,
 }: UserAvatarLinkProps) {
   const initials = user.displayName.slice(0, 2);
+  const avatarUrl = resolveSafeAvatarUrl(user.avatarUrl);
 
   const avatar = children ?? (
     <Avatar size={size} className={className}>
-      {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
+      {avatarUrl && <AvatarImage src={avatarUrl} alt={user.displayName} />}
       <AvatarFallback>{initials}</AvatarFallback>
     </Avatar>
   );
