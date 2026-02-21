@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { History } from "lucide-react";
@@ -9,8 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRollbackLogs } from "@/hooks/useHistory";
 import { ApiError } from "@/lib/api/client";
-import { snapshotRepository } from "@/lib/api/repositories";
 import type { RollbackLogResponse } from "@/lib/api/types";
 import styles from "./RollbackLogList.module.scss";
 
@@ -30,19 +29,14 @@ interface RollbackLogListProps {
  * Plot 所有者または管理者のみが閲覧できる監査ログを表示する。
  * 403 Forbidden が返された場合はコンポーネント全体を非表示にする。
  *
- * useRollbackLogs フックは Wave6 で実装予定のため、
- * 現時点では snapshotRepository.getRollbackLogs を useQuery で直接呼び出す。
+ * useRollbackLogs カスタムフック経由でロールバック監査ログを取得する。
  */
 export function RollbackLogList({ plotId, onError }: RollbackLogListProps) {
   const [offset, setOffset] = useState(0);
   const [isForbidden, setIsForbidden] = useState(false);
   const [allItems, setAllItems] = useState<RollbackLogResponse[]>([]);
 
-  const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ["rollback-logs", plotId, offset],
-    queryFn: () => snapshotRepository.getRollbackLogs(plotId, { limit: LIMIT, offset }),
-    enabled: !!plotId && !isForbidden,
-  });
+  const { data, isLoading, isFetching, error } = useRollbackLogs(plotId, { limit: LIMIT, offset });
 
   useEffect(() => {
     if (data?.items) {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -8,7 +7,7 @@ import { useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { historyRepository } from "@/lib/api/repositories";
+import { useHistory } from "@/hooks/useHistory";
 import type { HistoryEntry } from "@/lib/api/types";
 import styles from "./HistoryList.module.scss";
 
@@ -45,17 +44,12 @@ interface HistoryListProps {
  * HotOperation（72時間保持）の操作ログをタイムライン形式で表示する。
  * 全データを一度に取得してスクロール表示する方式。
  *
- * useHistory フックは Wave6 で実装予定のため、
- * 現時点では historyRepository.getHistory を useQuery で直接呼び出す。
+ * useHistory カスタムフック経由で HotOperation 一覧を取得する。
  */
 export function HistoryList({ sectionId }: HistoryListProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["history", sectionId],
-    queryFn: () => historyRepository.getHistory(sectionId, { limit: LIMIT }),
-    enabled: !!sectionId,
-  });
+  const { data, isLoading } = useHistory(sectionId, { limit: LIMIT });
 
   const sortedItems = useMemo(() => {
     if (!data?.items) return [];

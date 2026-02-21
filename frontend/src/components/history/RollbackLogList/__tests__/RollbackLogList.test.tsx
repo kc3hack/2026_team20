@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RollbackLogListResponse } from "@/lib/api/types";
 import { mockRollbackLogs } from "@/mocks/data/snapshots";
 
+vi.mock("@/providers/AuthProvider", () => ({
+  useAuth: () => ({ session: { access_token: "test-token" } }),
+}));
+
 vi.mock("@/lib/api/repositories/snapshotRepository", () => ({
   getRollbackLogs: vi.fn(),
 }));
@@ -213,7 +217,7 @@ describe("RollbackLogList", () => {
     expect(mockGetRollbackLogs).toHaveBeenCalledWith("plot-001", {
       limit: 20,
       offset: 0,
-    });
+    }, "test-token");
 
     fireEvent.click(screen.getByText("もっと読み込む"));
 
@@ -221,7 +225,7 @@ describe("RollbackLogList", () => {
       expect(mockGetRollbackLogs).toHaveBeenCalledWith("plot-001", {
         limit: 20,
         offset: 20,
-      });
+      }, "test-token");
     });
   });
 });

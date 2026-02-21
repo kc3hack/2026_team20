@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SnapshotDetailResponse, SnapshotListResponse } from "@/lib/api/types";
 import { mockSnapshotDetail, mockSnapshots } from "@/mocks/data/snapshots";
 
+vi.mock("@/providers/AuthProvider", () => ({
+  useAuth: () => ({ session: { access_token: "test-token" } }),
+}));
+
 vi.mock("@/lib/api/repositories/snapshotRepository", () => ({
   list: vi.fn(),
   get: vi.fn(),

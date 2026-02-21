@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { Camera } from "lucide-react";
@@ -15,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { snapshotRepository } from "@/lib/api/repositories";
+import { useSnapshotDetail, useSnapshots } from "@/hooks/useHistory";
 import type { Content, SnapshotDetailResponse, SnapshotResponse } from "@/lib/api/types";
 import styles from "./SnapshotList.module.scss";
 
@@ -87,8 +86,7 @@ function extractTextFromContent(content: Content): string {
  * ColdSnapshot の閲覧・復元を担当し、HistoryList（HotOperation）とは
  * 責務を分離する設計。
  *
- * useSnapshots フックは Wave6 で実装予定のため、
- * 現時点では snapshotRepository.list を useQuery で直接呼び出す。
+ * useSnapshots / useSnapshotDetail カスタムフック経由でデータを取得する。
  */
 export function SnapshotList({
   plotId,
@@ -102,11 +100,7 @@ export function SnapshotList({
   const [allItems, setAllItems] = useState<SnapshotResponse[]>([]);
 
   // ── スナップショット一覧取得 ──────────────────────
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["snapshots", plotId, offset],
-    queryFn: () => snapshotRepository.list(plotId, { limit: LIMIT, offset }),
-    enabled: !!plotId,
-  });
+  const { data, isLoading, isFetching } = useSnapshots(plotId, { limit: LIMIT, offset });
 
   useEffect(() => {
     if (data?.items) {
@@ -121,15 +115,7 @@ export function SnapshotList({
   }, [data?.items]);
 
   // ── スナップショット詳細取得（モーダル表示時） ────
-  const {
-    data: snapshotDetail,
-    isLoading: isDetailLoading,
-  } = useQuery({
-    queryKey: ["snapshot-detail", plotId, selectedSnapshot?.id],
-    queryFn: () =>
-      snapshotRepository.get(plotId, selectedSnapshot!.id),
-    enabled: previewOpen && selectedSnapshot != null,
-  });
+  const { data: snapshotDetail, isLoading: isDetailLoading } = useSnapshotDetail(plotId, selectedSnapshot?.id ?? "");
 
   const hasMore = data != null && offset + LIMIT < data.total;
 

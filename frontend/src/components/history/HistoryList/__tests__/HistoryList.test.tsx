@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HistoryListResponse } from "@/lib/api/types";
 import { mockHistoryEntries } from "@/mocks/data/history";
 
+vi.mock("@/providers/AuthProvider", () => ({
+  useAuth: () => ({ session: { access_token: "test-token" } }),
+}));
+
 vi.mock("@/lib/api/repositories/historyRepository", () => ({
   getHistory: vi.fn(),
 }));
@@ -174,7 +178,7 @@ describe("HistoryList", () => {
 
     expect(mockGetHistory).toHaveBeenCalledWith("section-001", {
       limit: 1000,
-    });
+    }, "test-token");
   });
 
   it("詳細トグルが展開/閉じできる", async () => {
