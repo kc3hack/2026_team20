@@ -87,13 +87,13 @@
 
 // ── 保持粒度バッジ ────────────────────────────────────
 .retentionSuccess {
-  background: hsl(142 76% 36%);
-  color: white;
+  background: hsl(var(--chart-2));
+  color: hsl(0 0% 100%);
 }
 
 .retentionInfo {
-  background: hsl(217 91% 60%);
-  color: white;
+  background: hsl(var(--chart-3));
+  color: hsl(0 0% 100%);
 }
 
 .retentionSecondary {
