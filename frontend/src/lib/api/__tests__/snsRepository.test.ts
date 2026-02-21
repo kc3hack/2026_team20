@@ -145,7 +145,7 @@ describe("snsRepository", () => {
       await snsRepository.fork("plot-001", undefined, "test-token");
 
       const request = fetchMock.mock.calls[0][1];
-      expect(request.body).toBeUndefined();
+      expect(request.body).toBe("{}");
     });
 
     it("should throw ApiError(404) for plot-404", async () => {
