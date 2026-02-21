@@ -20,6 +20,27 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
+vi.mock("@/hooks/useComments", () => ({
+  useComments: vi.fn(() => ({ comments: [], total: 0, isLoading: false, error: null })),
+  useCreateThread: vi.fn(() => ({ createThread: vi.fn(), isPending: false })),
+}));
+
+vi.mock("@/components/sns/StarButton/StarButton", () => ({
+  StarButton: () => <div data-testid="star-button" />,
+}));
+
+vi.mock("@/components/sns/ForkButton/ForkButton", () => ({
+  ForkButton: () => <div data-testid="fork-button" />,
+}));
+
+vi.mock("@/components/sns/CommentForm/CommentForm", () => ({
+  CommentForm: () => <div data-testid="comment-form" />,
+}));
+
+vi.mock("@/components/sns/CommentThread/CommentThread", () => ({
+  CommentThread: () => <div data-testid="comment-thread" />,
+}));
+
 import { notFound } from "next/navigation";
 import * as plotRepository from "@/lib/api/repositories/plotRepository";
 import PlotDetailPage from "../page";

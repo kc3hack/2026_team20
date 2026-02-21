@@ -17,6 +17,35 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
+vi.mock("@/hooks/useComments", () => ({
+  useComments: vi.fn(() => ({ comments: [], total: 0, isLoading: false, error: null })),
+  useCreateThread: vi.fn(() => ({ createThread: vi.fn(), isPending: false })),
+}));
+
+vi.mock("@/components/sns/StarButton/StarButton", () => ({
+  StarButton: ({ plotId, initialCount }: { plotId: string; initialCount: number }) => (
+    <button type="button" data-testid="star-button" data-plot-id={plotId}>
+      {initialCount}
+    </button>
+  ),
+}));
+
+vi.mock("@/components/sns/ForkButton/ForkButton", () => ({
+  ForkButton: ({ plotId }: { plotId: string }) => (
+    <button type="button" data-testid="fork-button" data-plot-id={plotId}>
+      フォーク
+    </button>
+  ),
+}));
+
+vi.mock("@/components/sns/CommentForm/CommentForm", () => ({
+  CommentForm: () => <div data-testid="comment-form" />,
+}));
+
+vi.mock("@/components/sns/CommentThread/CommentThread", () => ({
+  CommentThread: () => <div data-testid="comment-thread" />,
+}));
+
 import { useAuth } from "@/hooks/useAuth";
 
 const basePlot: PlotDetailResponse = {
@@ -88,13 +117,13 @@ describe("PlotDetail", () => {
   it("スター数が表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
-    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getAllByText("42").length).toBeGreaterThanOrEqual(1);
   });
 
   it("作成日が相対時間で表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
-    const statsArea = screen.getByText("42").parentElement?.parentElement;
+    const statsArea = screen.getAllByText("42")[0].parentElement?.parentElement;
     expect(statsArea?.textContent).toContain("前");
   });
 
@@ -159,5 +188,27 @@ describe("PlotDetail", () => {
 
     expect(toast.error).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("StarButton が表示される", () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    const starButton = screen.getByTestId("star-button");
+    expect(starButton).toBeInTheDocument();
+    expect(starButton).toHaveTextContent("42");
+  });
+
+  it("ForkButton が表示される", () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    expect(screen.getByTestId("fork-button")).toBeInTheDocument();
+    expect(screen.getByTestId("fork-button")).toHaveTextContent("フォーク");
+  });
+
+  it("コメントセクションが表示される", () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "コメント" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "コメントを開始" })).toBeInTheDocument();
   });
 });

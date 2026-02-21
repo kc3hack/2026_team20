@@ -1,0 +1,64 @@
+@use "@/styles/mixins" as *;
+
+.commentList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.comment {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid hsl(var(--border));
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.commentBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.commentMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.displayName {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.timestamp {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.replyTo {
+  font-size: 0.8rem;
+  color: hsl(var(--primary));
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.content {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}

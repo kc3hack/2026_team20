@@ -1,0 +1,39 @@
+@use "@/styles/mixins" as *;
+
+.formWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.replyIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background-color: hsl(var(--muted));
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.charCount {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.loginLink {
+  font-size: 0.875rem;
+  color: hsl(var(--primary));
+  text-decoration: underline;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
