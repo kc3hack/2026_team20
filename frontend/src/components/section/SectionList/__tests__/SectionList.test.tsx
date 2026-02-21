@@ -53,7 +53,7 @@ describe("SectionList", () => {
     expect(container.querySelector("h2")).toBeNull();
   });
 
-  it("content が null のセクションは表示されない", () => {
+  it("content が null のセクションでもタイトルは表示される", () => {
     const sectionsWithNull: SectionResponse[] = [
       {
         ...mockSections[0],
@@ -63,6 +63,6 @@ describe("SectionList", () => {
 
     render(<SectionList sections={sectionsWithNull} />);
 
-    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("仕様");
   });
 });
