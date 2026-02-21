@@ -56,7 +56,7 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
-          <Link href={`/profile/${user.id}`}>マイページ</Link>
+          <Link href={`/profile/${user.displayName}`}>マイページ</Link>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

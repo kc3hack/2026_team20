@@ -23,7 +23,7 @@ describe("UserCard", () => {
   it("クリックで正しいプロフィールページへのリンクが設定される", () => {
     render(<UserCard user={mockUser} />);
     const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/profile/user-001");
+    expect(link).toHaveAttribute("href", "/profile/田中太郎");
   });
 
   it("アバターコンポーネントが表示される", () => {

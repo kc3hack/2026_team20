@@ -66,6 +66,6 @@ describe("UserMenu", () => {
 
     const profileLink = screen.getByRole("menuitem", { name: "マイページ" });
     expect(profileLink).toBeInTheDocument();
-    expect(profileLink).toHaveAttribute("href", "/profile/user-1");
+    expect(profileLink).toHaveAttribute("href", "/profile/田中 太郎");
   });
 });

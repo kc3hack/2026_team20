@@ -16,7 +16,7 @@ function getInitials(name: string): string {
 
 export function UserCard({ user }: UserCardProps) {
   return (
-    <Link href={`/profile/${user.id}`} className={styles.card}>
+    <Link href={`/profile/${user.displayName}`} className={styles.card}>
       <Avatar size="sm">
         {user.avatarUrl ? (
           <AvatarImage src={user.avatarUrl} alt={user.displayName} />
