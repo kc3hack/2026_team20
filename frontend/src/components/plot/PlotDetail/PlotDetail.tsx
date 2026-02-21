@@ -14,7 +14,7 @@ import { CommentForm } from "@/components/sns/CommentForm/CommentForm";
 import { CommentThread } from "@/components/sns/CommentThread/CommentThread";
 import { ForkButton } from "@/components/sns/ForkButton/ForkButton";
 import { StarButton } from "@/components/sns/StarButton/StarButton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatarLink } from "@/components/shared/UserAvatarLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,7 +53,6 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 
   const { comments } = useComments(threadId ?? "");
 
-  const ownerInitials = plot.owner?.displayName.slice(0, 2) ?? "??";
   const createdAgo = formatDistanceToNow(new Date(plot.createdAt), {
     addSuffix: true,
     locale: ja,
@@ -95,12 +94,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
         <div className={styles.meta}>
           {plot.owner && (
             <div className={styles.owner}>
-              <Avatar size="sm">
-                {plot.owner.avatarUrl && (
-                  <AvatarImage src={plot.owner.avatarUrl} alt={plot.owner.displayName} />
-                )}
-                <AvatarFallback>{ownerInitials}</AvatarFallback>
-              </Avatar>
+              <UserAvatarLink user={plot.owner} size="sm" />
               <span className={styles.ownerName}>{plot.owner.displayName}</span>
             </div>
           )}

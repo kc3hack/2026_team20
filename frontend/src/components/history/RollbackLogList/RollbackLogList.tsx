@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { History } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatarLink } from "@/components/shared/UserAvatarLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -126,17 +126,7 @@ export function RollbackLogList({ plotId, onError }: RollbackLogListProps) {
             </div>
 
             <div className={styles.userInfo}>
-              <Avatar className={styles.avatarSm}>
-                {log.user.avatarUrl && (
-                  <AvatarImage
-                    src={log.user.avatarUrl}
-                    alt={log.user.displayName}
-                  />
-                )}
-                <AvatarFallback>
-                  {log.user.displayName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatarLink user={log.user} className={styles.avatarSm} />
               <span className={styles.userName}>{log.user.displayName}</span>
             </div>
 
