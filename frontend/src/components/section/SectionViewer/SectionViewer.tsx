@@ -20,14 +20,12 @@ export function SectionViewer({
   const editor = useEditor(
     {
       extensions: [StarterKit],
-      content: section.content,
+      content: section.content ?? undefined,
       editable: false,
       immediatelyRender: false,
     },
     [section.content, section.version],
   );
-
-  if (!section.content) return null;
 
   return (
     <div id={`section-${section.id}`} className={styles.container}>
@@ -35,9 +33,11 @@ export function SectionViewer({
         <h2 className={styles.title}>{section.title}</h2>
         {isBeingEdited && <SectionLockBadge lockedBy={editedBy} />}
       </div>
-      <div className={styles.content}>
-        <EditorContent editor={editor} />
-      </div>
+      {section.content && (
+        <div className={styles.content}>
+          <EditorContent editor={editor} />
+        </div>
+      )}
     </div>
   );
 }
