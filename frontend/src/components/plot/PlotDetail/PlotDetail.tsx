@@ -2,7 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { History, Pencil, Star } from "lucide-react";
+import { History, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -106,10 +106,6 @@ export function PlotDetail({ plot }: PlotDetailProps) {
           )}
 
           <div className={styles.stats}>
-            <span className={styles.starCount}>
-              <Star size={16} />
-              {plot.starCount}
-            </span>
             <span className={styles.createdAt}>{createdAgo}</span>
             <Button asChild variant="outline" size="sm">
               <Link href={`/plots/${plot.id}/history`}>
