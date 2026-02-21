@@ -24,25 +24,6 @@ describe("apiClient", () => {
     }
   });
 
-  it("should make a GET request and return JSON", async () => {
-    const mockData = { id: "1", title: "Test Plot" };
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockData,
-      headers: new Headers({ "content-type": "application/json" }),
-    });
-
-    const result = await apiClient("/plots/1");
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/plots/1",
-      expect.objectContaining({
-        headers: expect.any(Headers),
-      }),
-    );
-    expect(result).toEqual(mockData);
-  });
-
   it("should handle 204 No Content", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,

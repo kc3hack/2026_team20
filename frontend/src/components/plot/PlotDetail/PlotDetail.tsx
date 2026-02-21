@@ -2,9 +2,10 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Pencil, Star } from "lucide-react";
+import { History, Pencil, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { SectionList } from "@/components/section/SectionList/SectionList";
 import { TableOfContents } from "@/components/section/TableOfContents/TableOfContents";
@@ -110,6 +111,12 @@ export function PlotDetail({ plot }: PlotDetailProps) {
               {plot.starCount}
             </span>
             <span className={styles.createdAt}>{createdAgo}</span>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/plots/${plot.id}/history`}>
+                <History size={16} />
+                履歴
+              </Link>
+            </Button>
           </div>
         </div>
 
