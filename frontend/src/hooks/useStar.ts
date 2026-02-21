@@ -41,6 +41,7 @@ export function useStar(plotId: string, initialCount: number, initialIsStarred: 
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.stars.byPlot(plotId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.plots.all });
     },
   });
 

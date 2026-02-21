@@ -7,6 +7,16 @@ vi.mock("@/lib/api/repositories/plotRepository", () => ({
   get: vi.fn(),
 }));
 
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(async () => ({
+    auth: {
+      getSession: vi.fn(async () => ({
+        data: { session: { access_token: "test-access-token" } },
+      })),
+    },
+  })),
+}));
+
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(),
   useRouter: () => ({ push: vi.fn() }),
@@ -79,7 +89,7 @@ describe("PlotDetailPage", () => {
     render(page);
 
     expect(screen.getByText("テスト Plot")).toBeInTheDocument();
-    expect(plotRepository.get).toHaveBeenCalledWith("plot-001");
+    expect(plotRepository.get).toHaveBeenCalledWith("plot-001", "test-access-token");
   });
 
   it("404エラーの場合 notFound() が呼ばれる", async () => {
@@ -109,6 +119,6 @@ describe("PlotDetailPage", () => {
       params: Promise.resolve({ id: "plot-002" }),
     });
 
-    expect(plotRepository.get).toHaveBeenCalledWith("plot-002");
+    expect(plotRepository.get).toHaveBeenCalledWith("plot-002", "test-access-token");
   });
 });
