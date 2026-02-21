@@ -11,7 +11,8 @@ export const queryKeys = {
   },
   sections: {
     all: ["sections"] as const,
-    // TODO: Issue #3 以降で detail, byPlot などを追加
+    byPlot: (plotId: string) => ["sections", "byPlot", plotId] as const,
+    // TODO: Issue #3 以降で detail などを追加
   },
   // TODO: Issue #3 以降で history, comments, search, users などを追加
 } as const;

@@ -1,0 +1,26 @@
+.container {
+  display: flex;
+  flex-direction: column;
+}
+
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+}
+
+.skeletonItem {
+  margin-bottom: 2rem;
+}
+
+.skeletonTitle {
+  height: 1.5rem;
+  width: 40%;
+  margin-bottom: 0.75rem;
+}
+
+.skeletonContent {
+  height: 6rem;
+  width: 100%;
+}
