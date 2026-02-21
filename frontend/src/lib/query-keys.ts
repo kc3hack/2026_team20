@@ -23,4 +23,10 @@ export const queryKeys = {
       ["users", "contributions", username, params ?? {}] as const,
   },
   // TODO: Issue #3 以降で history, comments, search などを追加
+  search: {
+    all: ["search"] as const,
+    results: (params: { q: string; limit?: number; offset?: number }) =>
+      ["search", "results", params] as const,
+  },
+  // TODO: Issue #3 以降で history, comments, users などを追加
 } as const;
