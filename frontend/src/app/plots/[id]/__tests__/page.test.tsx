@@ -22,7 +22,10 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/hooks/useComments", () => ({
   useComments: vi.fn(() => ({ comments: [], total: 0, isLoading: false, error: null })),
-  useCreateThread: vi.fn(() => ({ createThread: vi.fn(), isPending: false })),
+  useCreateThread: vi.fn(() => ({
+    createThread: vi.fn().mockResolvedValue({ id: "thread-001" }),
+    isPending: false,
+  })),
 }));
 
 vi.mock("@/components/sns/StarButton/StarButton", () => ({

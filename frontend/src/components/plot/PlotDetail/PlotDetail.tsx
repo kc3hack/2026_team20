@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { Pencil, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SectionList } from "@/components/section/SectionList/SectionList";
 import { TableOfContents } from "@/components/section/TableOfContents/TableOfContents";
@@ -16,6 +16,7 @@ import { StarButton } from "@/components/sns/StarButton/StarButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useComments, useCreateThread } from "@/hooks/useComments";
 import type { CommentResponse, PlotDetailResponse } from "@/lib/api/types";
@@ -29,12 +30,25 @@ export function PlotDetail({ plot }: PlotDetailProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  // スレッド管理 — MVP方針(A): PlotDetailResponse に threadId が含まれないため、
-  // 「コメントを開始」ボタンで新規作成し useState で保持する。
-  // 本番API繋ぎ込み時（Issue #16）で既存スレッド取得に対応予定
+  // スレッド管理 — Plot全体コメント用スレッド (sectionId=null) をマウント時に自動作成する。
+  // PlotDetailResponse に threadId が含まれないため、初回アクセス時に POST /threads で作成し、
+  // useState で保持する。本番API繋ぎ込み時（Issue #16）で GET /plots/{plotId}/threads による
+  // 既存スレッド取得に対応予定。
   const [threadId, setThreadId] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<CommentResponse | null>(null);
-  const { createThread, isPending: isCreatingThread } = useCreateThread();
+  const { createThread } = useCreateThread();
+
+  // マウント時にPlot全体コメント用スレッドを自動作成（1回のみ実行）
+  // createThread は毎レンダー新しい参照になるため、useRef で多重実行を防ぐ
+  const threadInitialized = useRef(false);
+  useEffect(() => {
+    if (threadInitialized.current) return;
+    threadInitialized.current = true;
+
+    createThread(plot.id)
+      .then((thread) => setThreadId(thread.id))
+      .catch(() => toast.error("コメントスレッドの読み込みに失敗しました"));
+  }, [createThread, plot.id]);
 
   const { comments } = useComments(threadId ?? "");
 
@@ -51,11 +65,6 @@ export function PlotDetail({ plot }: PlotDetailProps) {
       return;
     }
     // TODO: Issue #9 — ログイン済みユーザーのインプレース編集機能
-  };
-
-  const handleCreateThread = async () => {
-    const thread = await createThread(plot.id);
-    setThreadId(thread.id);
   };
 
   const handleReply = (parentCommentId: string) => {
@@ -144,9 +153,11 @@ export function PlotDetail({ plot }: PlotDetailProps) {
             <CommentThread threadId={threadId} onReply={handleReply} />
           </>
         ) : (
-          <Button onClick={handleCreateThread} disabled={isCreatingThread}>
-            コメントを開始
-          </Button>
+          <div className={styles.commentLoading}>
+            <Skeleton className={styles.commentSkeleton} />
+            <Skeleton className={styles.commentSkeleton} />
+            <Skeleton className={styles.commentSkeleton} />
+          </div>
         )}
       </section>
     </div>

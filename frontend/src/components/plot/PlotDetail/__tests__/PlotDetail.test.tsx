@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlotDetailResponse } from "@/lib/api/types";
@@ -14,12 +14,20 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { error: vi.fn() },
+  toast: { error: vi.fn(), success: vi.fn() },
 }));
+
+const mockCreateThread = vi.fn().mockResolvedValue({
+  id: "mock-thread-id",
+  plotId: "plot-001",
+  sectionId: null,
+  commentCount: 0,
+  createdAt: "2026-02-20T00:00:00Z",
+});
 
 vi.mock("@/hooks/useComments", () => ({
   useComments: vi.fn(() => ({ comments: [], total: 0, isLoading: false, error: null })),
-  useCreateThread: vi.fn(() => ({ createThread: vi.fn(), isPending: false })),
+  useCreateThread: vi.fn(() => ({ createThread: mockCreateThread, isPending: false })),
 }));
 
 vi.mock("@/components/sns/StarButton/StarButton", () => ({
@@ -86,6 +94,13 @@ const basePlot: PlotDetailResponse = {
 describe("PlotDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateThread.mockResolvedValue({
+      id: "mock-thread-id",
+      plotId: "plot-001",
+      sectionId: null,
+      commentCount: 0,
+      createdAt: "2026-02-20T00:00:00Z",
+    });
     vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
   });
 
@@ -205,10 +220,31 @@ describe("PlotDetail", () => {
     expect(screen.getByTestId("fork-button")).toHaveTextContent("フォーク");
   });
 
-  it("コメントセクションが表示される", () => {
+  it("コメントセクションのヘッダーが表示される", () => {
     render(<PlotDetail plot={basePlot} />);
 
     expect(screen.getByRole("heading", { level: 2, name: "コメント" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "コメントを開始" })).toBeInTheDocument();
+  });
+
+  it("マウント時にスレッドが自動作成され、コメント欄が常時表示される", async () => {
+    render(<PlotDetail plot={basePlot} />);
+
+    // useEffect でスレッドが自動作成される
+    expect(mockCreateThread).toHaveBeenCalledWith("plot-001");
+
+    // スレッド作成後、CommentForm と CommentThread が表示される
+    await waitFor(() => {
+      expect(screen.getByTestId("comment-form")).toBeInTheDocument();
+      expect(screen.getByTestId("comment-thread")).toBeInTheDocument();
+    });
+  });
+
+  it("スレッド作成に失敗した場合、エラートーストが表示される", async () => {
+    mockCreateThread.mockRejectedValueOnce(new Error("Network error"));
+    render(<PlotDetail plot={basePlot} />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("コメントスレッドの読み込みに失敗しました");
+    });
   });
 });

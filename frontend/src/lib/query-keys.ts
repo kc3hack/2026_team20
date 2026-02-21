@@ -24,4 +24,10 @@ export const queryKeys = {
     byThread: (threadId: string) => ["comments", "byThread", threadId] as const,
   },
   // TODO: Issue #3 以降で history, search, users などを追加
+  search: {
+    all: ["search"] as const,
+    results: (params: { q: string; limit?: number; offset?: number }) =>
+      ["search", "results", params] as const,
+  },
+  // TODO: Issue #3 以降で history, comments, users などを追加
 } as const;
