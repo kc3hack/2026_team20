@@ -63,7 +63,7 @@ export async function fork(
   }
   return apiClient<PlotResponse>(`/plots/${plotId}/fork`, {
     method: "POST",
-    body,
+    body: body ?? {},
     token,
   });
 }
