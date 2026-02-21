@@ -1,7 +1,16 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { SectionResponse } from "@/lib/api/types";
 import { SectionViewer } from "../SectionViewer";
+
+vi.mock("@/hooks/useRealtimeSection", () => ({
+  useRealtimeSection: vi.fn(() => ({
+    liveContent: null,
+    connectionStatus: "disconnected",
+  })),
+}));
+
+import { useRealtimeSection } from "@/hooks/useRealtimeSection";
 
 const sectionWithContent: SectionResponse = {
   id: "section-001",
@@ -66,5 +75,17 @@ describe("SectionViewer", () => {
 
     const container = screen.getByText("概要").closest("[id]");
     expect(container?.id).toBe("section-section-001");
+  });
+
+  it("enableRealtime が true の場合、useRealtimeSection が enabled=true で呼ばれる", () => {
+    render(<SectionViewer section={sectionWithContent} enableRealtime={true} />);
+
+    expect(useRealtimeSection).toHaveBeenCalledWith("plot-001", "section-001", true);
+  });
+
+  it("enableRealtime がデフォルト(false)の場合、useRealtimeSection が enabled=false で呼ばれる", () => {
+    render(<SectionViewer section={sectionWithContent} />);
+
+    expect(useRealtimeSection).toHaveBeenCalledWith("plot-001", "section-001", false);
   });
 });

@@ -9,16 +9,16 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     globals: true,
     passWithNoTests: true,
-    include: [
-      "src/**/*.{test,spec}.{ts,tsx}",
-      "src/**/*.{test,spec}.ts",
-      "src/**/*.{test,spec}.tsx",
-    ],
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules/**", "tests/visual/**"],
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "y-supabase": path.resolve(
+        __dirname,
+        "./node_modules/y-supabase/dist/index.js",
+      ),
     },
   },
 });

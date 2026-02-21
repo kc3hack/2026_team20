@@ -1,0 +1,26 @@
+diff --git a/dist/index.js b/dist/index.js
+index d1ee1c88aebe660cba837e2be85e03fd44877953..29121d0ceb9c19a53541ee187fc9f87bbd2d4f78 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -81,7 +81,7 @@ var debug_1 = __importDefault(require("debug"));
+ var events_1 = require("events");
+ var Y = __importStar(require("yjs"));
+ var awarenessProtocol = __importStar(require("y-protocols/awareness"));
+-var RealtimeChannel_1 = require("@supabase/realtime-js/src/RealtimeChannel");
++var RealtimeChannel_1 = require("@supabase/realtime-js/dist/main/RealtimeChannel");
+ var SupabaseProvider = /** @class */ (function (_super) {
+     __extends(SupabaseProvider, _super);
+     function SupabaseProvider(doc, supabase, config) {
+diff --git a/package.json b/package.json
+index 0e95de4a5d5f63ff3da84ea97a90fe177a89acad..9c4d9fe69df582f39361cc24163b5aa5415f9135 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,7 @@
+   "version": "0.0.4-7-alpha",
+   "description": "Sync Yjs over supabase",
+   "sideEffects": false,
+-  "main": "src/y-supabase.js",
++  "main": "dist/index.js",
+   "types": "dist/index.d.ts",
+   "files": [
+     "dist/**/*"
