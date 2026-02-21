@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SearchBar } from "../SearchBar";
 
@@ -30,9 +30,7 @@ describe("SearchBar", () => {
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "テスト" } });
     fireEvent.submit(input.closest("form")!);
-    expect(pushMock).toHaveBeenCalledWith(
-      `/search?q=${encodeURIComponent("テスト")}`,
-    );
+    expect(pushMock).toHaveBeenCalledWith(`/search?q=${encodeURIComponent("テスト")}`);
   });
 
   it("検索ボタンクリックで検索が実行される", () => {
@@ -41,9 +39,7 @@ describe("SearchBar", () => {
     fireEvent.change(input, { target: { value: "React" } });
     const button = screen.getByRole("button", { name: "検索" });
     fireEvent.click(button);
-    expect(pushMock).toHaveBeenCalledWith(
-      `/search?q=${encodeURIComponent("React")}`,
-    );
+    expect(pushMock).toHaveBeenCalledWith(`/search?q=${encodeURIComponent("React")}`);
   });
 
   it("空文字では検索が実行されない", () => {

@@ -5,6 +5,22 @@ import { plotRepository } from "@/lib/api/repositories";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/providers/AuthProvider";
 
+// ────────────────────────────────────────────────────────────────
+// 認証について:
+// Plot 一覧系エンドポイント（trending / popular / new / list / detail）は
+// API 仕様上すべて認証不要（docs/api.md 参照）。
+// session?.access_token が undefined（未ログイン時）でも正常に動作する。
+// token を渡しているのは、ログイン済みユーザーに対して isStarred 等の
+// パーソナライズ情報を返却できるようにするため。
+// ────────────────────────────────────────────────────────────────
+// エラーハンドリングについて:
+// 各 useQuery フックに個別の onError / meta.errorMessage 等は設定していない。
+// API エラーが発生した場合はグローバルの QueryClient defaultOptions や
+// React Error Boundary で一括ハンドリングする方針（Issue #15 予定）。
+// セクション単位のエラー表示が必要になった場合は、呼び出し側で
+// useQuery の返却値 error / isError を参照して対応する。
+// ────────────────────────────────────────────────────────────────
+
 /**
  * 急上昇 Plot を取得するフック。
  * ホーム画面の「トレンド」セクションなどで使用。
@@ -13,7 +29,7 @@ export function useTrendingPlots(limit = 5) {
   const { session } = useAuth();
 
   return useQuery({
-    queryKey: queryKeys.plots.trending(),
+    queryKey: queryKeys.plots.trending(limit),
     queryFn: () => plotRepository.trending({ limit }, session?.access_token),
   });
 }
@@ -26,7 +42,7 @@ export function usePopularPlots(limit = 5) {
   const { session } = useAuth();
 
   return useQuery({
-    queryKey: queryKeys.plots.popular(),
+    queryKey: queryKeys.plots.popular(limit),
     queryFn: () => plotRepository.popular({ limit }, session?.access_token),
   });
 }
@@ -39,7 +55,7 @@ export function useLatestPlots(limit = 5) {
   const { session } = useAuth();
 
   return useQuery({
-    queryKey: queryKeys.plots.latest(),
+    queryKey: queryKeys.plots.latest(limit),
     queryFn: () => plotRepository.latest({ limit }, session?.access_token),
   });
 }

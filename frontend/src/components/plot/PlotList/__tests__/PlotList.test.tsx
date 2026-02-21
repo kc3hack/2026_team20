@@ -4,16 +4,8 @@ import type { PlotResponse } from "@/lib/api/types";
 import { PlotList } from "../PlotList";
 
 vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => (
-    <a href={href}>
-      {children}
-    </a>
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
   ),
 }));
 
@@ -54,8 +46,13 @@ describe("PlotList", () => {
     expect(screen.getByText("Plot 2")).toBeInTheDocument();
   });
 
-  it("空配列の場合は何も表示されない", () => {
-    const { container } = render(<PlotList items={[]} />);
+  it("空配列の場合は空状態メッセージが表示される", () => {
+    render(<PlotList items={[]} />);
+    expect(screen.getByText("該当するPlotがありません")).toBeInTheDocument();
+  });
+
+  it("空配列かつshowEmptyState=falseの場合は何も表示されない", () => {
+    const { container } = render(<PlotList items={[]} showEmptyState={false} />);
     expect(container.firstChild).toBeNull();
   });
 

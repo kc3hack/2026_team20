@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { Button } from "@/components/ui/button";
 import { GitHubIcon, GoogleIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import styles from "./LoginButton.module.scss";

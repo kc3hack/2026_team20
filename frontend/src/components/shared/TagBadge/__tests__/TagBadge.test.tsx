@@ -48,4 +48,20 @@ describe("TagBadge", () => {
 
     expect(mockPush).toHaveBeenCalledWith("/plots?tag=C%2B%2B");
   });
+
+  it("クリック時にstopPropagationが呼ばれ、親要素へのイベント伝播を防ぐ", async () => {
+    const parentClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      // biome-ignore lint/a11y/useKeyWithClickEvents: テスト用の親要素のため不要
+      // biome-ignore lint/a11y/noStaticElementInteractions: テスト用の親要素のため不要
+      <div onClick={parentClick}>
+        <TagBadge tag="React" />
+      </div>,
+    );
+    await user.click(screen.getByRole("button"));
+
+    expect(parentClick).not.toHaveBeenCalled();
+  });
 });

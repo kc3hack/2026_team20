@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import styles from "./SearchBar.module.scss";
 
 export function SearchBar() {

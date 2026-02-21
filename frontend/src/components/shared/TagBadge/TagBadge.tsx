@@ -14,7 +14,6 @@ export function TagBadge({ tag, onClick }: TagBadgeProps) {
   const router = useRouter();
 
   const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation(); // 親のLinkクリックを防ぐ
 
     if (onClick) {
@@ -26,10 +25,7 @@ export function TagBadge({ tag, onClick }: TagBadgeProps) {
 
   return (
     <button type="button" onClick={handleClick} className={styles.button}>
-      <Badge
-        variant="secondary"
-        className={cn("cursor-pointer", styles.badge)}
-      >
+      <Badge variant="secondary" className={cn("cursor-pointer", styles.badge)}>
         {tag}
       </Badge>
     </button>

@@ -4,16 +4,8 @@ import type { PlotResponse } from "@/lib/api/types";
 import { PlotCard } from "../PlotCard";
 
 vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => (
-    <a href={href}>
-      {children}
-    </a>
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
   ),
 }));
 
@@ -42,11 +34,15 @@ describe("PlotCard", () => {
     expect(screen.getByText("テスト用Plot")).toBeInTheDocument();
   });
 
+  it("タイトルがh3見出しとしてレンダリングされる", () => {
+    render(<PlotCard plot={mockPlot} />);
+    const heading = screen.getByRole("heading", { level: 3 });
+    expect(heading).toHaveTextContent("テスト用Plot");
+  });
+
   it("説明文が正しく表示される", () => {
     render(<PlotCard plot={mockPlot} />);
-    expect(
-      screen.getByText("これはテスト用の説明文です。"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("これはテスト用の説明文です。")).toBeInTheDocument();
   });
 
   it("タグが正しく表示される", () => {
@@ -64,9 +60,7 @@ describe("PlotCard", () => {
     render(<PlotCard plot={mockPlot} />);
     const links = screen.getAllByRole("link");
     // 最初のリンクがカード全体のリンク（/plots/{id}）
-    const cardLink = links.find(
-      (link) => link.getAttribute("href") === "/plots/test-plot-001",
-    );
+    const cardLink = links.find((link) => link.getAttribute("href") === "/plots/test-plot-001");
     expect(cardLink).toBeDefined();
   });
 
@@ -76,9 +70,7 @@ describe("PlotCard", () => {
       description: null,
     };
     render(<PlotCard plot={plotWithoutDescription} />);
-    expect(
-      screen.queryByText("これはテスト用の説明文です。"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("これはテスト用の説明文です。")).not.toBeInTheDocument();
   });
 
   it("タグが空配列の場合はタグ領域が表示されない", () => {
@@ -97,5 +89,23 @@ describe("PlotCard", () => {
     const timeElement = screen.getByRole("time");
     expect(timeElement).toBeInTheDocument();
     expect(timeElement).toHaveAttribute("dateTime", mockPlot.createdAt);
+  });
+
+  it("createdAtが不正な文字列の場合「日時不明」と表示される", () => {
+    const plotWithInvalidDate: PlotResponse = {
+      ...mockPlot,
+      createdAt: "invalid-date-string",
+    };
+    render(<PlotCard plot={plotWithInvalidDate} />);
+    expect(screen.getByText("日時不明")).toBeInTheDocument();
+  });
+
+  it("createdAtが空文字の場合「日時不明」と表示される", () => {
+    const plotWithEmptyDate: PlotResponse = {
+      ...mockPlot,
+      createdAt: "",
+    };
+    render(<PlotCard plot={plotWithEmptyDate} />);
+    expect(screen.getByText("日時不明")).toBeInTheDocument();
   });
 });

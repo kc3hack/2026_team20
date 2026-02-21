@@ -1,11 +1,7 @@
 "use client";
 
 import { PlotList } from "@/components/plot/PlotList/PlotList";
-import {
-  useTrendingPlots,
-  usePopularPlots,
-  useLatestPlots,
-} from "@/hooks/usePlots";
+import { useLatestPlots, usePopularPlots, useTrendingPlots } from "@/hooks/usePlots";
 
 export function TrendingSection() {
   const { data, isLoading } = useTrendingPlots(5);

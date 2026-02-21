@@ -11,3 +11,16 @@
     height: 10rem;
     border-radius: 0.75rem;
 }
+
+.emptyState {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1rem;
+}
+
+.emptyMessage {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+}
