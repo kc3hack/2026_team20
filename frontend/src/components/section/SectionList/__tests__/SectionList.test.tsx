@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { SectionResponse } from "@/lib/api/types";
-import "@/tests/helpers/tiptapMock";
 import { SectionList } from "../SectionList";
 
 const mockSections: SectionResponse[] = [

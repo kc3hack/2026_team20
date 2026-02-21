@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlotDetailResponse } from "@/lib/api/types";
-import "@/tests/helpers/tiptapMock";
 import { PlotDetail } from "../PlotDetail";
 
 const mockPush = vi.fn();

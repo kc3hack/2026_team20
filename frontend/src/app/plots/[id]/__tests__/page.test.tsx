@@ -2,7 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
 import type { PlotDetailResponse } from "@/lib/api/types";
-import "@/tests/helpers/tiptapMock";
 
 vi.mock("@/lib/api/repositories/plotRepository", () => ({
   get: vi.fn(),
