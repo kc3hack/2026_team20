@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SectionResponse } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import styles from "./TableOfContents.module.scss";

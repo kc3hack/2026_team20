@@ -49,12 +49,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
       <header className={styles.header}>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{plot.title}</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEditClick}
-            disabled={plot.isPaused}
-          >
+          <Button variant="outline" size="sm" onClick={handleEditClick} disabled={plot.isPaused}>
             <Pencil size={16} />
             編集する
           </Button>

@@ -13,9 +13,7 @@ export async function search(
     // クエリで簡易フィルタリング（タイトル・description に部分一致）
     const q = params.q.toLowerCase();
     const filtered = mockSearchResults.items.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q)),
+      (p) => p.title.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q),
     );
     const limit = params.limit ?? 20;
     const offset = params.offset ?? 0;

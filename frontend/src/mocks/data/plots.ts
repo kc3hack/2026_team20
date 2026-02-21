@@ -121,7 +121,8 @@ export const mockPlots: PlotResponse[] = [
   {
     id: "plot-test-scroll",
     title: "スクロールテスト用：超巨大プロット",
-    description: "目次のスクロール追従やクリック時の挙動をテストするために作成された、大量のセクションと長文で構成されるテスト用データです。",
+    description:
+      "目次のスクロール追従やクリック時の挙動をテストするために作成された、大量のセクションと長文で構成されるテスト用データです。",
     tags: ["テスト", "スクロール"],
     ownerId: mockUsers.owner.id,
     starCount: 999,
