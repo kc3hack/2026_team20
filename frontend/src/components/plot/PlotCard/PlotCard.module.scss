@@ -69,6 +69,14 @@
     gap: 0.25rem;
 }
 
+.starIcon {
+    transition: color 0.2s ease;
+}
+
+.starred {
+    color: hsl(var(--chart-5));
+}
+
 .date {
     white-space: nowrap;
 }
