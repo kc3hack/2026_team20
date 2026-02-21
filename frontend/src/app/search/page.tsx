@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { PlotList } from "@/components/plot/PlotList/PlotList";
 import { EmptyState } from "@/components/shared/EmptyState/EmptyState";
 import { Pagination } from "@/components/shared/Pagination/Pagination";
-import { PAGE_SIZE } from "@/lib/constants";
 import { useSearchPlots } from "@/hooks/useSearch";
+import { PAGE_SIZE } from "@/lib/constants";
 import styles from "./page.module.scss";
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
   const [offset, setOffset] = useState(0);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: queryは検索パラメータであり、値が変わったときにページを先頭に戻す必要がある
+  useEffect(() => {
+    setOffset(0);
+  }, [query]);
 
   const { data, isLoading } = useSearchPlots(query, offset);
 
@@ -41,12 +46,7 @@ export default function SearchPage() {
 
       {total > PAGE_SIZE && (
         <div className={styles.pagination}>
-          <Pagination
-            total={total}
-            limit={PAGE_SIZE}
-            offset={offset}
-            onPageChange={setOffset}
-          />
+          <Pagination total={total} limit={PAGE_SIZE} offset={offset} onPageChange={setOffset} />
         </div>
       )}
     </main>

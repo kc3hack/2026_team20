@@ -66,6 +66,7 @@ const authenticatedAuth = {
   handleUnauthorized: vi.fn(),
 };
 
+import { createMockPlotResponse } from "@/__tests__/helpers/mockData";
 // ── imports under test ─────────────────────────────────────────
 import {
   useCreatePlot,
@@ -99,22 +100,6 @@ const mockPlotListResponse: PlotListResponse = {
   limit: 5,
   offset: 0,
 };
-
-const createMockPlotResponse = (overrides: Partial<PlotResponse> = {}): PlotResponse => ({
-  id: "plot-001",
-  title: "テストPlot",
-  description: null,
-  tags: [],
-  ownerId: "user-001",
-  starCount: 0,
-  isStarred: false,
-  isPaused: false,
-  thumbnailUrl: null,
-  version: 0,
-  createdAt: "2026-01-01T00:00:00Z",
-  updatedAt: "2026-01-01T00:00:00Z",
-  ...overrides,
-});
 
 // ── ヘルパー ───────────────────────────────────────────────────
 function createWrapper() {
@@ -186,6 +171,14 @@ describe("usePlots hooks", () => {
       expect(mockTrending).toHaveBeenCalledWith({ limit: 5 }, undefined);
       expect(mockTrending).toHaveBeenCalledWith({ limit: 10 }, undefined);
     });
+
+    it("enabled: false のときクエリが発火しない", () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useTrendingPlots(5, { enabled: false }), { wrapper });
+
+      expect(result.current.fetchStatus).toBe("idle");
+      expect(mockTrending).not.toHaveBeenCalled();
+    });
   });
 
   describe("usePopularPlots", () => {
@@ -206,6 +199,14 @@ describe("usePlots hooks", () => {
 
       expect(mockPopular).toHaveBeenCalledWith({ limit: 10 }, undefined);
     });
+
+    it("enabled: false のときクエリが発火しない", () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => usePopularPlots(5, { enabled: false }), { wrapper });
+
+      expect(result.current.fetchStatus).toBe("idle");
+      expect(mockPopular).not.toHaveBeenCalled();
+    });
   });
 
   describe("useLatestPlots", () => {
@@ -225,6 +226,14 @@ describe("usePlots hooks", () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(mockLatest).toHaveBeenCalledWith({ limit: 10 }, undefined);
+    });
+
+    it("enabled: false のときクエリが発火しない", () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLatestPlots(5, { enabled: false }), { wrapper });
+
+      expect(result.current.fetchStatus).toBe("idle");
+      expect(mockLatest).not.toHaveBeenCalled();
     });
   });
 
@@ -329,6 +338,21 @@ describe("useCreatePlot", () => {
     expect(result.current.error).toBeInstanceOf(Error);
     expect((result.current.error as Error).message).toBe("API Error");
   });
+
+  it("未認証時に「認証が必要です」エラーを投げ、リポジトリを呼ばない", async () => {
+    mockUseAuth.mockReturnValue(unauthenticatedAuth);
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useCreatePlot(), { wrapper });
+
+    result.current.mutate({ title: "未認証Plot" });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect((result.current.error as Error).message).toBe("認証が必要です");
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe("useUpdatePlot", () => {
@@ -379,5 +403,20 @@ describe("useUpdatePlot", () => {
 
     expect(result.current.error).toBeInstanceOf(Error);
     expect((result.current.error as Error).message).toBe("Not Found");
+  });
+
+  it("未認証時に「認証が必要です」エラーを投げ、リポジトリを呼ばない", async () => {
+    mockUseAuth.mockReturnValue(unauthenticatedAuth);
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useUpdatePlot(), { wrapper });
+
+    result.current.mutate({ plotId: "plot-001", data: { title: "未認証更新" } });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect((result.current.error as Error).message).toBe("認証が必要です");
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });

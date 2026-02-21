@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PlotListResponse, PlotResponse } from "@/lib/api/types";
+import type { PlotListResponse } from "@/lib/api/types";
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
@@ -52,23 +53,8 @@ vi.mock("@/providers/AuthProvider", () => ({
 }));
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMockPlot } from "@/__tests__/helpers/mockData";
 import PlotsPage from "../page";
-
-const createMockPlot = (overrides: Partial<PlotResponse> = {}): PlotResponse => ({
-  id: "plot-001",
-  title: "テスト用Plot",
-  description: "テスト用の説明文です。",
-  tags: ["TypeScript"],
-  ownerId: "user-001",
-  starCount: 10,
-  isStarred: false,
-  isPaused: false,
-  thumbnailUrl: null,
-  version: 1,
-  createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
 
 function renderWithQuery(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -98,23 +84,46 @@ describe("PlotsPage", () => {
     expect(await screen.findByText("Trending Plot")).toBeInTheDocument();
   });
 
+  it("trendingタブ選択時にpopular/latestのAPIが発火しない", async () => {
+    const items = [createMockPlot({ id: "plot-t1", title: "Trending Plot" })];
+    mockTrendingFn.mockResolvedValue({ items, total: 1, limit: 20, offset: 0 });
+
+    renderWithQuery(<PlotsPage />);
+
+    await screen.findByText("Trending Plot");
+
+    expect(mockTrendingFn).toHaveBeenCalled();
+    expect(mockPopularFn).not.toHaveBeenCalled();
+    expect(mockLatestFn).not.toHaveBeenCalled();
+  });
+
   it("sort=popularの場合、人気Plotを表示する", async () => {
     mockSearchParams.set("sort", "popular");
     const items = [createMockPlot({ id: "plot-p1", title: "Popular Plot" })];
-    mockTrendingFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
     mockPopularFn.mockResolvedValue({ items, total: 1, limit: 20, offset: 0 });
-    mockLatestFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
 
     renderWithQuery(<PlotsPage />);
 
     expect(await screen.findByText("Popular Plot")).toBeInTheDocument();
   });
 
+  it("sort=popularの場合、trending/latestのAPIが発火しない", async () => {
+    mockSearchParams.set("sort", "popular");
+    const items = [createMockPlot({ id: "plot-p1", title: "Popular Plot" })];
+    mockPopularFn.mockResolvedValue({ items, total: 1, limit: 20, offset: 0 });
+
+    renderWithQuery(<PlotsPage />);
+
+    await screen.findByText("Popular Plot");
+
+    expect(mockPopularFn).toHaveBeenCalled();
+    expect(mockTrendingFn).not.toHaveBeenCalled();
+    expect(mockLatestFn).not.toHaveBeenCalled();
+  });
+
   it("sort=newの場合、新着Plotを表示する", async () => {
     mockSearchParams.set("sort", "new");
     const items = [createMockPlot({ id: "plot-n1", title: "New Plot" })];
-    mockTrendingFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
-    mockPopularFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
     mockLatestFn.mockResolvedValue({ items, total: 1, limit: 20, offset: 0 });
 
     renderWithQuery(<PlotsPage />);
@@ -122,10 +131,22 @@ describe("PlotsPage", () => {
     expect(await screen.findByText("New Plot")).toBeInTheDocument();
   });
 
+  it("sort=newの場合、trending/popularのAPIが発火しない", async () => {
+    mockSearchParams.set("sort", "new");
+    const items = [createMockPlot({ id: "plot-n1", title: "New Plot" })];
+    mockLatestFn.mockResolvedValue({ items, total: 1, limit: 20, offset: 0 });
+
+    renderWithQuery(<PlotsPage />);
+
+    await screen.findByText("New Plot");
+
+    expect(mockLatestFn).toHaveBeenCalled();
+    expect(mockTrendingFn).not.toHaveBeenCalled();
+    expect(mockPopularFn).not.toHaveBeenCalled();
+  });
+
   it("結果が0件の場合はEmptyStateを表示する", async () => {
     mockTrendingFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
-    mockPopularFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
-    mockLatestFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
 
     renderWithQuery(<PlotsPage />);
 
@@ -134,8 +155,6 @@ describe("PlotsPage", () => {
 
   it("ソートタブが3つ表示される", async () => {
     mockTrendingFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
-    mockPopularFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
-    mockLatestFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
 
     renderWithQuery(<PlotsPage />);
 
@@ -186,5 +205,61 @@ describe("PlotsPage", () => {
 
     expect(await screen.findByText("唯一の結果")).toBeInTheDocument();
     expect(screen.queryByLabelText("ページネーション")).not.toBeInTheDocument();
+  });
+
+  it("tagパラメータがある状態でソートタブを切り替えるとtagが削除される", async () => {
+    const user = userEvent.setup();
+    mockSearchParams.delete("tag");
+    mockTrendingFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+    mockPopularFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+    mockLatestFn.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 });
+
+    renderWithQuery(<PlotsPage />);
+
+    await screen.findByText("Plotが見つかりませんでした");
+
+    mockSearchParams.set("tag", "React");
+
+    await user.click(screen.getByRole("tab", { name: "人気" }));
+
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("sort=popular"));
+    const pushedUrl = mockPush.mock.calls[0][0] as string;
+    const pushedParams = new URLSearchParams(pushedUrl.split("?")[1]);
+    expect(pushedParams.has("tag")).toBe(false);
+  });
+
+  it("tagが変更されたときにoffsetが0にリセットされる", async () => {
+    const user = userEvent.setup();
+    mockSearchParams.set("tag", "React");
+    const items = Array.from({ length: 20 }, (_, i) =>
+      createMockPlot({ id: `plot-r${i}`, title: `React Plot ${i}` }),
+    );
+    mockListFn.mockResolvedValue({ items, total: 42, limit: 20, offset: 0 });
+
+    const { rerender } = renderWithQuery(<PlotsPage />);
+
+    await screen.findByText("React Plot 0");
+    await user.click(screen.getByRole("button", { name: "2" }));
+
+    mockListFn.mockClear();
+    mockSearchParams.set("tag", "Vue");
+    const vueItems = [createMockPlot({ id: "plot-v1", title: "Vue Plot" })];
+    mockListFn.mockResolvedValue({ items: vueItems, total: 1, limit: 20, offset: 0 });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <PlotsPage />
+      </QueryClientProvider>,
+    );
+
+    await screen.findByText("タグ: Vue");
+
+    const resetCall = mockListFn.mock.calls.find(
+      (call) => call[0]?.tag === "Vue" && call[0]?.offset === 0,
+    );
+    expect(resetCall).toBeDefined();
   });
 });

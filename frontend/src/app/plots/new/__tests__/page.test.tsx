@@ -64,23 +64,8 @@ vi.mock("@/hooks/useAuth", () => ({
   }),
 }));
 
+import { createMockPlotResponse } from "@/__tests__/helpers/mockData";
 import NewPlotPage from "../page";
-
-const createMockPlotResponse = (overrides: Partial<PlotResponse> = {}): PlotResponse => ({
-  id: "plot-new-001",
-  title: "テスト用Plot",
-  description: null,
-  tags: [],
-  ownerId: "user-001",
-  starCount: 0,
-  isStarred: false,
-  isPaused: false,
-  thumbnailUrl: null,
-  version: 0,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
 
 function renderWithQueryClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({

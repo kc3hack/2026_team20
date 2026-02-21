@@ -24,6 +24,7 @@ function NewPlotContent() {
   const handleSubmit = (data: CreatePlotRequest) => {
     createPlot.mutate(data, {
       onSuccess: (created) => {
+        toast.success("Plotを作成しました");
         router.push(`/plots/${created.id}`);
       },
       onError: () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PlotList } from "@/components/plot/PlotList/PlotList";
 import { EmptyState } from "@/components/shared/EmptyState/EmptyState";
 import { Pagination } from "@/components/shared/Pagination/Pagination";
@@ -23,9 +23,9 @@ function isValidSort(value: string | null): value is SortType {
 }
 
 function SortedPlotContent({ sort, limit }: { sort: SortType; limit: number }) {
-  const trendingQuery = useTrendingPlots(limit);
-  const popularQuery = usePopularPlots(limit);
-  const latestQuery = useLatestPlots(limit);
+  const trendingQuery = useTrendingPlots(limit, { enabled: sort === "trending" });
+  const popularQuery = usePopularPlots(limit, { enabled: sort === "popular" });
+  const latestQuery = useLatestPlots(limit, { enabled: sort === "new" });
 
   const queryMap: Record<SortType, typeof trendingQuery> = {
     trending: trendingQuery,
@@ -45,6 +45,10 @@ function SortedPlotContent({ sort, limit }: { sort: SortType; limit: number }) {
 
 function TagFilteredContent({ tag }: { tag: string }) {
   const [offset, setOffset] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tagはpropsであり、値が変わったときにページを先頭に戻す必要がある
+  useEffect(() => {
+    setOffset(0);
+  }, [tag]);
   const { data, isLoading } = usePlotList({ tag, limit: PAGE_SIZE, offset });
 
   const items = data?.items ?? [];
@@ -80,6 +84,7 @@ export default function PlotsPage() {
 
   const handleSortChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("tag"); // ソート切り替え時にtagパラメータが残留しないよう削除
     params.set("sort", value);
     router.push(`/plots?${params.toString()}`);
   };

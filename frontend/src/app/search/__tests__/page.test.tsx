@@ -1,15 +1,11 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { PlotResponse, SearchResponse } from "@/lib/api/types";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SearchResponse } from "@/lib/api/types";
 
 vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 const mockPush = vi.fn();
@@ -19,12 +15,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
-const mockSearchFn = vi.fn<
-  (
-    params: { q: string; limit?: number; offset?: number },
-    token?: string,
-  ) => Promise<SearchResponse>
->();
+const mockSearchFn =
+  vi.fn<
+    (
+      params: { q: string; limit?: number; offset?: number },
+      token?: string,
+    ) => Promise<SearchResponse>
+  >();
 vi.mock("@/lib/api/repositories", () => ({
   searchRepository: {
     search: (...args: Parameters<typeof mockSearchFn>) => mockSearchFn(...args),
@@ -45,23 +42,8 @@ vi.mock("@/providers/AuthProvider", () => ({
 }));
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMockPlot } from "@/__tests__/helpers/mockData";
 import SearchPage from "../page";
-
-const createMockPlot = (overrides: Partial<PlotResponse> = {}): PlotResponse => ({
-  id: "plot-001",
-  title: "テスト用Plot",
-  description: "テスト用の説明文です。",
-  tags: ["TypeScript"],
-  ownerId: "user-001",
-  starCount: 10,
-  isStarred: false,
-  isPaused: false,
-  thumbnailUrl: null,
-  version: 1,
-  createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
 
 function renderWithQuery(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -69,9 +51,7 @@ function renderWithQuery(ui: React.ReactElement) {
       queries: { retry: false },
     },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
-  );
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
 describe("SearchPage", () => {
@@ -92,9 +72,7 @@ describe("SearchPage", () => {
     renderWithQuery(<SearchPage />);
 
     expect(await screen.findByText("見つかりませんでした")).toBeInTheDocument();
-    expect(
-      screen.getByText(/存在しないキーワード/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/存在しないキーワード/)).toBeInTheDocument();
   });
 
   it("検索結果がある場合はPlotListと件数を表示する", async () => {
@@ -164,5 +142,56 @@ describe("SearchPage", () => {
     fireEvent.click(page2Button);
 
     expect(await screen.findByText("Plot Page2-0")).toBeInTheDocument();
+  });
+
+  it("検索クエリが変わるとoffsetが0にリセットされる", async () => {
+    mockSearchParams.set("q", "最初のクエリ");
+    const firstQueryItems = Array.from({ length: 20 }, (_, i) =>
+      createMockPlot({ id: `first-${i}`, title: `First ${i}` }),
+    );
+    mockSearchFn.mockResolvedValue({
+      items: firstQueryItems,
+      total: 40,
+      query: "最初のクエリ",
+    });
+
+    const { unmount } = renderWithQuery(<SearchPage />);
+
+    expect(await screen.findByText("First 0")).toBeInTheDocument();
+
+    const secondPageItems = Array.from({ length: 20 }, (_, i) =>
+      createMockPlot({ id: `first-page2-${i}`, title: `First Page2-${i}` }),
+    );
+    mockSearchFn.mockResolvedValue({
+      items: secondPageItems,
+      total: 40,
+      query: "最初のクエリ",
+    });
+
+    const page2Button = screen.getByRole("button", { name: "2" });
+    fireEvent.click(page2Button);
+
+    expect(await screen.findByText("First Page2-0")).toBeInTheDocument();
+
+    unmount();
+
+    mockSearchParams.set("q", "新しいクエリ");
+    const newQueryItems = Array.from({ length: 20 }, (_, i) =>
+      createMockPlot({ id: `new-${i}`, title: `New ${i}` }),
+    );
+    mockSearchFn.mockResolvedValue({
+      items: newQueryItems,
+      total: 25,
+      query: "新しいクエリ",
+    });
+
+    renderWithQuery(<SearchPage />);
+
+    expect(await screen.findByText("New 0")).toBeInTheDocument();
+
+    expect(mockSearchFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ q: "新しいクエリ", offset: 0 }),
+      undefined,
+    );
   });
 });

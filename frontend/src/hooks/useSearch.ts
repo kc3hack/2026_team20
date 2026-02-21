@@ -2,9 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { searchRepository } from "@/lib/api/repositories";
+import { PAGE_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/providers/AuthProvider";
-import { PAGE_SIZE } from "@/lib/constants";
 
 export function useSearchPlots(q: string, offset = 0, limit = PAGE_SIZE) {
   const { session } = useAuth();

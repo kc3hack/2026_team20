@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,10 +20,20 @@ import { Textarea } from "@/components/ui/textarea";
 import type { CreatePlotRequest } from "@/lib/api/types";
 import styles from "./PlotForm.module.scss";
 
+/**
+ * タグ1つあたりの最大文字数。
+ * API仕様（docs/api.md）にはタグ個別の文字数制限が未定義のため、
+ * UX上の合理的な上限としてフロントエンド側で50文字に制限する。
+ */
+const TAG_MAX_LENGTH = 50;
+
 const plotSchema = z.object({
   title: z.string().min(1, "タイトルは必須です").max(200, "200文字以内"),
   description: z.string().max(2000, "2000文字以内").optional(),
-  tags: z.array(z.string()).max(10, "タグは10個まで").optional(),
+  tags: z
+    .array(z.string().max(TAG_MAX_LENGTH, `タグは${TAG_MAX_LENGTH}文字以内`))
+    .max(10, "タグは10個まで")
+    .optional(),
 });
 
 type PlotFormValues = z.infer<typeof plotSchema>;
@@ -57,6 +66,15 @@ export function PlotForm({ mode, defaultValues, onSubmit, isSubmitting = false }
 
     if (newTags.length === 0) return;
 
+    const tooLongTags = newTags.filter((t) => t.length > TAG_MAX_LENGTH);
+    if (tooLongTags.length > 0) {
+      form.setError("tags", {
+        type: "manual",
+        message: `タグは${TAG_MAX_LENGTH}文字以内`,
+      });
+      return;
+    }
+
     const merged = [...currentTags];
     for (const tag of newTags) {
       if (!merged.includes(tag) && merged.length < 10) {
@@ -87,6 +105,11 @@ export function PlotForm({ mode, defaultValues, onSubmit, isSubmitting = false }
 
     if (values.description?.trim()) {
       payload.description = values.description.trim();
+    } else if (mode === "edit") {
+      // editモードでは、ユーザーが説明文を削除した場合に
+      // サーバー側でフィールドをクリアさせるため空文字列を明示的に送信する。
+      // createモードでは省略（undefined）のままでよい。
+      payload.description = "";
     }
 
     if (values.tags && values.tags.length > 0) {
@@ -94,10 +117,6 @@ export function PlotForm({ mode, defaultValues, onSubmit, isSubmitting = false }
     }
 
     onSubmit(payload);
-
-    if (mode === "create") {
-      toast.success("Plotを作成しました");
-    }
   };
 
   return (
