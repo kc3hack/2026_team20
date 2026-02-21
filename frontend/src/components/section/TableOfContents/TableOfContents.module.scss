@@ -1,3 +1,5 @@
+@use "@/styles/mixins" as *;
+
 .container {
   padding: 1rem;
   border: 1px solid hsl(var(--border));
@@ -55,8 +57,10 @@
 }
 
 .active {
-  border-left-color: hsl(var(--primary));
-  color: hsl(var(--primary));
-  font-weight: 500;
-  background-color: hsl(var(--accent));
+  @include respond-to(md) {
+    border-left-color: hsl(var(--primary));
+    color: hsl(var(--primary));
+    font-weight: 500;
+    background-color: hsl(var(--accent));
+  }
 }
