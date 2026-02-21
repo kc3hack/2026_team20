@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/";
+  const rawNext = searchParams.get("redirectTo") ?? "/";
   const next = sanitizeRedirectPath(rawNext, "/");
 
   if (code) {
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const errorUrl = new URL("/auth/login", origin);
   errorUrl.searchParams.set("error", "auth_callback_error");
   if (next !== "/") {
-    errorUrl.searchParams.set("next", next);
+    errorUrl.searchParams.set("redirectTo", next);
   }
   return NextResponse.redirect(errorUrl.toString());
 }

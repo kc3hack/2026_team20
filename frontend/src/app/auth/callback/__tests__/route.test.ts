@@ -41,7 +41,7 @@ describe("GET /auth/callback", () => {
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
 
     const request = buildRequest(
-      "http://localhost:3000/auth/callback?code=test-code&next=/dashboard",
+      "http://localhost:3000/auth/callback?code=test-code&redirectTo=/dashboard",
     );
     const response = await GET(request);
 
@@ -62,20 +62,20 @@ describe("GET /auth/callback", () => {
     );
   });
 
-  it("preserves next parameter on error redirect", async () => {
+  it("preserves redirectTo parameter on error redirect", async () => {
     mockExchangeCodeForSession.mockResolvedValue({
       error: { message: "Invalid code" },
     });
 
     const request = buildRequest(
-      "http://localhost:3000/auth/callback?code=bad-code&next=/plots/new",
+      "http://localhost:3000/auth/callback?code=bad-code&redirectTo=/plots/new",
     );
     const response = await GET(request);
 
     expect(response.status).toBe(307);
     const location = response.headers.get("location") ?? "";
     expect(location).toContain("error=auth_callback_error");
-    expect(location).toContain("next=%2Fplots%2Fnew");
+    expect(location).toContain("redirectTo=%2Fplots%2Fnew");
   });
 
   it("redirects to login with error when no code is provided", async () => {
@@ -89,33 +89,33 @@ describe("GET /auth/callback", () => {
     );
   });
 
-  it("ignores protocol-relative next param to prevent open redirect", async () => {
+  it("ignores protocol-relative redirectTo param to prevent open redirect", async () => {
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
 
     const request = buildRequest(
-      "http://localhost:3000/auth/callback?code=test-code&next=//evil.com",
+      "http://localhost:3000/auth/callback?code=test-code&redirectTo=//evil.com",
     );
     const response = await GET(request);
 
     expect(response.headers.get("location")).toBe("http://localhost:3000/");
   });
 
-  it("ignores absolute URL next param to prevent open redirect", async () => {
+  it("ignores absolute URL redirectTo param to prevent open redirect", async () => {
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
 
     const request = buildRequest(
-      "http://localhost:3000/auth/callback?code=test-code&next=https://evil.com",
+      "http://localhost:3000/auth/callback?code=test-code&redirectTo=https://evil.com",
     );
     const response = await GET(request);
 
     expect(response.headers.get("location")).toBe("http://localhost:3000/");
   });
 
-  it("ignores backslash next param to prevent open redirect", async () => {
+  it("ignores backslash redirectTo param to prevent open redirect", async () => {
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
 
     const request = buildRequest(
-      "http://localhost:3000/auth/callback?code=test-code&next=/\\evil.com",
+      "http://localhost:3000/auth/callback?code=test-code&redirectTo=/\\evil.com",
     );
     const response = await GET(request);
 

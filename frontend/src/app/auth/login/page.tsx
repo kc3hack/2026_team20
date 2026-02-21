@@ -14,7 +14,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const rawNext = searchParams.get("next");
+  const rawNext = searchParams.get("redirectTo");
   const next = sanitizeRedirectPath(rawNext);
 
   const error = searchParams.get("error");

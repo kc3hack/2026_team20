@@ -374,7 +374,7 @@ describe("AuthProvider", () => {
     });
   });
 
-  it("signInWithGitHub passes redirectTo as next param in callback URL", async () => {
+  it("signInWithGitHub passes redirectTo as redirectTo param in callback URL", async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -392,14 +392,14 @@ describe("AuthProvider", () => {
         expect.objectContaining({
           provider: "github",
           options: expect.objectContaining({
-            redirectTo: expect.stringContaining("next=%2Fplots%2Fnew"),
+            redirectTo: expect.stringContaining("redirectTo=%2Fplots%2Fnew"),
           }),
         }),
       );
     });
   });
 
-  it("signInWithGoogle passes redirectTo as next param in callback URL", async () => {
+  it("signInWithGoogle passes redirectTo as redirectTo param in callback URL", async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -417,14 +417,14 @@ describe("AuthProvider", () => {
         expect.objectContaining({
           provider: "google",
           options: expect.objectContaining({
-            redirectTo: expect.stringContaining("next=%2Fdashboard"),
+            redirectTo: expect.stringContaining("redirectTo=%2Fdashboard"),
           }),
         }),
       );
     });
   });
 
-  it("signInWithGitHub without redirectTo uses callback URL without next param", async () => {
+  it("signInWithGitHub without redirectTo uses callback URL without redirectTo param", async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -441,7 +441,7 @@ describe("AuthProvider", () => {
       const callArg = mockSignInWithOAuth.mock.calls[0][0];
       expect(callArg.provider).toBe("github");
       expect(callArg.options.redirectTo).toContain("/auth/callback");
-      expect(callArg.options.redirectTo).not.toContain("next=");
+      expect(callArg.options.redirectTo).not.toContain("redirectTo=");
     });
   });
 });

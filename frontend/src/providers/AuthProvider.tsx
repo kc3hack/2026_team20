@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (provider: "github" | "google", redirectTo?: string) => {
       const callbackUrl = new URL("/auth/callback", getBaseUrl());
       if (redirectTo) {
-        callbackUrl.searchParams.set("next", redirectTo);
+        callbackUrl.searchParams.set("redirectTo", redirectTo);
       }
       const { error } = await supabase.auth.signInWithOAuth({
         provider,

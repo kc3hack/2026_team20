@@ -34,7 +34,7 @@ import LoginPage from "../page";
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSearchParams.delete("next");
+    mockSearchParams.delete("redirectTo");
     mockSearchParams.delete("error");
     mockUseAuth.mockReturnValue({ isLoading: false, isAuthenticated: false });
   });
@@ -43,8 +43,8 @@ describe("LoginPage", () => {
     cleanup();
   });
 
-  it("next パラメータがある場合、LoginButton に redirectTo が渡される", () => {
-    mockSearchParams.set("next", "/plots/new");
+  it("redirectTo パラメータがある場合、LoginButton に redirectTo が渡される", () => {
+    mockSearchParams.set("redirectTo", "/plots/new");
 
     render(<LoginPage />);
 
@@ -54,24 +54,15 @@ describe("LoginPage", () => {
     expect(googleBtn.getAttribute("data-redirect-to")).toBe("/plots/new");
   });
 
-  it("next パラメータがない場合、LoginButton に redirectTo が undefined", () => {
+  it("redirectTo パラメータがない場合、LoginButton に redirectTo が undefined", () => {
     render(<LoginPage />);
 
     const githubBtn = screen.getByTestId("login-github");
     expect(githubBtn.getAttribute("data-redirect-to")).toBe("");
   });
 
-  it("next パラメータが外部 URL（http://evil.com）の場合、無視される", () => {
-    mockSearchParams.set("next", "http://evil.com");
-
-    render(<LoginPage />);
-
-    const githubBtn = screen.getByTestId("login-github");
-    expect(githubBtn.getAttribute("data-redirect-to")).toBe("");
-  });
-
-  it('next パラメータが "//" で始まる場合、無視される', () => {
-    mockSearchParams.set("next", "//evil.com");
+  it("redirectTo パラメータが外部 URL（http://evil.com）の場合、無視される", () => {
+    mockSearchParams.set("redirectTo", "http://evil.com");
 
     render(<LoginPage />);
 
@@ -79,8 +70,17 @@ describe("LoginPage", () => {
     expect(githubBtn.getAttribute("data-redirect-to")).toBe("");
   });
 
-  it('next パラメータが "\\" を含む場合、無視される', () => {
-    mockSearchParams.set("next", "/\\evil.com");
+  it('redirectTo パラメータが "//" で始まる場合、無視される', () => {
+    mockSearchParams.set("redirectTo", "//evil.com");
+
+    render(<LoginPage />);
+
+    const githubBtn = screen.getByTestId("login-github");
+    expect(githubBtn.getAttribute("data-redirect-to")).toBe("");
+  });
+
+  it('redirectTo パラメータが "\\" を含む場合、無視される', () => {
+    mockSearchParams.set("redirectTo", "/\\evil.com");
 
     render(<LoginPage />);
 
@@ -104,9 +104,9 @@ describe("LoginPage", () => {
     expect(mockReplace).toHaveBeenCalledWith("/");
   });
 
-  it("認証済みかつ next パラメータがある場合、next 先にリダイレクトされる", () => {
+  it("認証済みかつ redirectTo パラメータがある場合、redirectTo 先にリダイレクトされる", () => {
     mockUseAuth.mockReturnValue({ isLoading: false, isAuthenticated: true });
-    mockSearchParams.set("next", "/plots/new");
+    mockSearchParams.set("redirectTo", "/plots/new");
 
     render(<LoginPage />);
 
