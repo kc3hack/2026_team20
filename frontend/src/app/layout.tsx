@@ -18,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <body className={styles.body}>
         <Providers>
           {/* Header は useAuth を使用しているため、必ず Providers の子としてレンダリングする必要がある */}

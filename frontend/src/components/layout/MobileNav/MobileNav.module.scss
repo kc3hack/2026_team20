@@ -28,3 +28,30 @@
         background-color: var(--accent);
     }
 }
+
+.themeSection {
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.themeSectionLabel {
+    display: block;
+    padding: 0 1rem 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.themeButtons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.checkIcon {
+    margin-left: auto;
+    color: var(--primary);
+}
