@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +26,7 @@ export function CommentForm({
 }: CommentFormProps) {
   const { isAuthenticated } = useAuth();
   const { addComment, isPending } = useAddComment(threadId);
+  const currentPath = usePathname();
   const [content, setContent] = useState("");
 
   const canSubmit = content.trim().length > 0 && content.length <= MAX_LENGTH && !isPending;
@@ -66,7 +68,7 @@ export function CommentForm({
         <>
           <Textarea disabled placeholder="コメントを入力..." />
           <div className={styles.formFooter}>
-            <Link href="/auth/login" className={styles.loginLink}>
+            <Link href={`/auth/login?redirectTo=${encodeURIComponent(currentPath)}`} className={styles.loginLink}>
               ログインしてコメントする
             </Link>
           </div>

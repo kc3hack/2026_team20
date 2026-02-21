@@ -14,6 +14,10 @@ vi.mock("next/image", () => ({
   ),
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
+
 import { Header } from "./Header";
 
 describe("Header", () => {
@@ -125,7 +129,7 @@ describe("Header", () => {
       render(<Header />);
 
       const loginLink = screen.getByRole("link", { name: "ログイン" });
-      expect(loginLink).toHaveAttribute("href", "/auth/login");
+      expect(loginLink).toHaveAttribute("href", "/auth/login?redirectTo=%2F");
     });
   });
 });
