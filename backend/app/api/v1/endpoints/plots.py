@@ -17,7 +17,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.v1.deps import AuthUser, DbSession, OptionalUser
 from app.api.v1.utils import (
@@ -37,15 +37,15 @@ router = APIRouter()
 
 # ─── Request Schemas ──────────────────────────────────────────
 class CreatePlotRequest(BaseModel):
-    title: str
-    description: str | None = None
+    title: str = Field(..., max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
     tags: list[str] | None = None
     thumbnailUrl: str | None = None  # noqa: N815
 
 
 class UpdatePlotRequest(BaseModel):
-    title: str | None = None
-    description: str | None = None
+    title: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
     tags: list[str] | None = None
     thumbnailUrl: str | None = None  # noqa: N815 – model_fields_set で未指定と明示的 null を区別
 

@@ -67,7 +67,7 @@ export function useUserPlots(
 
   return useQuery({
     queryKey: queryKeys.users.plots(username, params),
-    queryFn: () => authRepository.getUserPlots(username, session?.access_token),
+    queryFn: () => authRepository.getUserPlots(username, session?.access_token, params),
     enabled: !!username,
   });
 }
@@ -81,7 +81,7 @@ export function useUserContributions(
   return useQuery({
     queryKey: queryKeys.users.contributions(username, params),
     queryFn: () =>
-      authRepository.getUserContributions(username, session?.access_token),
+      authRepository.getUserContributions(username, session?.access_token, params),
     enabled: !!username,
   });
 }

@@ -60,7 +60,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         settings.debug,
         settings.log_format,
     )
-    image_service.ensure_images_bucket_exists()
+    try:
+        image_service.ensure_images_bucket_exists()
+    except Exception:
+        logger.warning(
+            "Storage バケットの確認に失敗しました。初回アップロード時に自動作成されます。"
+        )
     start_snapshot_scheduler()
     start_snapshot_cleanup()
 

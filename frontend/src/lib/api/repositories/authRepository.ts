@@ -50,17 +50,22 @@ export async function getUserProfile(
   return apiClient<UserProfileResponse>(`/auth/users/${username}`, { token });
 }
 
-export async function getUserPlots(username: string, token?: string): Promise<PlotListResponse> {
+export async function getUserPlots(
+  username: string,
+  token?: string,
+  params?: { limit?: number; offset?: number },
+): Promise<PlotListResponse> {
   if (USE_MOCK) {
     const { mockUserPlots } = await import("@/mocks/data/users");
     return mockUserPlots;
   }
-  return apiClient<PlotListResponse>(`/auth/users/${username}/plots`, { token });
+  return apiClient<PlotListResponse>(`/auth/users/${username}/plots`, { token, params });
 }
 
 export async function getUserContributions(
   username: string,
   token?: string,
+  params?: { limit?: number; offset?: number },
 ): Promise<PlotListResponse> {
   if (USE_MOCK) {
     const { mockUserContributions } = await import("@/mocks/data/users");
@@ -68,6 +73,7 @@ export async function getUserContributions(
   }
   return apiClient<PlotListResponse>(`/auth/users/${username}/contributions`, {
     token,
+    params,
   });
 }
 
