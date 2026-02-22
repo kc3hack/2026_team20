@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PlotList } from "@/components/plot/PlotList/PlotList";
+import { SearchBar } from "@/components/search/SearchBar/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState/EmptyState";
 import { Pagination } from "@/components/shared/Pagination/Pagination";
 import { useSearchPlots } from "@/hooks/useSearch";
@@ -27,6 +28,9 @@ export default function SearchPage() {
   if (!query) {
     return (
       <main className={styles.main}>
+        <div className={styles.searchBar}>
+          <SearchBar />
+        </div>
         <EmptyState title="検索キーワードを入力してください" />
       </main>
     );
@@ -34,6 +38,10 @@ export default function SearchPage() {
 
   return (
     <main className={styles.main}>
+      <div className={styles.searchBar}>
+        <SearchBar />
+      </div>
+
       <h1 className={styles.heading}>
         &ldquo;{query}&rdquo; の検索結果: {isLoading ? "..." : `${total} 件`}
       </h1>

@@ -62,6 +62,7 @@ describe("SearchPage", () => {
 
   it("クエリがない場合はEmptyStateを表示する", () => {
     renderWithQuery(<SearchPage />);
+    expect(screen.getByPlaceholderText("Plotを検索...")).toBeInTheDocument();
     expect(screen.getByText("検索キーワードを入力してください")).toBeInTheDocument();
   });
 
