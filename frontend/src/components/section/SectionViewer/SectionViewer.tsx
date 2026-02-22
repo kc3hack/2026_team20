@@ -41,16 +41,6 @@ export function SectionViewer({
   const displayContent = liveContent ?? section.content;
   if (!displayContent) return null;
 
-  const editor = useEditor(
-    {
-      extensions: [StarterKit],
-      content: section.content ?? undefined,
-      editable: false,
-      immediatelyRender: false,
-    },
-    [section.content, section.version],
-  );
-
   return (
     <div
       id={`section-${section.id}`}

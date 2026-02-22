@@ -269,6 +269,7 @@ function SectionEditorWithLock({
     releaseLock,
   } = useSectionLock(plotId, section.id, {
     awareness,
+    provider,
   });
   const lockState: LockState = hookLockState;
   const lockedBy: SectionAwarenessState["user"] | null = hookLockedBy;

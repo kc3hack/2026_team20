@@ -2,7 +2,9 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { LockState } from "@/lib/realtime/types";
+import type { SectionAwarenessState } from "@/lib/realtime/types";
+
+type AwarenessModule = typeof import("@/lib/realtime/awareness");
 
 const mockUser = {
   id: "user-1",
@@ -25,18 +27,37 @@ vi.mock("@/providers/AuthProvider", () => ({
   }),
 }));
 
-const mockGetLockState = vi.fn<() => LockState>(() => "unlocked");
-const mockGetLockedBy = vi.fn(() => null);
-const mockSetEditingSection = vi.fn();
-const mockClearEditingSection = vi.fn();
-const mockOnAwarenessChange = vi.fn(() => vi.fn());
+const mockGetLockState = vi.fn<AwarenessModule["getLockState"]>(() => "unlocked");
+const mockGetLockedBy = vi.fn<AwarenessModule["getLockedBy"]>(() => null);
+const mockSetEditingSection = vi.fn<AwarenessModule["setEditingSection"]>();
+const mockClearEditingSection = vi.fn<AwarenessModule["clearEditingSection"]>();
+const mockOnAwarenessChange = vi.fn<AwarenessModule["onAwarenessChange"]>(
+  () => vi.fn(),
+);
 
 vi.mock("@/lib/realtime/awareness", () => ({
-  getLockState: (...args: unknown[]) => mockGetLockState(...args),
-  getLockedBy: (...args: unknown[]) => mockGetLockedBy(...args),
-  setEditingSection: (...args: unknown[]) => mockSetEditingSection(...args),
-  clearEditingSection: (...args: unknown[]) => mockClearEditingSection(...args),
-  onAwarenessChange: (...args: unknown[]) => mockOnAwarenessChange(...args),
+  getLockState: (
+    awareness: Parameters<AwarenessModule["getLockState"]>[0],
+    sectionId: Parameters<AwarenessModule["getLockState"]>[1],
+    currentUserId: Parameters<AwarenessModule["getLockState"]>[2],
+  ) => mockGetLockState(awareness, sectionId, currentUserId),
+  getLockedBy: (
+    awareness: Parameters<AwarenessModule["getLockedBy"]>[0],
+    sectionId: Parameters<AwarenessModule["getLockedBy"]>[1],
+  ) => mockGetLockedBy(awareness, sectionId),
+  setEditingSection: (
+    awareness: Parameters<AwarenessModule["setEditingSection"]>[0],
+    sectionId: Parameters<AwarenessModule["setEditingSection"]>[1],
+    user: Parameters<AwarenessModule["setEditingSection"]>[2],
+  ) => mockSetEditingSection(awareness, sectionId, user),
+  clearEditingSection: (
+    awareness: Parameters<AwarenessModule["clearEditingSection"]>[0],
+    user: Parameters<AwarenessModule["clearEditingSection"]>[1],
+  ) => mockClearEditingSection(awareness, user),
+  onAwarenessChange: (
+    awareness: Parameters<AwarenessModule["onAwarenessChange"]>[0],
+    callback: Parameters<AwarenessModule["onAwarenessChange"]>[1],
+  ) => mockOnAwarenessChange(awareness, callback),
 }));
 
 import { useSectionLock } from "../useSectionLock";
@@ -52,8 +73,25 @@ describe("useSectionLock", () => {
     destroy: vi.fn(),
   };
 
+  const providerHandlers: Record<string, ((...args: unknown[]) => void)[]> = {};
+  const mockProvider = {
+    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+      if (!providerHandlers[event]) providerHandlers[event] = [];
+      providerHandlers[event].push(handler);
+    }),
+    off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+      const handlers = providerHandlers[event] ?? [];
+      providerHandlers[event] = handlers.filter((h) => h !== handler);
+    }),
+    broadcastLock: vi.fn(),
+    broadcastUnlock: vi.fn(),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.keys(providerHandlers).forEach((key) => {
+      delete providerHandlers[key];
+    });
     mockGetLockState.mockReturnValue("unlocked");
     mockGetLockedBy.mockReturnValue(null);
   });
@@ -147,8 +185,8 @@ describe("useSectionLock", () => {
 
     it("onAwarenessChange コールバック発火時に lockState が更新される", () => {
       let capturedCallback: (() => void) | null = null;
-      mockOnAwarenessChange.mockImplementation((_awareness: unknown, cb: () => void) => {
-        capturedCallback = cb;
+      mockOnAwarenessChange.mockImplementation((_awareness, cb) => {
+        capturedCallback = () => cb({ added: [], updated: [], removed: [] });
         return vi.fn();
       });
 
@@ -189,6 +227,58 @@ describe("useSectionLock", () => {
       expect(acquired).toBe(false);
       expect(mockSetEditingSection).not.toHaveBeenCalled();
     });
+
+    it("section-lock イベント受信時に locked-by-other へ遷移する", async () => {
+      const { result } = renderHook(() =>
+        useSectionLock("plot-1", "section-1", {
+          awareness: mockAwareness,
+          provider: mockProvider as never,
+        }),
+      );
+
+      const locker = { id: "user-2", displayName: "花子", avatarUrl: null };
+      act(() => {
+        providerHandlers["section-lock"]?.forEach((handler) =>
+          handler("section-1", locker),
+        );
+      });
+
+      expect(result.current.lockState).toBe("locked-by-other");
+      expect(result.current.lockedBy).toEqual(locker);
+
+      let acquired: boolean | undefined;
+      await act(async () => {
+        acquired = await result.current.acquireLock();
+      });
+
+      expect(acquired).toBe(false);
+      expect(mockSetEditingSection).not.toHaveBeenCalled();
+    });
+
+    it("acquireLock()/releaseLock() で lock/unlock broadcast を送る", async () => {
+      const { result } = renderHook(() =>
+        useSectionLock("plot-1", "section-1", {
+          awareness: mockAwareness,
+          provider: mockProvider as never,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.acquireLock();
+      });
+
+      expect(mockProvider.broadcastLock).toHaveBeenCalledWith("section-1", {
+        id: "user-1",
+        displayName: "太郎",
+        avatarUrl: null,
+      });
+
+      act(() => {
+        result.current.releaseLock();
+      });
+
+      expect(mockProvider.broadcastUnlock).toHaveBeenCalledWith("section-1");
+    });
   });
 
   describe("統合テスト: 実際の y-protocols Awareness", () => {
@@ -197,18 +287,10 @@ describe("useSectionLock", () => {
         "@/lib/realtime/awareness",
       );
       actual.then((mod) => {
-        mockGetLockState.mockImplementation(
-          (...args: unknown[]) => (mod.getLockState as (...a: unknown[]) => unknown)(...args),
-        );
-        mockGetLockedBy.mockImplementation(
-          (...args: unknown[]) => (mod.getLockedBy as (...a: unknown[]) => unknown)(...args),
-        );
-        mockOnAwarenessChange.mockImplementation(
-          (...args: unknown[]) => (mod.onAwarenessChange as (...a: unknown[]) => unknown)(...args),
-        );
-        mockSetEditingSection.mockImplementation(
-          (...args: unknown[]) => (mod.setEditingSection as (...a: unknown[]) => unknown)(...args),
-        );
+        mockGetLockState.mockImplementation(mod.getLockState);
+        mockGetLockedBy.mockImplementation(mod.getLockedBy);
+        mockOnAwarenessChange.mockImplementation(mod.onAwarenessChange);
+        mockSetEditingSection.mockImplementation(mod.setEditingSection);
       });
     });
 
@@ -218,15 +300,9 @@ describe("useSectionLock", () => {
       const actualMod = await vi.importActual<typeof import("@/lib/realtime/awareness")>(
         "@/lib/realtime/awareness",
       );
-      mockGetLockState.mockImplementation(
-        (...args: unknown[]) => (actualMod.getLockState as (...a: unknown[]) => unknown)(...args),
-      );
-      mockGetLockedBy.mockImplementation(
-        (...args: unknown[]) => (actualMod.getLockedBy as (...a: unknown[]) => unknown)(...args),
-      );
-      mockOnAwarenessChange.mockImplementation(
-        (...args: unknown[]) => (actualMod.onAwarenessChange as (...a: unknown[]) => unknown)(...args),
-      );
+      mockGetLockState.mockImplementation(actualMod.getLockState);
+      mockGetLockedBy.mockImplementation(actualMod.getLockedBy);
+      mockOnAwarenessChange.mockImplementation(actualMod.onAwarenessChange);
 
       const doc = new Doc();
       const awareness = new Awareness(doc);
@@ -258,15 +334,9 @@ describe("useSectionLock", () => {
       const actualMod = await vi.importActual<typeof import("@/lib/realtime/awareness")>(
         "@/lib/realtime/awareness",
       );
-      mockGetLockState.mockImplementation(
-        (...args: unknown[]) => (actualMod.getLockState as (...a: unknown[]) => unknown)(...args),
-      );
-      mockGetLockedBy.mockImplementation(
-        (...args: unknown[]) => (actualMod.getLockedBy as (...a: unknown[]) => unknown)(...args),
-      );
-      mockOnAwarenessChange.mockImplementation(
-        (...args: unknown[]) => (actualMod.onAwarenessChange as (...a: unknown[]) => unknown)(...args),
-      );
+      mockGetLockState.mockImplementation(actualMod.getLockState);
+      mockGetLockedBy.mockImplementation(actualMod.getLockedBy);
+      mockOnAwarenessChange.mockImplementation(actualMod.onAwarenessChange);
 
       const doc = new Doc();
       const awareness = new Awareness(doc);

@@ -5,21 +5,13 @@ import { PlotDetail } from "@/components/plot/PlotDetail/PlotDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePlotDetail } from "@/hooks/usePlots";
 import { ApiError } from "@/lib/api/client";
-import * as plotRepository from "@/lib/api/repositories/plotRepository";
-import { createClient } from "@/lib/supabase/server";
 import styles from "./page.module.scss";
 
 export default function PlotDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: plot, isLoading, error } = usePlotDetail(id);
 
-  try {
-    const supabase = await createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const plot = await plotRepository.get(id, session?.access_token);
+  if (isLoading) {
     return (
       <div className={styles.page}>
         <PlotDetailSkeleton />
@@ -27,14 +19,26 @@ export default function PlotDetailPage() {
     );
   }
 
-  if (error || !plot) {
+  if (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+      return null;
+    }
+    // その他のエラーは Error Boundary または適当なエラー画面で処理される想定だが、
+    // ここでは単純に 404 扱いにするかメッセージを出す。
+    // Issue #15 でグローバルハンドリングが予定されているため、最低限の対応。
+    notFound();
+    return null;
+  }
+
+  if (!plot) {
     notFound();
     return null;
   }
 
   return (
     <div className={styles.page}>
-      <PlotDetail plot={plot} />
+      <PlotDetail {...{ plot }} />
     </div>
   );
 }

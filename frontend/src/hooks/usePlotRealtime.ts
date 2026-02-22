@@ -37,6 +37,8 @@ const EMPTY_LOCK_STATES = new Map<
   { lockState: LockState; lockedBy: SectionAwarenessState["user"] | null }
 >();
 
+const EMPTY_BROADCAST_LOCKS = new Map<string, SectionAwarenessState["user"]>();
+
 const NO_PLOT_RETURN: UsePlotRealtimeReturn = {
   ydoc: null,
   provider: null,
@@ -68,12 +70,31 @@ function computeLockStatesFromAwareness(
   return newLockStates;
 }
 
+function mergeLockStates(
+  awarenessLockStates: Map<string, { lockState: LockState; lockedBy: SectionAwarenessState["user"] | null }>,
+  broadcastLockStates: Map<string, SectionAwarenessState["user"]>,
+  currentUserId: string | null,
+): Map<string, { lockState: LockState; lockedBy: SectionAwarenessState["user"] | null }> {
+  const merged = new Map(awarenessLockStates);
+
+  for (const [sectionId, user] of broadcastLockStates) {
+    if (merged.has(sectionId)) continue;
+    merged.set(sectionId, {
+      lockState: user.id === currentUserId ? "locked-by-me" : "locked-by-other",
+      lockedBy: user,
+    });
+  }
+
+  return merged;
+}
+
 export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
   const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [lockStates, setLockStates] = useState(EMPTY_LOCK_STATES);
   const providerStateRef = useRef<RealtimeProviderState | null>(null);
   const awarenessRef = useRef<AwarenessLike | null>(null);
+  const broadcastLocksRef = useRef(EMPTY_BROADCAST_LOCKS);
 
   // user をrefで保持し、useEffect の依存配列から除外する。
   // user オブジェクトはレンダーごとに新しい参照になることがあり、
@@ -87,7 +108,11 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
   // lockStates が空のまま残る問題を防ぐ。
   useEffect(() => {
     if (!awarenessRef.current) return;
-    setLockStates(computeLockStatesFromAwareness(awarenessRef.current, user?.id ?? null));
+    const awarenessLockStates = computeLockStatesFromAwareness(
+      awarenessRef.current,
+      user?.id ?? null,
+    );
+    setLockStates(mergeLockStates(awarenessLockStates, broadcastLocksRef.current, user?.id ?? null));
   }, [user]);
 
   // モックモード: BroadcastChannel ベースのAwarenessでタブ間ロック同期を実現
@@ -99,7 +124,17 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
     setConnectionStatus("connected");
 
     const recompute = () => {
-      setLockStates(computeLockStatesFromAwareness(awareness, userRef.current?.id ?? null));
+      const awarenessLockStates = computeLockStatesFromAwareness(
+        awareness,
+        userRef.current?.id ?? null,
+      );
+      setLockStates(
+        mergeLockStates(
+          awarenessLockStates,
+          broadcastLocksRef.current,
+          userRef.current?.id ?? null,
+        ),
+      );
     };
 
     recompute();
@@ -110,6 +145,7 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
       cleanupAwareness();
       awareness.destroy();
       awarenessRef.current = null;
+      broadcastLocksRef.current = EMPTY_BROADCAST_LOCKS;
       setConnectionStatus("disconnected");
       setLockStates(EMPTY_LOCK_STATES);
     };
@@ -135,6 +171,24 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
     const provider = state.provider;
 
     if (provider) {
+      // Awareness をフックに接続
+      const awareness = provider.awareness as unknown as AwarenessLike;
+      awarenessRef.current = awareness;
+
+      const recompute = () => {
+        const awarenessLockStates = computeLockStatesFromAwareness(
+          awareness,
+          userRef.current?.id ?? null,
+        );
+        setLockStates(
+          mergeLockStates(
+            awarenessLockStates,
+            broadcastLocksRef.current,
+            userRef.current?.id ?? null,
+          ),
+        );
+      };
+
       const handleStatus = (statusObj: { status?: ConnectionStatus }) => {
         if (statusObj?.status) {
           setConnectionStatus(statusObj.status);
@@ -150,22 +204,37 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
         console.info("[usePlotRealtime] Connected to Supabase Realtime channel");
       };
 
+      const handleSectionLock = (
+        sectionId: string,
+        lockedUser: SectionAwarenessState["user"],
+      ) => {
+        const nextBroadcastLocks = new Map(broadcastLocksRef.current);
+        nextBroadcastLocks.set(sectionId, lockedUser);
+        broadcastLocksRef.current = nextBroadcastLocks;
+        recompute();
+      };
+
+      const handleSectionUnlock = (sectionId: string) => {
+        if (!broadcastLocksRef.current.has(sectionId)) return;
+
+        const nextBroadcastLocks = new Map(broadcastLocksRef.current);
+        nextBroadcastLocks.delete(sectionId);
+        broadcastLocksRef.current = nextBroadcastLocks;
+        recompute();
+      };
+
       provider.on("status", handleStatus);
       provider.on("error", handleError);
       provider.on("connect", handleConnect);
+      provider.on("section-lock", handleSectionLock);
+      provider.on("section-unlock", handleSectionUnlock);
 
       cleanupProviderEvents = () => {
         provider.off("status", handleStatus);
         provider.off("error", handleError);
         provider.off("connect", handleConnect);
-      };
-
-      // Awareness をフックに接続
-      const awareness = provider.awareness as unknown as AwarenessLike;
-      awarenessRef.current = awareness;
-
-      const recompute = () => {
-        setLockStates(computeLockStatesFromAwareness(awareness, userRef.current?.id ?? null));
+        provider.off("section-lock", handleSectionLock);
+        provider.off("section-unlock", handleSectionUnlock);
       };
 
       recompute();
@@ -178,6 +247,7 @@ export function usePlotRealtime(plotId: string): UsePlotRealtimeReturn {
       destroyRealtimeProvider(state);
       providerStateRef.current = null;
       awarenessRef.current = null;
+      broadcastLocksRef.current = EMPTY_BROADCAST_LOCKS;
       setConnectionStatus("disconnected");
       setLockStates(EMPTY_LOCK_STATES);
     };
