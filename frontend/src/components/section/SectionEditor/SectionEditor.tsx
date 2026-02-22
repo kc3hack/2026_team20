@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Loader2, Pencil, Check } from "lucide-react";
+import { Loader2, Pencil, Check, Trash2 } from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { toast } from "sonner";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { SectionLockBadge } from "@/components/section/SectionLockBadge/SectionLockBadge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
@@ -26,6 +34,8 @@ type SectionEditorProps = {
   ) => Promise<boolean>;
   onEditStart: () => void;
   onEditEnd: () => void;
+  onDelete?: () => Promise<void> | void;
+  isDeleting?: boolean;
   /** 他ユーザーにロックを奪われた場合に呼ばれるコールバック */
   onLockRevoked?: () => void;
   ydoc?: Doc;
@@ -39,6 +49,8 @@ export function SectionEditor({
   onSave,
   onEditStart,
   onEditEnd,
+  onDelete,
+  isDeleting = false,
   onLockRevoked,
   ydoc,
   provider,
@@ -69,6 +81,7 @@ export function SectionEditor({
   );
   const editorRef = useRef<Editor | null>(null);
   const [sectionTitle, setSectionTitle] = useState(section.title);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (lockState !== "locked-by-me") {
@@ -241,10 +254,23 @@ export function SectionEditor({
               </Button>
             )}
             {lockState === "unlocked" && (
-              <Button variant="outline" size="sm" onClick={onEditStart}>
-                <Pencil size={16} />
-                編集する
-              </Button>
+              <>
+                {onDelete && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 size={16} />
+                    削除
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={onEditStart}>
+                  <Pencil size={16} />
+                  編集する
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -255,6 +281,37 @@ export function SectionEditor({
           />
         </div>
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>セクションを削除しますか？</DialogTitle>
+            <DialogDescription>
+              「{section.title}」を削除すると元に戻せません。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!onDelete) return;
+                await onDelete();
+                setDeleteDialogOpen(false);
+              }}
+              disabled={isDeleting}
+            >
+              削除する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -55,9 +55,11 @@ vi.mock("@/components/sns/CommentThread/CommentThread", () => ({
 }));
 
 const mockCreateMutate = vi.fn();
+const mockDeleteMutateAsync = vi.fn();
 vi.mock("@/hooks/useSections", () => ({
   useCreateSection: vi.fn(() => ({ mutate: mockCreateMutate, isPending: false })),
   useUpdateSection: vi.fn(() => ({ mutate: vi.fn() })),
+  useDeleteSection: vi.fn(() => ({ mutateAsync: mockDeleteMutateAsync, isPending: false })),
 }));
 
 vi.mock("@/hooks/usePlotRealtime", () => ({
@@ -314,6 +316,20 @@ describe("PlotDetail", () => {
       render(<PlotDetail plot={{ ...basePlot, isPaused: true }} />);
 
       expect(screen.queryByRole("button", { name: /セクション追加/ })).not.toBeInTheDocument();
+    });
+
+    it("削除ダイアログで削除するを押すと deleteSection.mutateAsync が呼ばれる", async () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "削除" }));
+      fireEvent.click(screen.getByRole("button", { name: "削除する" }));
+
+      await waitFor(() => {
+        expect(mockDeleteMutateAsync).toHaveBeenCalledWith({
+          plotId: "plot-001",
+          sectionId: "section-001",
+        });
+      });
     });
   });
 

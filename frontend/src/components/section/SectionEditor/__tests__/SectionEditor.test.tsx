@@ -52,6 +52,8 @@ describe("SectionEditor", () => {
     onSave: vi.fn().mockResolvedValue(true),
     onEditStart: vi.fn(),
     onEditEnd: vi.fn(),
+    onDelete: vi.fn().mockResolvedValue(undefined),
+    isDeleting: false,
   };
 
   beforeEach(() => {
@@ -73,6 +75,24 @@ describe("SectionEditor", () => {
     expect(screen.getByText("概要")).toBeInTheDocument();
     const editButton = screen.getByRole("button", { name: /編集する/ });
     expect(editButton).toBeEnabled();
+  });
+
+  it("lockState が unlocked の場合、削除ボタンが編集ボタンと一緒に表示される", () => {
+    render(<SectionEditor {...defaultProps} lockState="unlocked" />);
+
+    expect(screen.getByRole("button", { name: "削除" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /編集する/ })).toBeInTheDocument();
+  });
+
+  it("削除ダイアログで削除するを押すと onDelete が呼ばれる", async () => {
+    render(<SectionEditor {...defaultProps} lockState="unlocked" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "削除" }));
+    fireEvent.click(screen.getByRole("button", { name: "削除する" }));
+
+    await waitFor(() => {
+      expect(defaultProps.onDelete).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("lockState が unlocked で編集ボタンクリック時、onEditStart が呼ばれる", () => {
@@ -123,6 +143,7 @@ describe("SectionEditor", () => {
     expect(screen.getByText("概要")).toBeInTheDocument();
     expect(screen.getByText("他のユーザー が編集中")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /編集する/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "削除" })).not.toBeInTheDocument();
   });
 
   it("content が null のセクションでも正しく表示される", () => {

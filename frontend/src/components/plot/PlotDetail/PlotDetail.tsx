@@ -23,7 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useComments, useCreateThread } from "@/hooks/useComments";
 import { usePlotRealtime } from "@/hooks/usePlotRealtime";
 import { useSectionLock } from "@/hooks/useSectionLock";
-import { useCreateSection, useUpdateSection } from "@/hooks/useSections";
+import { useCreateSection, useDeleteSection, useUpdateSection } from "@/hooks/useSections";
 import type { CommentResponse, PlotDetailResponse, SectionResponse } from "@/lib/api/types";
 import type { LockState, SectionAwarenessState } from "@/lib/realtime/types";
 import styles from "./PlotDetail.module.scss";
@@ -38,6 +38,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
   const { ydoc, provider, lockStates, connectionStatus, awareness } = usePlotRealtime(plot.id);
   const updateSection = useUpdateSection();
   const createSection = useCreateSection();
+  const deleteSection = useDeleteSection();
 
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
@@ -187,6 +188,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                     section={section}
                     plotId={plot.id}
                     isPaused={plot.isPaused}
+                    isDeleting={deleteSection.isPending}
                     awareness={awareness}
                     ydoc={ydoc}
                     provider={provider}
@@ -207,6 +209,22 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                           toast.error("セクションの保存に失敗しました");
                         }
                         return false;
+                      }
+                    }}
+                    onDelete={async () => {
+                      if (plot.isPaused) {
+                        toast.error("このPlotは編集が一時停止されています");
+                        return;
+                      }
+
+                      try {
+                        await deleteSection.mutateAsync({
+                          plotId: plot.id,
+                          sectionId: section.id,
+                        });
+                        toast.success("セクションを削除しました");
+                      } catch {
+                        toast.error("セクションの削除に失敗しました");
                       }
                     }}
                   />
@@ -279,20 +297,24 @@ function SectionEditorWithLock({
   section,
   plotId,
   isPaused,
+  isDeleting,
   awareness,
   ydoc,
   provider,
   onEditingSectionChange,
   onSave,
+  onDelete,
 }: {
   section: SectionResponse;
   plotId: string;
   isPaused: boolean;
+  isDeleting: boolean;
   awareness: ReturnType<typeof usePlotRealtime>["awareness"];
   ydoc: ReturnType<typeof usePlotRealtime>["ydoc"];
   provider: ReturnType<typeof usePlotRealtime>["provider"];
   onEditingSectionChange: (id: string | null) => void;
   onSave: (title: string, content: Record<string, unknown>, options?: { silent?: boolean }) => Promise<boolean>;
+  onDelete: () => Promise<void>;
 }) {
   const {
     lockState: hookLockState,
@@ -347,6 +369,8 @@ function SectionEditorWithLock({
       ydoc={ydoc ?? undefined}
       provider={provider ?? undefined}
       onSave={onSave}
+      onDelete={onDelete}
+      isDeleting={isDeleting}
       onEditStart={handleEditStart}
       onEditEnd={handleEditEnd}
       onLockRevoked={handleLockRevoked}
