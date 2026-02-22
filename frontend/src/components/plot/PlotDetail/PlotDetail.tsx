@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { SectionEditor } from "@/components/section/SectionEditor/SectionEditor";
-import { SectionList } from "@/components/section/SectionList/SectionList";
 import { TableOfContents } from "@/components/section/TableOfContents/TableOfContents";
 import { TagBadge } from "@/components/shared/TagBadge/TagBadge";
 import { CommentForm } from "@/components/sns/CommentForm/CommentForm";
@@ -39,7 +38,9 @@ function getThreadStorageKey(plotId: string) {
 export function PlotDetail({ plot }: PlotDetailProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
-  const { ydoc, provider, lockStates, connectionStatus, awareness } = usePlotRealtime(plot.id);
+  const { ydoc, provider, awareness } = usePlotRealtime(
+    isAuthenticated ? plot.id : "",
+  );
   const updateSection = useUpdateSection();
   const createSection = useCreateSection();
   const deleteSection = useDeleteSection();
@@ -186,107 +187,106 @@ export function PlotDetail({ plot }: PlotDetailProps) {
           <TableOfContents sections={plot.sections} />
         </aside>
         <main className={styles.main}>
-          {isAuthenticated ? (
-            <>
-              {!plot.isPaused && (
-                <div className={styles.insertSectionTop}>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className={styles.insertButton}
-                    onClick={() => handleAddSection(0)}
-                    disabled={createSection.isPending}
-                    aria-label="先頭にセクションを挿入"
-                    title="先頭にセクションを挿入"
-                  >
-                    <Plus size={14} />
-                  </Button>
-                </div>
-              )}
-              {sortedSections.map((section, index) => (
-                <Fragment key={section.id}>
-                  <SectionEditorWithLock
-                    section={section}
-                    plotId={plot.id}
-                    isPaused={plot.isPaused}
-                    isDeleting={deleteSection.isPending}
-                    awareness={awareness}
-                    ydoc={ydoc}
-                    provider={provider}
-                    onEditingSectionChange={setEditingSectionId}
-                    onSave={async (title, content, options) => {
-                      try {
-                        await updateSection.mutateAsync({
-                          plotId: plot.id,
-                          sectionId: section.id,
-                          body: { title, content },
-                        });
-                        if (!options?.silent) {
-                          toast.success("セクションを保存しました");
-                        }
-                        return true;
-                      } catch {
-                        if (!options?.silent) {
-                          toast.error("セクションの保存に失敗しました");
-                        }
-                        return false;
+          <>
+            {!plot.isPaused && (
+              <div className={styles.insertSectionTop}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={styles.insertButton}
+                  onClick={() => handleAddSection(0)}
+                  disabled={createSection.isPending}
+                  aria-label="先頭にセクションを挿入"
+                  title="先頭にセクションを挿入"
+                >
+                  <Plus size={14} />
+                </Button>
+              </div>
+            )}
+            {sortedSections.map((section, index) => (
+              <Fragment key={section.id}>
+                <SectionEditorWithLock
+                  section={section}
+                  plotId={plot.id}
+                  isPaused={plot.isPaused}
+                  isDeleting={deleteSection.isPending}
+                  awareness={awareness}
+                  ydoc={ydoc}
+                  provider={provider}
+                  isAuthenticated={isAuthenticated}
+                  onRequireLogin={() => router.push(`/auth/login?redirectTo=/plots/${plot.id}`)}
+                  onEditingSectionChange={setEditingSectionId}
+                  onSave={async (title, content, options) => {
+                    try {
+                      await updateSection.mutateAsync({
+                        plotId: plot.id,
+                        sectionId: section.id,
+                        body: { title, content },
+                      });
+                      if (!options?.silent) {
+                        toast.success("セクションを保存しました");
                       }
-                    }}
-                    onDelete={async () => {
-                      if (plot.isPaused) {
-                        toast.error("このPlotは編集が一時停止されています");
-                        return;
+                      return true;
+                    } catch {
+                      if (!options?.silent) {
+                        toast.error("セクションの保存に失敗しました");
                       }
+                      return false;
+                    }
+                  }}
+                  onDelete={async () => {
+                    if (!isAuthenticated) {
+                      toast.error("セクションを削除するにはログインが必要です");
+                      router.push(`/auth/login?redirectTo=/plots/${plot.id}`);
+                      return;
+                    }
 
-                      try {
-                        await deleteSection.mutateAsync({
-                          plotId: plot.id,
-                          sectionId: section.id,
-                        });
-                        toast.success("セクションを削除しました");
-                      } catch {
-                        toast.error("セクションの削除に失敗しました");
-                      }
-                    }}
-                  />
-                  {!plot.isPaused && index < sortedSections.length - 1 && (
-                    <div className={styles.insertSectionBetween}>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className={styles.insertButton}
-                        onClick={() => handleAddSection(index + 1)}
-                        disabled={createSection.isPending}
-                        aria-label="ここにセクションを挿入"
-                        title="ここにセクションを挿入"
-                      >
-                        <Plus size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </Fragment>
-              ))}
-              {!plot.isPaused && (
-                <div className={styles.addSection}>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleAddSection(sortedSections.length)}
-                    disabled={createSection.isPending}
-                  >
-                    <Plus size={16} />
-                    セクション追加
-                  </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <SectionList
-              sections={plot.sections}
-              lockStates={lockStates}
-              connectionStatus={connectionStatus}
-              provider={provider}
-            />
-          )}
+                    if (plot.isPaused) {
+                      toast.error("このPlotは編集が一時停止されています");
+                      return;
+                    }
+
+                    try {
+                      await deleteSection.mutateAsync({
+                        plotId: plot.id,
+                        sectionId: section.id,
+                      });
+                      toast.success("セクションを削除しました");
+                    } catch {
+                      toast.error("セクションの削除に失敗しました");
+                    }
+                  }}
+                />
+                {!plot.isPaused && index < sortedSections.length - 1 && (
+                  <div className={styles.insertSectionBetween}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className={styles.insertButton}
+                      onClick={() => handleAddSection(index + 1)}
+                      disabled={createSection.isPending}
+                      aria-label="ここにセクションを挿入"
+                      title="ここにセクションを挿入"
+                    >
+                      <Plus size={14} />
+                    </Button>
+                  </div>
+                )}
+              </Fragment>
+            ))}
+            {!plot.isPaused && (
+              <div className={styles.addSection}>
+                <Button
+                  variant="outline"
+                  onClick={() => handleAddSection(sortedSections.length)}
+                  disabled={createSection.isPending}
+                >
+                  <Plus size={16} />
+                  セクション追加
+                </Button>
+              </div>
+            )}
+          </>
         </main>
       </div>
 
@@ -336,6 +336,8 @@ function SectionEditorWithLock({
   section,
   plotId,
   isPaused,
+  isAuthenticated,
+  onRequireLogin,
   isDeleting,
   awareness,
   ydoc,
@@ -347,6 +349,8 @@ function SectionEditorWithLock({
   section: SectionResponse;
   plotId: string;
   isPaused: boolean;
+  isAuthenticated: boolean;
+  onRequireLogin: () => void;
   isDeleting: boolean;
   awareness: ReturnType<typeof usePlotRealtime>["awareness"];
   ydoc: ReturnType<typeof usePlotRealtime>["ydoc"];
@@ -368,6 +372,12 @@ function SectionEditorWithLock({
   const lockedBy: SectionAwarenessState["user"] | null = hookLockedBy;
 
   const handleEditStart = useCallback(async () => {
+    if (!isAuthenticated) {
+      toast.error("編集するにはログインが必要です");
+      onRequireLogin();
+      return;
+    }
+
     if (isPaused) {
       toast.error("このPlotは編集が一時停止されています");
       return;
@@ -383,11 +393,15 @@ function SectionEditorWithLock({
     }
   }, [
     isPaused,
+    isAuthenticated,
+    onRequireLogin,
     section.id,
     acquireLock,
     onEditingSectionChange,
     lockedBy,
   ]);
+
+  const effectiveLockState: LockState = isAuthenticated ? lockState : "unlocked";
 
   const handleEditEnd = useCallback(() => {
     releaseLock();
@@ -403,7 +417,7 @@ function SectionEditorWithLock({
   return (
     <SectionEditor
       section={section}
-      lockState={lockState}
+      lockState={effectiveLockState}
       lockedBy={lockedBy}
       ydoc={ydoc ?? undefined}
       provider={provider ?? undefined}

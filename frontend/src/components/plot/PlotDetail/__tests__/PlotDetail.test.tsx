@@ -253,22 +253,56 @@ describe("PlotDetail", () => {
       vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
     });
 
-    it("セクションが SectionList 経由で表示される", () => {
+    it("リアルタイム接続インジケータが表示されない", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      expect(screen.queryByTestId("connection-indicator")).not.toBeInTheDocument();
+    });
+
+    it("セクションが表示される", () => {
       render(<PlotDetail plot={basePlot} />);
 
       expect(screen.getByRole("heading", { level: 2, name: "概要" })).toBeInTheDocument();
     });
 
-    it("セクション追加ボタンが表示されない", () => {
+    it("セクション追加ボタンが表示される", () => {
       render(<PlotDetail plot={basePlot} />);
 
-      expect(screen.queryByRole("button", { name: /セクション追加/ })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /セクション追加/ })).toBeInTheDocument();
     });
 
-    it("編集するボタンが表示されない", () => {
+    it("編集するボタンが表示される", () => {
       render(<PlotDetail plot={basePlot} />);
 
-      expect(screen.queryByRole("button", { name: /編集する/ })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /編集する/ })).toBeInTheDocument();
+    });
+
+    it("編集するボタンを押すとログインページへ遷移する", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /編集する/ }));
+
+      expect(toast.error).toHaveBeenCalledWith("編集するにはログインが必要です");
+      expect(mockPush).toHaveBeenCalledWith("/auth/login?redirectTo=/plots/plot-001");
+    });
+
+    it("セクション追加ボタンを押すとログインページへ遷移する", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /セクション追加/ }));
+
+      expect(toast.error).toHaveBeenCalledWith("セクションを追加するにはログインが必要です");
+      expect(mockPush).toHaveBeenCalledWith("/auth/login?redirectTo=/plots/plot-001");
+    });
+
+    it("削除ボタンが表示され、押すとログインページへ遷移する", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "削除" }));
+      fireEvent.click(screen.getByRole("button", { name: "削除する" }));
+
+      expect(toast.error).toHaveBeenCalledWith("セクションを削除するにはログインが必要です");
+      expect(mockPush).toHaveBeenCalledWith("/auth/login?redirectTo=/plots/plot-001");
     });
   });
 
@@ -386,6 +420,7 @@ describe("PlotDetail", () => {
   });
 
   it("保存済み threadId がある場合、スレッドを新規作成しない", async () => {
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true } as ReturnType<typeof useAuth>);
     window.localStorage.setItem("plot-comment-thread:plot-001", "saved-thread-id");
     render(<PlotDetail plot={basePlot} />);
 
@@ -405,7 +440,7 @@ describe("PlotDetail", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("このプロットのコメントスレッドはまだ作成されていません。"),
+        screen.getByText("ログインをしないとコメント表示ができません。"),
       ).toBeInTheDocument();
     });
   });
