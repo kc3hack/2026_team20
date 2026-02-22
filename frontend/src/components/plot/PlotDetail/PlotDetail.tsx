@@ -53,10 +53,16 @@ export function PlotDetail({ plot }: PlotDetailProps) {
   const [replyTarget, setReplyTarget] = useState<CommentResponse | null>(null);
   const { createThread } = useCreateThread();
 
-  // マウント時に既存 threadId を復元し、未作成ならログイン時のみ作成する（1回のみ実行）
-  // createThread は毎レンダー新しい参照になるため、useRef で多重実行を防ぐ
+  // threadId はログイン時のみ復元/作成する。
+  // 未ログイン時は必ず非表示にするため、threadId も null に維持する。
   const threadInitialized = useRef(false);
   useEffect(() => {
+    if (!isAuthenticated) {
+      setThreadId(null);
+      setIsThreadResolving(false);
+      return;
+    }
+
     if (threadInitialized.current) return;
     threadInitialized.current = true;
 
@@ -64,11 +70,6 @@ export function PlotDetail({ plot }: PlotDetailProps) {
     const savedThreadId = window.localStorage.getItem(storageKey);
     if (savedThreadId) {
       setThreadId(savedThreadId);
-      setIsThreadResolving(false);
-      return;
-    }
-
-    if (!isAuthenticated) {
       setIsThreadResolving(false);
       return;
     }
@@ -291,7 +292,14 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 
       <section className={styles.commentSection}>
         <h2>コメント</h2>
-        {isThreadResolving ? (
+        {!isAuthenticated ? (
+          <div className={styles.commentUnavailable}>
+            <p>ログインをしないとコメント表示ができません。</p>
+              <Link href={`/auth/login?redirectTo=/plots/${plot.id}`} className={styles.loginLink}>
+              ログインはこちら
+              </Link>
+          </div>
+        ) : isThreadResolving ? (
           <div className={styles.commentLoading}>
             <Skeleton className={styles.commentSkeleton} />
             <Skeleton className={styles.commentSkeleton} />
