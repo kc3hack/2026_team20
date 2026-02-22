@@ -32,10 +32,3 @@
         display: inline-flex;
     }
 }
-
-// モバイルではボタンを非表示にしてEnterで検索
-@media (max-width: #{$breakpoint-md - 1px}) {
-    .button {
-        display: none;
-    }
-}
