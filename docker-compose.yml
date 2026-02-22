@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------
+  # バックエンド (FastAPI)
+  # ----------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kc3_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    # ※本番環境でマイグレーションもコンテナ起動時に自動で行いたい場合は、
+    # 以下の command をコメントアウトして使用（今回は Dockerfile の CMD をそのまま実行します）
+    # command: bash -c "uv run alembic upgrade head && uv run fastapi run app/main.py --host 0.0.0.0 --port 8000"
+    networks:
+      - kc3_network
+
+  # ----------------------------------------
+  # フロントエンド (Next.js)
+  # ----------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kc3_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env.local
+    environment:
+      # Docker Compose の内部ネットワーク経由でバックエンドと通信する場合の設定
+      # Nginx 等でリバースプロキシする場合は、アクセス先の公開URL(例: https://example.com/api/v1) にフロントエンド側の .env.local で上書きします
+      NEXT_PUBLIC_API_URL: http://backend:8000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - kc3_network
+
+networks:
+  kc3_network:
+    driver: bridge
