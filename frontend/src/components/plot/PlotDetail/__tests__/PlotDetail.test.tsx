@@ -123,6 +123,26 @@ const basePlot: PlotDetailResponse = {
   },
 };
 
+const multiSectionPlot: PlotDetailResponse = {
+  ...basePlot,
+  sections: [
+    basePlot.sections[0],
+    {
+      id: "section-002",
+      plotId: "plot-001",
+      title: "中盤",
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "中盤の内容" }] }],
+      },
+      orderIndex: 1,
+      version: 1,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    },
+  ],
+};
+
 describe("PlotDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -264,7 +284,29 @@ describe("PlotDetail", () => {
 
       expect(mockCreateMutate).toHaveBeenCalledWith({
         plotId: "plot-001",
-        body: { title: "新しいセクション 2" },
+        body: { title: "新しいセクション 2", orderIndex: 1 },
+      });
+    });
+
+    it("セクション間の挿入ボタンを押すと途中位置で createSection.mutate が呼ばれる", () => {
+      render(<PlotDetail plot={multiSectionPlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /ここにセクションを挿入/ }));
+
+      expect(mockCreateMutate).toHaveBeenCalledWith({
+        plotId: "plot-001",
+        body: { title: "新しいセクション 3", orderIndex: 1 },
+      });
+    });
+
+    it("先頭挿入ボタンを押すと orderIndex 0 で createSection.mutate が呼ばれる", () => {
+      render(<PlotDetail plot={multiSectionPlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /先頭にセクションを挿入/ }));
+
+      expect(mockCreateMutate).toHaveBeenCalledWith({
+        plotId: "plot-001",
+        body: { title: "新しいセクション 3", orderIndex: 0 },
       });
     });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { History, Pencil, Plus, Star } from "lucide-react";
@@ -77,7 +77,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
     [plot.sections],
   );
 
-  const handleAddSection = () => {
+  const handleAddSection = (orderIndex: number) => {
     if (!isAuthenticated) {
       toast.error("セクションを追加するにはログインが必要です");
       router.push(`/auth/login?redirectTo=/plots/${plot.id}`);
@@ -92,6 +92,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
       plotId: plot.id,
       body: {
         title: `新しいセクション ${sortedSections.length + 1}`,
+        orderIndex,
       },
     });
   };
@@ -165,41 +166,72 @@ export function PlotDetail({ plot }: PlotDetailProps) {
         <main className={styles.main}>
           {isAuthenticated ? (
             <>
-              {sortedSections.map((section) => (
-                <SectionEditorWithLock
-                  key={section.id}
-                  section={section}
-                  plotId={plot.id}
-                  isPaused={plot.isPaused}
-                  awareness={awareness}
-                  ydoc={ydoc}
-                  provider={provider}
-                  onEditingSectionChange={setEditingSectionId}
-                  onSave={async (title, content, options) => {
-                    try {
-                      await updateSection.mutateAsync({
-                        plotId: plot.id,
-                        sectionId: section.id,
-                        body: { title, content },
-                      });
-                      if (!options?.silent) {
-                        toast.success("セクションを保存しました");
+              {!plot.isPaused && (
+                <div className={styles.insertSectionTop}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={styles.insertButton}
+                    onClick={() => handleAddSection(0)}
+                    disabled={createSection.isPending}
+                    aria-label="先頭にセクションを挿入"
+                    title="先頭にセクションを挿入"
+                  >
+                    <Plus size={14} />
+                  </Button>
+                </div>
+              )}
+              {sortedSections.map((section, index) => (
+                <Fragment key={section.id}>
+                  <SectionEditorWithLock
+                    section={section}
+                    plotId={plot.id}
+                    isPaused={plot.isPaused}
+                    awareness={awareness}
+                    ydoc={ydoc}
+                    provider={provider}
+                    onEditingSectionChange={setEditingSectionId}
+                    onSave={async (title, content, options) => {
+                      try {
+                        await updateSection.mutateAsync({
+                          plotId: plot.id,
+                          sectionId: section.id,
+                          body: { title, content },
+                        });
+                        if (!options?.silent) {
+                          toast.success("セクションを保存しました");
+                        }
+                        return true;
+                      } catch {
+                        if (!options?.silent) {
+                          toast.error("セクションの保存に失敗しました");
+                        }
+                        return false;
                       }
-                      return true;
-                    } catch {
-                      if (!options?.silent) {
-                        toast.error("セクションの保存に失敗しました");
-                      }
-                      return false;
-                    }
-                  }}
-                />
+                    }}
+                  />
+                  {!plot.isPaused && index < sortedSections.length - 1 && (
+                    <div className={styles.insertSectionBetween}>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className={styles.insertButton}
+                        onClick={() => handleAddSection(index + 1)}
+                        disabled={createSection.isPending}
+                        aria-label="ここにセクションを挿入"
+                        title="ここにセクションを挿入"
+                      >
+                        <Plus size={14} />
+                      </Button>
+                    </div>
+                  )}
+                </Fragment>
               ))}
               {!plot.isPaused && (
                 <div className={styles.addSection}>
                   <Button
                     variant="outline"
-                    onClick={handleAddSection}
+                    onClick={() => handleAddSection(sortedSections.length)}
                     disabled={createSection.isPending}
                   >
                     <Plus size={16} />
