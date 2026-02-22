@@ -4,17 +4,6 @@ import { Doc } from "yjs";
 import type { SectionResponse } from "@/lib/api/types";
 import { SectionEditor } from "../SectionEditor";
 
-vi.mock("sonner", () => ({
-  toast: {
-    warning: vi.fn(),
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}));
-
-// sonner mock のインスタンスへの参照を取得
-import { toast as mockToast } from "sonner";
-
 let capturedTiptapProps: Record<string, unknown> = {};
 
 vi.mock("@/components/editor/TiptapEditor", () => ({
@@ -206,57 +195,6 @@ describe("SectionEditor", () => {
       );
 
       expect(capturedTiptapProps.ydoc).toBeUndefined();
-    });
-  });
-
-  describe("強制編集中断（ロック喪失）", () => {
-    it("lockState が locked-by-me から locked-by-other に変わった場合、onSave を呼び toast.warning を表示する", async () => {
-      const onLockRevoked = vi.fn();
-      const { rerender } = render(
-        <SectionEditor
-          {...defaultProps}
-          lockState="locked-by-me"
-          lockedBy={null}
-          onLockRevoked={onLockRevoked}
-        />,
-      );
-
-      rerender(
-        <SectionEditor
-          {...defaultProps}
-          lockState="locked-by-other"
-          lockedBy={mockLockedBy}
-          onLockRevoked={onLockRevoked}
-        />,
-      );
-
-      await waitFor(() => {
-        expect(defaultProps.onSave).toHaveBeenCalledWith(
-          "概要",
-          expect.any(Object),
-          { silent: true },
-        );
-      });
-
-      expect(mockToast.warning).toHaveBeenCalledWith(
-        expect.stringContaining("他のユーザー"),
-      );
-      expect(onLockRevoked).toHaveBeenCalledTimes(1);
-    });
-
-    it("lockState が locked-by-me から locked-by-other に変わった場合、閲覧モードに戻る", () => {
-      const { rerender } = render(
-        <SectionEditor {...defaultProps} lockState="locked-by-me" lockedBy={null} />,
-      );
-
-      expect(screen.getByRole("button", { name: /編集完了/ })).toBeInTheDocument();
-
-      rerender(
-        <SectionEditor {...defaultProps} lockState="locked-by-other" lockedBy={mockLockedBy} />,
-      );
-
-      expect(screen.queryByRole("button", { name: /編集完了/ })).not.toBeInTheDocument();
-      expect(screen.getByText("他のユーザー が編集中")).toBeInTheDocument();
     });
   });
 });

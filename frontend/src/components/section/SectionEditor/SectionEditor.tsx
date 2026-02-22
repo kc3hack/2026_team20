@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Loader2, Pencil, Check, Trash2 } from "lucide-react";
 import type { Editor } from "@tiptap/core";
-import { toast } from "sonner";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { SectionLockBadge } from "@/components/section/SectionLockBadge/SectionLockBadge";
 import {
@@ -36,8 +35,6 @@ type SectionEditorProps = {
   onEditEnd: () => void;
   onDelete?: () => Promise<void> | void;
   isDeleting?: boolean;
-  /** 他ユーザーにロックを奪われた場合に呼ばれるコールバック */
-  onLockRevoked?: () => void;
   ydoc?: Doc;
   provider?: SupabaseBroadcastProvider;
 };
@@ -51,7 +48,6 @@ export function SectionEditor({
   onEditEnd,
   onDelete,
   isDeleting = false,
-  onLockRevoked,
   ydoc,
   provider,
 }: SectionEditorProps) {
@@ -147,7 +143,7 @@ export function SectionEditor({
   useEffect(() => {
     if (lockState !== "locked-by-me") return;
 
-    const AUTO_SAVE_INTERVAL_MS = 2000;
+    const AUTO_SAVE_INTERVAL_MS = 2;
 
     const timer = setInterval(() => {
       const current = JSON.stringify({
@@ -165,39 +161,6 @@ export function SectionEditor({
 
     return () => clearInterval(timer);
   }, [lockState]);
-
-  // ----- 強制編集中断: ロックが奪われた場合 -----
-  // 編集中 (locked-by-me) に他ユーザーのロックが検出された場合、
-  // 自動保存してから編集モードを強制終了する。
-  const prevLockStateRef = useRef(lockState);
-  const onLockRevokedRef = useRef(onLockRevoked);
-  onLockRevokedRef.current = onLockRevoked;
-
-  useEffect(() => {
-    const prev = prevLockStateRef.current;
-    prevLockStateRef.current = lockState;
-
-    if (prev === "locked-by-me" && lockState !== "locked-by-me") {
-      // ロックを失った → 最新コンテンツを自動保存
-      const latestContent =
-        (editorRef.current?.getJSON() as Record<string, unknown> | undefined) ??
-        contentRef.current;
-      onSaveRef.current(sectionTitleRef.current, latestContent, { silent: true }).catch(
-        (err) => console.warn("[SectionEditor] force-save on lock revoke failed:", err),
-      );
-      setHasUnsavedChanges(false);
-
-      // ユーザーに通知
-      toast.warning(
-        lockedBy
-          ? `${lockedBy.displayName} が同じセクションの編集を開始したため、編集を中断しました`
-          : "他のユーザーが同じセクションの編集を開始したため、編集を中断しました",
-      );
-
-      // 親コンポーネントに通知（editing 状態をリセット）
-      onLockRevokedRef.current?.();
-    }
-  }, [lockState, setHasUnsavedChanges, lockedBy]);
 
   // 閲覧モードでは Broadcast 受信した liveContent を優先表示し、
   // なければ API から取得した section.content をフォールバックに使う。
