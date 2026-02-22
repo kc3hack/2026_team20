@@ -180,7 +180,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
           <TableOfContents sections={plot.sections} />
         </aside>
         <main className={styles.main}>
-          {isAuthenticated ? (
+          {
             <>
               {!plot.isPaused && (
                 <div className={styles.insertSectionTop}>
@@ -202,6 +202,8 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                   <SectionEditorWithLock
                     section={section}
                     isPaused={plot.isPaused}
+                    isAuthenticated={isAuthenticated}
+                    onRequireLogin={() => router.push(`/auth/login?redirectTo=/plots/${plot.id}`)}
                     isDeleting={deleteSection.isPending}
                     ydoc={ydoc}
                     provider={provider}
@@ -223,13 +225,6 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                         }
                         return false;
                       }
-                      return true;
-                    } catch {
-                      if (!options?.silent) {
-                        toast.error("セクションの保存に失敗しました");
-                      }
-                      return false;
-                    }
                   }}
                   onDelete={async () => {
                     if (!isAuthenticated) {
@@ -283,7 +278,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                 </Button>
               </div>
             )}
-          </>
+          </>}
         </main>
       </div>
 
@@ -375,8 +370,6 @@ function SectionEditorWithLock({
     section.id,
     onEditingSectionChange,
   ]);
-
-  const effectiveLockState: LockState = isAuthenticated ? lockState : "unlocked";
 
   const handleEditEnd = useCallback(() => {
     setIsEditing(false);
