@@ -374,7 +374,7 @@ describe("AuthProvider", () => {
     });
   });
 
-  it("signInWithGitHub passes redirectTo as redirectTo param in callback URL", async () => {
+  it("signInWithGitHub passes redirectTo param in callback URL", async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -399,7 +399,7 @@ describe("AuthProvider", () => {
     });
   });
 
-  it("signInWithGoogle passes redirectTo as redirectTo param in callback URL", async () => {
+  it("signInWithGoogle passes redirectTo param in callback URL", async () => {
     render(
       <AuthProvider>
         <TestConsumer />

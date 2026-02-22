@@ -14,8 +14,8 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const rawNext = searchParams.get("redirectTo");
-  const next = sanitizeRedirectPath(rawNext);
+  const rawRedirectTo = searchParams.get("redirectTo");
+  const redirectTo = sanitizeRedirectPath(rawRedirectTo);
 
   const error = searchParams.get("error");
   const searchParamsString = searchParams.toString();
@@ -34,9 +34,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace(next ?? "/");
+      router.replace(redirectTo ?? "/");
     }
-  }, [isLoading, isAuthenticated, router, next]);
+  }, [isLoading, isAuthenticated, router, redirectTo]);
 
   if (isLoading) {
     return (
@@ -59,8 +59,8 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.buttons}>
-          <LoginButton provider="google" redirectTo={next} />
-          <LoginButton provider="github" redirectTo={next} />
+          <LoginButton provider="google" redirectTo={redirectTo} />
+          <LoginButton provider="github" redirectTo={redirectTo} />
         </div>
       </div>
     </div>

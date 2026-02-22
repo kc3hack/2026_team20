@@ -1,0 +1,26 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background-color: hsl(var(--background));
+}
+
+.group {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+}
+
+.separator {
+    width: 1px;
+    height: 1.5rem;
+    background-color: hsl(var(--border));
+    margin: 0 0.25rem;
+}

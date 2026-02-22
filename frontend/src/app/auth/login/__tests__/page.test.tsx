@@ -104,7 +104,7 @@ describe("LoginPage", () => {
     expect(mockReplace).toHaveBeenCalledWith("/");
   });
 
-  it("認証済みかつ redirectTo パラメータがある場合、redirectTo 先にリダイレクトされる", () => {
+  it("認証済みかつ redirectTo パラメータがある場合、指定先にリダイレクトされる", () => {
     mockUseAuth.mockReturnValue({ isLoading: false, isAuthenticated: true });
     mockSearchParams.set("redirectTo", "/plots/new");
 

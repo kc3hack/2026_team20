@@ -521,6 +521,51 @@ BAN解除（要管理者権限）
 
 ---
 
+#### PUT /auth/me
+プロフィール更新（要認証）
+
+アバター画像URLと表示名を更新する。
+アバター画像のアップロードは `POST /images` で事前に行い、返却された `url` を `avatarUrl` に指定する。
+
+**Request Body**:
+```json
+{
+  "displayName": "string (max 50) (省略可)",
+  "avatarUrl": "string | null (省略可)"
+}
+```
+
+- `displayName`: 省略時は変更なし。空文字列は `400 Bad Request`。
+- `avatarUrl`: 省略時は変更なし。`null` を指定するとアバターを削除。値を指定する場合は `POST /images` で取得した URL（`/api/v1/images/{filename}` 形式）を使用。
+
+**Request Example**:
+```json
+{
+  "avatarUrl": "/api/v1/images/abc123.jpg"
+}
+```
+
+**Response**: `200 OK` → `UserResponse`
+
+**Response Example**:
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "displayName": "田中 太郎",
+  "avatarUrl": "/api/v1/images/abc123.jpg",
+  "createdAt": "2026-02-16T00:00:00Z"
+}
+```
+
+**Error**:
+- `400 Bad Request` - displayName が空文字列または50文字超過
+- `401 Unauthorized` - 未認証
+
+> **Implementation Note (2026-02-22 時点):** 現行実装では `avatarUrl` の更新は反映されるが、`displayName` 更新は未反映。`displayName` 変更を有効化するには、`backend/app/services/user_service.py` の更新処理拡張が必要。
+
+---
+
 #### GET /auth/users/{username}
 ユーザー情報取得
 

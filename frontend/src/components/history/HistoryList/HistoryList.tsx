@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatarLink } from "@/components/shared/UserAvatarLink";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHistory } from "@/hooks/useHistory";
@@ -124,17 +124,7 @@ export function HistoryList({ sectionId }: HistoryListProps) {
                     {config.label}
                   </Badge>
                   <div className={styles.userInfo}>
-                    <Avatar className={styles.avatarSm}>
-                      {entry.user.avatarUrl && (
-                        <AvatarImage
-                          src={entry.user.avatarUrl}
-                          alt={entry.user.displayName}
-                        />
-                      )}
-                      <AvatarFallback>
-                        {entry.user.displayName.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatarLink user={entry.user} className={styles.avatarSm} />
                     <span className={styles.userName}>
                       {entry.user.displayName}
                     </span>

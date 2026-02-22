@@ -34,6 +34,34 @@ class UserProfileResponse(BaseModel):
     createdAt: datetime
 
 
+class UpdateProfileRequest(BaseModel):
+    """プロフィール更新リクエスト。
+
+    - displayName: 最大50文字。None で更新スキップ。
+    - avatarUrl: `/api/v1/images/` プレフィックスまたは https:// スキームのみ許可。
+    """
+
+    displayName: str | None = None
+    avatarUrl: str | None = None
+
+    @field_validator("displayName")
+    @classmethod
+    def validate_display_name(cls, v: str | None) -> str | None:
+        if v is not None and len(v) > 50:
+            raise ValueError("displayName must be 50 characters or fewer")
+        return v
+
+    @field_validator("avatarUrl")
+    @classmethod
+    def validate_avatar_url(cls, v: str | None) -> str | None:
+        if v is not None:
+            if not (v.startswith("/api/v1/images/") or v.startswith("https://")):
+                raise ValueError(
+                    "avatarUrl must start with '/api/v1/images/' or 'https://'"
+                )
+        return v
+
+
 # ─── Plot ────────────────────────────────────────────────────
 class PlotResponse(BaseModel):
     """api.md PlotResponse 準拠。

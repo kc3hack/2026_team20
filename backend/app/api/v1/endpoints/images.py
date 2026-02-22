@@ -18,7 +18,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile, status
 from fastapi import Path as PathParam
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from PIL import Image
 
 from app.api.v1.deps import AuthUser
@@ -152,31 +152,22 @@ async def get_image(
         pattern=r"^[a-f0-9]{32}\.[a-z0-9]+$",
         description="UUID hex (32 chars) + extension",
     ),
-) -> FileResponse:
+) -> Response:
     """画像取得。認証不要。"""
     ext = Path(filename).suffix.lower()
     media_type = _MEDIA_TYPES.get(ext, "application/octet-stream")
 
-    settings = get_settings()
-    images_dir = Path(settings.images_dir).resolve()
-    filepath = images_dir / Path(filename).name
-
-    # パストラバーサル防止: resolve後のパスがimages_dir配下であることを確認
-    if not filepath.resolve().is_relative_to(images_dir):
+    try:
+        content = image_service.download_image_from_supabase(filename)
+    except Exception as e:
+        logger.warning("Image not found in Supabase Storage: %s (%s)", filename, e)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found",
-        )
+        ) from e
 
-    if not filepath.exists():
-        logger.warning("Image not found: %s", filename)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image not found",
-        )
-
-    return FileResponse(
-        filepath,
+    return Response(
+        content=content,
         media_type=media_type,
         headers={
             "Cache-Control": "public, max-age=31536000, immutable",

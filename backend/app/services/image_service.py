@@ -1,13 +1,19 @@
-"""画像処理サービス: 検証, リサイズ, ローカル保存"""
+"""画像処理サービス: 検証, リサイズ, Supabase Storage 保存"""
 
 import io
 import uuid
+from functools import lru_cache
+import logging
 from pathlib import Path
 from typing import NamedTuple
 
 from PIL import Image
+from storage3.exceptions import StorageApiError
 
 from app.core.config import get_settings
+from app.core.supabase import get_supabase_client
+
+logger = logging.getLogger(__name__)
 
 # Decompression Bomb 攻撃対策: 展開後のピクセル数上限を設定
 # デフォルト(約1.79億px)では警告のみで阻止できないため、25Mピクセルで例外を発生させる
@@ -52,6 +58,14 @@ FORMAT_MAP: dict[str, tuple[str, str]] = {
     "PNG": ("PNG", ".png"),
     "GIF": ("GIF", ".gif"),
     "WEBP": ("WEBP", ".webp"),
+}
+
+CONTENT_TYPE_BY_EXTENSION: dict[str, str] = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
 }
 
 _MAGIC_BYTES: dict[bytes, str] = {
@@ -243,34 +257,65 @@ def generate_filename(extension: str) -> str:
     return f"{uuid.uuid4().hex}{extension}"
 
 
-def save_image(data: bytes, filename: str) -> Path:
-    """画像バイトを画像ディレクトリに保存する。
-
-    保存したファイルへのパスを返す。
-
-    NOTE: この関数は同期I/O（ブロッキング）を行う。
-    非同期コンテキストから呼び出す場合は `asyncio.to_thread` 経由で呼ぶこと。
-    """
+@lru_cache
+def ensure_images_bucket_exists() -> None:
+    """Supabase Storage の画像バケットが存在することを保証する。"""
     settings = get_settings()
-    images_dir = Path(settings.images_dir).resolve()
-    images_dir.mkdir(parents=True, exist_ok=True)
+    supabase = get_supabase_client()
+    bucket_name = settings.supabase_images_bucket
 
-    # パストラバーサル防止: ファイル名のみ抽出
-    safe_filename = Path(filename).name
-    if not safe_filename:
-        raise ValueError("Invalid filename")
+    try:
+        supabase.storage.get_bucket(bucket_name)
+    except StorageApiError as e:
+        if int(e.status) != 404:
+            raise
 
-    filepath = images_dir / safe_filename
-    # 最終確認: resolveしたパスがimages_dir配下であること
-    if not filepath.resolve().is_relative_to(images_dir):
-        raise ValueError("Invalid filename: path traversal detected")
+        logger.warning("Storage bucket '%s' not found. Creating bucket.", bucket_name)
+        supabase.storage.create_bucket(bucket_name, options={"public": False})
+        logger.info("Storage bucket '%s' created.", bucket_name)
 
-    # UUID衝突チェック: 既存ファイルの上書きを防止する
-    if filepath.exists():
-        raise ValueError(f"File already exists: {safe_filename}")
 
-    filepath.write_bytes(data)
-    return filepath
+def upload_image_to_supabase(data: bytes, filename: str, extension: str) -> None:
+    """画像バイトを Supabase Storage に保存する。"""
+    settings = get_settings()
+    content_type = CONTENT_TYPE_BY_EXTENSION.get(extension, "application/octet-stream")
+
+    supabase = get_supabase_client()
+    ensure_images_bucket_exists()
+    bucket = supabase.storage.from_(settings.supabase_images_bucket)
+    try:
+        bucket.upload(
+            filename,
+            data,
+            {
+                "content-type": content_type,
+                "upsert": "false",
+                "cache-control": "31536000",
+            },
+        )
+    except StorageApiError as e:
+        if int(e.status) != 404:
+            raise
+
+        ensure_images_bucket_exists.cache_clear()
+        ensure_images_bucket_exists()
+        bucket.upload(
+            filename,
+            data,
+            {
+                "content-type": content_type,
+                "upsert": "false",
+                "cache-control": "31536000",
+            },
+        )
+
+
+def download_image_from_supabase(filename: str) -> bytes:
+    """Supabase Storage から画像バイトを取得する。"""
+    settings = get_settings()
+    supabase = get_supabase_client()
+    bucket = supabase.storage.from_(settings.supabase_images_bucket)
+    return bucket.download(filename)
 
 
 def process_and_save(
@@ -301,8 +346,8 @@ def process_and_save(
     # 5. 入力フォーマットを保持してリサイズ・変換する
     resized = resize_image(file_data)
 
-    # 6. 入力フォーマットに応じた拡張子でファイル名を生成して保存する
+    # 6. 入力フォーマットに応じた拡張子でファイル名を生成し、Supabase Storage に保存
     filename = generate_filename(resized.extension)
-    save_image(resized.data, filename)
+    upload_image_to_supabase(resized.data, filename, resized.extension)
 
     return ProcessedImage(filename, resized.width, resized.height, resized.format)

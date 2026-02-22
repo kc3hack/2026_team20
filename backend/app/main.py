@@ -3,7 +3,6 @@ import time
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -16,6 +15,7 @@ from app.api.v1.api import api_router
 from app.core.config import get_settings
 from app.core.database import get_engine, get_session_local
 from app.core.supabase import get_supabase_client
+from app.services import image_service
 from app.services.snapshot_cleanup import start_snapshot_cleanup
 from app.services.snapshot_scheduler import start_snapshot_scheduler
 
@@ -48,12 +48,6 @@ _setup_logging()
 logger = logging.getLogger("app")
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  Lifespan
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-_images_dir = Path(settings.images_dir)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """アプリケーションのライフサイクル管理。
@@ -67,14 +61,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         settings.log_format,
     )
     try:
-        _images_dir.mkdir(parents=True, exist_ok=True)
-    except PermissionError:
+        image_service.ensure_images_bucket_exists()
+    except Exception:
         logger.warning(
-            "Cannot create images directory '%s': permission denied. "
-            "Image upload will not work.",
-            _images_dir,
+            "Storage バケットの確認に失敗しました。初回アップロード時に自動作成されます。"
         )
-
     start_snapshot_scheduler()
     start_snapshot_cleanup()
 

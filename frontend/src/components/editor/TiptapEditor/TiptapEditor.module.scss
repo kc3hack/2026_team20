@@ -1,0 +1,37 @@
+@use "variables" as *;
+@use "typography";
+
+.editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: $editor-max-width;
+    width: 100%;
+}
+
+.content {
+    min-height: 12rem;
+
+    :global(.ProseMirror) {
+        @include typography.prose-styles;
+
+        min-height: 12rem;
+        padding: 1rem;
+        border: 1px solid hsl(var(--border));
+        border-radius: 0.5rem;
+        outline: none;
+        transition: border-color 0.2s ease;
+
+        &:focus {
+            border-color: hsl(var(--ring));
+        }
+
+        :global(.is-empty)::before {
+            content: attr(data-placeholder);
+            color: hsl(var(--muted-foreground));
+            pointer-events: none;
+            float: left;
+            height: 0;
+        }
+    }
+}

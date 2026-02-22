@@ -37,7 +37,7 @@ describe("GET /auth/callback", () => {
     expect(response.headers.get("location")).toBe("http://localhost:3000/");
   });
 
-  it("redirects to custom next path when provided", async () => {
+  it("redirects to custom redirectTo path when provided", async () => {
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
 
     const request = buildRequest(

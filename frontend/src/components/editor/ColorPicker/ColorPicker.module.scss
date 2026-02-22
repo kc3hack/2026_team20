@@ -1,0 +1,35 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+.palette {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.swatch {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    padding: 0;
+
+    &:hover {
+        transform: scale(1.15);
+        border-color: hsl(var(--foreground) / 0.3);
+    }
+
+    @include focus-ring;
+}
+
+.check {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: #fff;
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+}
