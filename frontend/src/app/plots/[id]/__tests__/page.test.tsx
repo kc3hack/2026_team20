@@ -1,11 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/lib/api/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlotDetailResponse } from "@/lib/api/types";
 
-vi.mock("@/lib/api/repositories/plotRepository", () => ({
-  get: vi.fn(),
-}));
+const mockNotFound = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
@@ -18,12 +15,49 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  notFound: vi.fn(),
+  notFound: (...args: unknown[]) => mockNotFound(...args),
+  useParams: vi.fn(() => ({ id: "plot-001" })),
   useRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: vi.fn(() => ({ isAuthenticated: false })),
+}));
+
+vi.mock("@/hooks/usePlots", () => ({
+  usePlotDetail: vi.fn(),
+}));
+
+vi.mock("@/hooks/usePlotRealtime", () => ({
+  usePlotRealtime: vi.fn(() => ({
+    ydoc: null,
+    provider: null,
+    awareness: null,
+    lockStates: new Map(),
+    connectionStatus: "disconnected",
+  })),
+}));
+
+vi.mock("@/hooks/useSectionLock", () => ({
+  useSectionLock: vi.fn(() => ({
+    lockState: "unlocked",
+    lockedBy: null,
+    acquireLock: vi.fn(async () => true),
+    releaseLock: vi.fn(),
+  })),
+}));
+
+vi.mock("@/hooks/useSections", () => ({
+  useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useUpdateSection: vi.fn(() => ({ mutate: vi.fn() })),
+  useDeleteSection: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+}));
+
+vi.mock("@/hooks/useRealtimeSection", () => ({
+  useRealtimeSection: vi.fn(() => ({
+    liveContent: null,
+    connectionStatus: "disconnected",
+  })),
 }));
 
 vi.mock("sonner", () => ({
@@ -54,8 +88,8 @@ vi.mock("@/components/sns/CommentThread/CommentThread", () => ({
   CommentThread: () => <div data-testid="comment-thread" />,
 }));
 
-import { notFound } from "next/navigation";
-import * as plotRepository from "@/lib/api/repositories/plotRepository";
+import { useParams } from "next/navigation";
+import { usePlotDetail } from "@/hooks/usePlots";
 import PlotDetailPage from "../page";
 
 const mockPlot: PlotDetailResponse = {
@@ -80,45 +114,56 @@ const mockPlot: PlotDetailResponse = {
 };
 
 describe("PlotDetailPage", () => {
-  it("正常なIDでPlotDetailが表示される", async () => {
-    vi.mocked(plotRepository.get).mockResolvedValue(mockPlot);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useParams).mockReturnValue({ id: "plot-001" });
+  });
 
-    const page = await PlotDetailPage({
-      params: Promise.resolve({ id: "plot-001" }),
-    });
-    render(page);
+  it("正常なIDでPlotDetailが表示される", () => {
+    vi.mocked(usePlotDetail).mockReturnValue({
+      data: mockPlot,
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof usePlotDetail>);
+
+    render(<PlotDetailPage />);
 
     expect(screen.getByText("テスト Plot")).toBeInTheDocument();
-    expect(plotRepository.get).toHaveBeenCalledWith("plot-001", "test-access-token");
   });
 
-  it("404エラーの場合 notFound() が呼ばれる", async () => {
-    vi.mocked(plotRepository.get).mockRejectedValue(new ApiError(404, "Not Found"));
+  it("ローディング中にスケルトンが表示される", () => {
+    vi.mocked(usePlotDetail).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    } as ReturnType<typeof usePlotDetail>);
 
-    await PlotDetailPage({
-      params: Promise.resolve({ id: "non-existent" }),
-    });
+    render(<PlotDetailPage />);
 
-    expect(notFound).toHaveBeenCalled();
+    expect(screen.getByTestId("plot-detail-skeleton")).toBeInTheDocument();
   });
 
-  it("404以外のエラーの場合はエラーが再スローされる", async () => {
-    vi.mocked(plotRepository.get).mockRejectedValue(new ApiError(500, "Server Error"));
+  it("エラー時に notFound() が呼ばれる", () => {
+    vi.mocked(usePlotDetail).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error("Not Found"),
+    } as ReturnType<typeof usePlotDetail>);
 
-    await expect(
-      PlotDetailPage({
-        params: Promise.resolve({ id: "error" }),
-      }),
-    ).rejects.toThrow("Server Error");
+    render(<PlotDetailPage />);
+
+    expect(mockNotFound).toHaveBeenCalled();
   });
 
-  it("params の id が正しく取得される", async () => {
-    vi.mocked(plotRepository.get).mockResolvedValue(mockPlot);
+  it("data が undefined の場合 notFound() が呼ばれる", () => {
+    vi.mocked(usePlotDetail).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof usePlotDetail>);
 
-    await PlotDetailPage({
-      params: Promise.resolve({ id: "plot-002" }),
-    });
+    render(<PlotDetailPage />);
 
-    expect(plotRepository.get).toHaveBeenCalledWith("plot-002", "test-access-token");
+    expect(mockNotFound).toHaveBeenCalled();
   });
 });

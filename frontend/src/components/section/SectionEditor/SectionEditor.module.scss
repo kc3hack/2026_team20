@@ -1,0 +1,70 @@
+@use "variables" as *;
+@use "@/styles/typography" as *;
+
+.container {
+  margin-bottom: 2rem;
+  scroll-margin-top: 6rem;
+}
+
+.editMode {
+  border: 2px solid hsl(var(--primary));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background-color: hsl(var(--background));
+}
+
+.editHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.viewMode {
+  position: relative;
+}
+
+.viewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.titleInput {
+  flex: 1;
+  max-width: 28rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.content {
+  @include prose-styles;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -27,14 +27,46 @@ function mapSupabaseUser(user: User): UserResponse {
   };
 }
 
+const MOCK_MODE = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = useMemo(() => createClient(), []);
+  // Mock モードでは Supabase クライアントを生成しない
+  // （プレースホルダー URL でも onAuthStateChange が内部でリクエストを飛ばすため回避）
+  const supabase = useMemo(() => (MOCK_MODE ? null : createClient()), []);
+
+  // Mock モード: ダミーユーザーで即座に認証済み状態にする
+  // タブごとに異なるユーザーIDを生成し、他タブのロックを正しく排他制御できるようにする
+  useEffect(() => {
+    if (!MOCK_MODE) return;
+
+    // sessionStorage はタブごとに独立しているため、タブ単位でユニークなIDが得られる
+    const STORAGE_KEY = "mock-user-id";
+    let tabUserId = sessionStorage.getItem(STORAGE_KEY);
+    if (!tabUserId) {
+      tabUserId = `mock-user-${crypto.randomUUID()}`;
+      sessionStorage.setItem(STORAGE_KEY, tabUserId);
+    }
+
+    const mockUser: UserResponse = {
+      id: tabUserId,
+      email: "mock@example.com",
+      displayName: `Mockユーザー(${tabUserId.slice(-6)})`,
+      avatarUrl: null,
+      createdAt: new Date().toISOString(),
+    };
+    setUser(mockUser);
+    // Session は型的に null でも isAuthenticated チェックに影響するためダミー値を作る
+    setSession({ access_token: "mock-token", refresh_token: "mock-refresh" } as Session);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
+    if (MOCK_MODE || !supabase) return;
+
     // onAuthStateChange はマウント時に INITIAL_SESSION イベントを発火するため、
     // getSession() は不要。二重 state 更新を防ぐために onAuthStateChange のみで管理する。
     const {
@@ -50,9 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithOAuth = useCallback(
     async (provider: "github" | "google", redirectTo?: string) => {
+      if (!supabase) return;
       const callbackUrl = new URL("/auth/callback", getBaseUrl());
       if (redirectTo) {
-        callbackUrl.searchParams.set("next", redirectTo);
+        callbackUrl.searchParams.set("redirectTo", redirectTo);
       }
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -77,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    if (!supabase) return;
     const { error } = await supabase.auth.signOut();
     if (error) toast.error(`ログアウトに失敗しました: ${error.message}`);
   }, [supabase]);
@@ -84,18 +118,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleUnauthorized = useCallback(async () => {
     toast.error("セッションが切れました。再度ログインしてください。");
 
-    // React state だけでなくブラウザのセッション(cookie/localStorage)もクリアする
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        toast.error(`ログアウト処理に失敗しました: ${error.message}`);
+    if (supabase) {
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          toast.error(`ログアウト処理に失敗しました: ${error.message}`);
+        }
+      } catch (_e) {
+        toast.error("ログアウト処理中にエラーが発生しました");
       }
-    } catch (_e) {
-      // signOut 自体が例外を投げた場合
-      toast.error("ログアウト処理中にエラーが発生しました");
     }
 
-    // state は常にクリア（安全側）
     setSession(null);
     setUser(null);
   }, [supabase]);

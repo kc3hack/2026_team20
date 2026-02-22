@@ -108,6 +108,28 @@
   min-width: 0;
 }
 
+.addSection {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.insertSectionTop {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.insertSectionBetween {
+  display: flex;
+  justify-content: center;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.insertButton {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
 .actions {
   display: flex;
   align-items: center;

@@ -1,0 +1,14 @@
+@use "variables" as *;
+
+.menu {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.375rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    background-color: hsl(var(--background));
+    box-shadow:
+        0 4px 6px -1px hsl(var(--foreground) / 0.07),
+        0 2px 4px -2px hsl(var(--foreground) / 0.05);
+}

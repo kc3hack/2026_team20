@@ -54,16 +54,117 @@
     }
 
     a {
-        color: var(--primary);
+        color: hsl(var(--primary));
         text-decoration: underline;
+        text-decoration-color: hsl(var(--primary) / 0.4);
         text-underline-offset: 4px;
+        transition: color 0.2s ease, text-decoration-color 0.2s ease;
 
         &:hover {
             color: hsl(var(--primary) / 0.8);
+            text-decoration-color: hsl(var(--primary) / 0.8);
         }
+
+        &:focus-visible {
+            outline: 2px solid hsl(var(--ring));
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+    }
+
+    code {
+        background-color: hsl(var(--muted));
+        border-radius: 0.25rem;
+        padding: 0.15em 0.4em;
+        font-size: 0.875em;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+            "Liberation Mono", monospace;
+        color: hsl(var(--foreground));
+        border: 1px solid hsl(var(--border) / 0.5);
+    }
+
+    pre {
+        background-color: hsl(var(--muted));
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        overflow-x: auto;
+        border: 1px solid hsl(var(--border) / 0.5);
+
+        code {
+            background-color: transparent;
+            border-radius: 0;
+            border: none;
+            padding: 0;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+    }
+
+    blockquote {
+        border-left: 4px solid hsl(var(--border));
+        padding-left: 1rem;
+        margin-left: 0;
+        margin-bottom: 1rem;
+        color: hsl(var(--muted-foreground));
+        font-style: italic;
+    }
+
+    hr {
+        border: none;
+        border-top: 1px solid hsl(var(--border));
+        margin: 1.5rem 0;
     }
 }
 
 .prose {
     @include prose-styles;
+}
+
+.collaboration-cursor {
+    position: relative;
+    border-left: 2px solid var(--cursor-color, hsl(var(--primary)));
+    margin-left: -1px;
+    margin-right: -1px;
+    pointer-events: none;
+    animation: cursor-blink 1.2s step-end infinite;
+
+    &__label {
+        position: absolute;
+        top: -1.4em;
+        left: -1px;
+        padding: 0.1rem 0.4rem;
+        border-radius: 0.25rem 0.25rem 0.25rem 0;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        font-weight: 600;
+        white-space: nowrap;
+        color: #fff;
+        background-color: var(--cursor-color, hsl(var(--primary)));
+        user-select: none;
+        animation: cursor-label-appear 0.2s ease-out;
+    }
+}
+
+@keyframes cursor-blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+@keyframes cursor-label-appear {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

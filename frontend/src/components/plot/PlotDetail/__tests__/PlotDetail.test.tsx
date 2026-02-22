@@ -54,6 +54,40 @@ vi.mock("@/components/sns/CommentThread/CommentThread", () => ({
   CommentThread: () => <div data-testid="comment-thread" />,
 }));
 
+const mockCreateMutate = vi.fn();
+const mockDeleteMutateAsync = vi.fn();
+vi.mock("@/hooks/useSections", () => ({
+  useCreateSection: vi.fn(() => ({ mutate: mockCreateMutate, isPending: false })),
+  useUpdateSection: vi.fn(() => ({ mutate: vi.fn() })),
+  useDeleteSection: vi.fn(() => ({ mutateAsync: mockDeleteMutateAsync, isPending: false })),
+}));
+
+vi.mock("@/hooks/usePlotRealtime", () => ({
+  usePlotRealtime: vi.fn(() => ({
+    ydoc: null,
+    provider: null,
+    awareness: null,
+    lockStates: new Map(),
+    connectionStatus: "disconnected",
+  })),
+}));
+
+vi.mock("@/hooks/useSectionLock", () => ({
+  useSectionLock: vi.fn(() => ({
+    lockState: "unlocked",
+    lockedBy: null,
+    acquireLock: vi.fn(async () => true),
+    releaseLock: vi.fn(),
+  })),
+}));
+
+vi.mock("@/hooks/useRealtimeSection", () => ({
+  useRealtimeSection: vi.fn(() => ({
+    liveContent: null,
+    connectionStatus: "disconnected",
+  })),
+}));
+
 import { useAuth } from "@/hooks/useAuth";
 
 const basePlot: PlotDetailResponse = {
@@ -89,6 +123,26 @@ const basePlot: PlotDetailResponse = {
     displayName: "テストオーナー",
     avatarUrl: null,
   },
+};
+
+const multiSectionPlot: PlotDetailResponse = {
+  ...basePlot,
+  sections: [
+    basePlot.sections[0],
+    {
+      id: "section-002",
+      plotId: "plot-001",
+      title: "中盤",
+      content: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "中盤の内容" }] }],
+      },
+      orderIndex: 1,
+      version: 1,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    },
+  ],
 };
 
 describe("PlotDetail", () => {
@@ -141,6 +195,12 @@ describe("PlotDetail", () => {
     expect(screen.getByText(/前/)).toBeInTheDocument();
   });
 
+  it("createdAt が不正な場合、日時不明を表示する", () => {
+    render(<PlotDetail plot={{ ...basePlot, createdAt: "invalid-date" }} />);
+
+    expect(screen.getByText("日時不明")).toBeInTheDocument();
+  });
+
   it("isPaused が true の場合、一時停止バナーが表示される", () => {
     render(<PlotDetail plot={{ ...basePlot, isPaused: true }} />);
 
@@ -160,12 +220,6 @@ describe("PlotDetail", () => {
     expect(screen.getByRole("navigation", { name: "目次" })).toBeInTheDocument();
   });
 
-  it("セクションが表示される", () => {
-    render(<PlotDetail plot={basePlot} />);
-
-    expect(screen.getByRole("heading", { level: 2, name: "概要" })).toBeInTheDocument();
-  });
-
   it("description が null の場合、説明文が表示されない", () => {
     render(<PlotDetail plot={{ ...basePlot, description: null }} />);
 
@@ -178,30 +232,105 @@ describe("PlotDetail", () => {
     expect(screen.queryByText("テストオーナー")).not.toBeInTheDocument();
   });
 
-  it("編集ボタンが表示される", () => {
-    render(<PlotDetail plot={basePlot} />);
+  describe("未ログイン時", () => {
+    beforeEach(() => {
+      vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
+    });
 
-    expect(screen.getByRole("button", { name: /編集する/ })).toBeInTheDocument();
+    it("セクションが SectionList 経由で表示される", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      expect(screen.getByRole("heading", { level: 2, name: "概要" })).toBeInTheDocument();
+    });
+
+    it("セクション追加ボタンが表示されない", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      expect(screen.queryByRole("button", { name: /セクション追加/ })).not.toBeInTheDocument();
+    });
+
+    it("編集するボタンが表示されない", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      expect(screen.queryByRole("button", { name: /編集する/ })).not.toBeInTheDocument();
+    });
   });
 
-  it("未ログインで編集ボタンを押すと toast + ログインページ遷移", () => {
-    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
-    render(<PlotDetail plot={basePlot} />);
+  describe("ログイン済み時", () => {
+    beforeEach(() => {
+      vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true } as ReturnType<typeof useAuth>);
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: /編集する/ }));
+    it("SectionEditor が各セクションに表示される", () => {
+      render(<PlotDetail plot={basePlot} />);
 
-    expect(toast.error).toHaveBeenCalledWith("編集するにはログインが必要です");
-    expect(mockPush).toHaveBeenCalledWith("/auth/login?redirectTo=/plots/plot-001");
-  });
+      expect(screen.getByRole("button", { name: /編集する/ })).toBeInTheDocument();
+    });
 
-  it("ログイン済みで編集ボタンを押しても遷移しない (Issue #9 TODO)", () => {
-    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true } as ReturnType<typeof useAuth>);
-    render(<PlotDetail plot={basePlot} />);
+    it("セクションタイトルが表示される", () => {
+      render(<PlotDetail plot={basePlot} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /編集する/ }));
+      expect(screen.getByRole("heading", { level: 2, name: "概要" })).toBeInTheDocument();
+    });
 
-    expect(toast.error).not.toHaveBeenCalled();
-    expect(mockPush).not.toHaveBeenCalled();
+    it("セクション追加ボタンが表示される", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      expect(screen.getByRole("button", { name: /セクション追加/ })).toBeInTheDocument();
+    });
+
+    it("セクション追加ボタンを押すと createSection.mutate が呼ばれる", () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /セクション追加/ }));
+
+      expect(mockCreateMutate).toHaveBeenCalledWith({
+        plotId: "plot-001",
+        body: { title: "新しいセクション 2", orderIndex: 1 },
+      });
+    });
+
+    it("セクション間の挿入ボタンを押すと途中位置で createSection.mutate が呼ばれる", () => {
+      render(<PlotDetail plot={multiSectionPlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /ここにセクションを挿入/ }));
+
+      expect(mockCreateMutate).toHaveBeenCalledWith({
+        plotId: "plot-001",
+        body: { title: "新しいセクション 3", orderIndex: 1 },
+      });
+    });
+
+    it("先頭挿入ボタンを押すと orderIndex 0 で createSection.mutate が呼ばれる", () => {
+      render(<PlotDetail plot={multiSectionPlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /先頭にセクションを挿入/ }));
+
+      expect(mockCreateMutate).toHaveBeenCalledWith({
+        plotId: "plot-001",
+        body: { title: "新しいセクション 3", orderIndex: 0 },
+      });
+    });
+
+    it("isPaused 時はセクション追加ボタンが表示されない", () => {
+      render(<PlotDetail plot={{ ...basePlot, isPaused: true }} />);
+
+      expect(screen.queryByRole("button", { name: /セクション追加/ })).not.toBeInTheDocument();
+    });
+
+    it("削除ダイアログで削除するを押すと deleteSection.mutateAsync が呼ばれる", async () => {
+      render(<PlotDetail plot={basePlot} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "削除" }));
+      fireEvent.click(screen.getByRole("button", { name: "削除する" }));
+
+      await waitFor(() => {
+        expect(mockDeleteMutateAsync).toHaveBeenCalledWith({
+          plotId: "plot-001",
+          sectionId: "section-001",
+        });
+      });
+    });
   });
 
   it("StarButton が表示される", () => {
