@@ -14,7 +14,7 @@ import { CommentForm } from "@/components/sns/CommentForm/CommentForm";
 import { CommentThread } from "@/components/sns/CommentThread/CommentThread";
 import { ForkButton } from "@/components/sns/ForkButton/ForkButton";
 import { StarButton } from "@/components/sns/StarButton/StarButton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatarLink } from "@/components/shared/UserAvatarLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,14 +86,14 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 
   const { comments } = useComments(threadId ?? "");
 
-  const ownerInitials = plot.owner?.displayName.slice(0, 2) ?? "??";
+  // 無効な日付文字列が来た場合に NaN エラーを防ぐため、Number.isNaN でガードする
   const createdAtDate = new Date(plot.createdAt);
   const createdAgo = Number.isNaN(createdAtDate.getTime())
     ? "日時不明"
     : formatDistanceToNow(createdAtDate, {
-        addSuffix: true,
-        locale: ja,
-      });
+      addSuffix: true,
+      locale: ja,
+    });
 
   const sortedSections = useMemo(
     () => [...plot.sections].sort((a, b) => a.orderIndex - b.orderIndex),
@@ -143,12 +143,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
         <div className={styles.meta}>
           {plot.owner && (
             <div className={styles.owner}>
-              <Avatar size="sm">
-                {plot.owner.avatarUrl && (
-                  <AvatarImage src={plot.owner.avatarUrl} alt={plot.owner.displayName} />
-                )}
-                <AvatarFallback>{ownerInitials}</AvatarFallback>
-              </Avatar>
+              <UserAvatarLink user={plot.owner} size="sm" />
               <span className={styles.ownerName}>{plot.owner.displayName}</span>
             </div>
           )}
@@ -295,9 +290,9 @@ export function PlotDetail({ plot }: PlotDetailProps) {
         {!isAuthenticated ? (
           <div className={styles.commentUnavailable}>
             <p>ログインをしないとコメント表示ができません。</p>
-              <Link href={`/auth/login?redirectTo=/plots/${plot.id}`} className={styles.loginLink}>
+            <Link href={`/auth/login?redirectTo=/plots/${plot.id}`} className={styles.loginLink}>
               ログインはこちら
-              </Link>
+            </Link>
           </div>
         ) : isThreadResolving ? (
           <div className={styles.commentLoading}>

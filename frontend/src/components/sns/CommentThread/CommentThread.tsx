@@ -3,7 +3,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { MessageSquare } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatarLink } from "@/components/shared/UserAvatarLink";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useComments } from "@/hooks/useComments";
@@ -51,10 +51,7 @@ export function CommentThread({ threadId, onReply }: CommentThreadProps) {
 
         return (
           <div key={comment.id} className={styles.comment}>
-            <Avatar size="sm">
-              <AvatarImage src={comment.user.avatarUrl ?? undefined} />
-              <AvatarFallback>{comment.user.displayName.slice(0, 2)}</AvatarFallback>
-            </Avatar>
+            <UserAvatarLink user={comment.user} size="sm" />
             <div className={styles.commentBody}>
               <div className={styles.commentMeta}>
                 <span className={styles.displayName}>{comment.user.displayName}</span>

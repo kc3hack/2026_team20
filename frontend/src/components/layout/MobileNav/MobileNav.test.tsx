@@ -40,7 +40,7 @@ describe("MobileNav", () => {
 
       const mypageLink = screen.getByRole("link", { name: /マイページ/ });
       expect(mypageLink).toBeInTheDocument();
-      expect(mypageLink).toHaveAttribute("href", "/profile/user-1");
+      expect(mypageLink).toHaveAttribute("href", "/profile/testuser");
     });
 
     it("未ログイン時にマイページリンクが表示されない", async () => {
