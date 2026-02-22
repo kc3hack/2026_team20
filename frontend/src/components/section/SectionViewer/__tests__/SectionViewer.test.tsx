@@ -37,11 +37,11 @@ describe("SectionViewer", () => {
     expect(screen.getByTestId("editor-content")).toBeInTheDocument();
   });
 
-  it("content が null の場合、セクションは描画されない", () => {
+  it("content が null の場合でもセクションが描画される", () => {
     render(<SectionViewer section={sectionWithoutContent} />);
 
-    expect(screen.queryByText("空セクション")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("editor-content")).not.toBeInTheDocument();
+    expect(screen.getByText("空セクション")).toBeInTheDocument();
+    expect(screen.getByTestId("editor-content")).toBeInTheDocument();
   });
 
   it("isBeingEdited が true の場合、SectionLockBadge が表示される", () => {

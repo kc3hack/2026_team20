@@ -38,8 +38,9 @@ export function SectionViewer({
     };
   }, [provider, section.id]);
 
-  const displayContent = liveContent ?? section.content;
-  if (!displayContent) return null;
+  const displayContent =
+    liveContent ??
+    ((section.content as Record<string, unknown> | null) ?? { type: "doc", content: [] });
 
   return (
     <div
