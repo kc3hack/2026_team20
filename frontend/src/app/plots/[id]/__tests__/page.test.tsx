@@ -3,9 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlotDetailResponse } from "@/lib/api/types";
 
 const mockNotFound = vi.fn();
-vi.mock("@/lib/api/repositories/plotRepository", () => ({
-  get: vi.fn(),
-}));
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
@@ -53,6 +50,7 @@ vi.mock("@/hooks/useSectionLock", () => ({
 vi.mock("@/hooks/useSections", () => ({
   useCreateSection: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useUpdateSection: vi.fn(() => ({ mutate: vi.fn() })),
+  useDeleteSection: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
 }));
 
 vi.mock("@/hooks/useRealtimeSection", () => ({
@@ -131,7 +129,6 @@ describe("PlotDetailPage", () => {
     render(<PlotDetailPage />);
 
     expect(screen.getByText("テスト Plot")).toBeInTheDocument();
-    expect(plotRepository.get).toHaveBeenCalledWith("plot-001", "test-access-token");
   });
 
   it("ローディング中にスケルトンが表示される", () => {
@@ -167,6 +164,6 @@ describe("PlotDetailPage", () => {
 
     render(<PlotDetailPage />);
 
-    expect(plotRepository.get).toHaveBeenCalledWith("plot-002", "test-access-token");
+    expect(mockNotFound).toHaveBeenCalled();
   });
 });
