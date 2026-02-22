@@ -155,6 +155,21 @@
   gap: 1rem;
 }
 
+.commentUnavailable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.loginLink {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
 .commentSkeleton {
   height: 4rem;
   border-radius: 0.5rem;

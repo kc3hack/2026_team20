@@ -32,6 +32,10 @@ type PlotDetailProps = {
   plot: PlotDetailResponse;
 };
 
+function getThreadStorageKey(plotId: string) {
+  return `plot-comment-thread:${plotId}`;
+}
+
 export function PlotDetail({ plot }: PlotDetailProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
@@ -42,25 +46,42 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
-  // スレッド管理 — Plot全体コメント用スレッド (sectionId=null) をマウント時に自動作成する。
-  // PlotDetailResponse に threadId が含まれないため、初回アクセス時に POST /threads で作成し、
-  // useState で保持する。本番API繋ぎ込み時（Issue #16）で GET /plots/{plotId}/threads による
-  // 既存スレッド取得に対応予定。
+  // スレッド管理 — Plot全体コメント用スレッド (sectionId=null) を plotId ごとに1つ扱う。
+  // APIに「plotId から thread 取得」が無いため、フロントで threadId を localStorage に保持し再利用する。
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [isThreadResolving, setIsThreadResolving] = useState(true);
   const [replyTarget, setReplyTarget] = useState<CommentResponse | null>(null);
   const { createThread } = useCreateThread();
 
-  // マウント時にPlot全体コメント用スレッドを自動作成（1回のみ実行）
-  // createThread は毎レンダー新しい参照になるため、useRef で多重実行を防ぐ
+  // threadId はログイン時のみ復元/作成する。
+  // 未ログイン時は必ず非表示にするため、threadId も null に維持する。
   const threadInitialized = useRef(false);
   useEffect(() => {
+    if (!isAuthenticated) {
+      setThreadId(null);
+      setIsThreadResolving(false);
+      return;
+    }
+
     if (threadInitialized.current) return;
     threadInitialized.current = true;
 
+    const storageKey = getThreadStorageKey(plot.id);
+    const savedThreadId = window.localStorage.getItem(storageKey);
+    if (savedThreadId) {
+      setThreadId(savedThreadId);
+      setIsThreadResolving(false);
+      return;
+    }
+
     createThread(plot.id)
-      .then((thread) => setThreadId(thread.id))
-      .catch(() => toast.error("コメントスレッドの読み込みに失敗しました"));
-  }, [createThread, plot.id]);
+      .then((thread) => {
+        setThreadId(thread.id);
+        window.localStorage.setItem(storageKey, thread.id);
+      })
+      .catch(() => toast.error("コメントスレッドの読み込みに失敗しました"))
+      .finally(() => setIsThreadResolving(false));
+  }, [createThread, isAuthenticated, plot.id]);
 
   const { comments } = useComments(threadId ?? "");
 
@@ -271,7 +292,20 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 
       <section className={styles.commentSection}>
         <h2>コメント</h2>
-        {threadId ? (
+        {!isAuthenticated ? (
+          <div className={styles.commentUnavailable}>
+            <p>ログインをしないとコメント表示ができません。</p>
+              <Link href={`/auth/login?redirectTo=/plots/${plot.id}`} className={styles.loginLink}>
+              ログインはこちら
+              </Link>
+          </div>
+        ) : isThreadResolving ? (
+          <div className={styles.commentLoading}>
+            <Skeleton className={styles.commentSkeleton} />
+            <Skeleton className={styles.commentSkeleton} />
+            <Skeleton className={styles.commentSkeleton} />
+          </div>
+        ) : threadId ? (
           <>
             <CommentForm
               threadId={threadId}
@@ -282,10 +316,15 @@ export function PlotDetail({ plot }: PlotDetailProps) {
             <CommentThread threadId={threadId} onReply={handleReply} />
           </>
         ) : (
-          <div className={styles.commentLoading}>
-            <Skeleton className={styles.commentSkeleton} />
-            <Skeleton className={styles.commentSkeleton} />
-            <Skeleton className={styles.commentSkeleton} />
+          <div className={styles.commentUnavailable}>
+            <p>この環境ではコメントスレッドを閲覧できません。</p>
+            <p>
+              コメントスレッドを表示するには
+              <Link href={`/auth/login?redirectTo=/plots/${plot.id}`} className={styles.loginLink}>
+                ログインはこちら
+              </Link>
+              。
+            </p>
           </div>
         )}
       </section>
