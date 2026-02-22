@@ -1,6 +1,7 @@
 # Wiki Plots
 
-![Wiki Plots](https://kc3.me/cms/wp-content/uploads/2026/02/444e7120d5cdd74aa75f7a94bf8821a5-scaled.png)
+<img width="7680" height="7680" alt="logo" src="https://github.com/user-attachments/assets/b54053e0-bde3-4259-9a4e-d8254b30e498" />
+
 
 ## チーム名
 
