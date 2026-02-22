@@ -148,6 +148,22 @@ const multiSectionPlot: PlotDetailResponse = {
 describe("PlotDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const storage: Record<string, string> = {};
+    Object.defineProperty(window, "localStorage", {
+      value: {
+        getItem: (key: string) => storage[key] ?? null,
+        setItem: (key: string, value: string) => {
+          storage[key] = value;
+        },
+        removeItem: (key: string) => {
+          delete storage[key];
+        },
+        clear: () => {
+          Object.keys(storage).forEach((key) => delete storage[key]);
+        },
+      },
+      configurable: true,
+    });
     mockCreateThread.mockResolvedValue({
       id: "mock-thread-id",
       plotId: "plot-001",
@@ -354,20 +370,48 @@ describe("PlotDetail", () => {
     expect(screen.getByRole("heading", { level: 2, name: "コメント" })).toBeInTheDocument();
   });
 
-  it("マウント時にスレッドが自動作成され、コメント欄が常時表示される", async () => {
+  it("ログイン済みで保存済み threadId がない場合、スレッドを作成してコメント欄を表示する", async () => {
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true } as ReturnType<typeof useAuth>);
     render(<PlotDetail plot={basePlot} />);
 
-    // useEffect でスレッドが自動作成される
     expect(mockCreateThread).toHaveBeenCalledWith("plot-001");
+    await waitFor(() => {
+      expect(window.localStorage.getItem("plot-comment-thread:plot-001")).toBe("mock-thread-id");
+    });
 
-    // スレッド作成後、CommentForm と CommentThread が表示される
     await waitFor(() => {
       expect(screen.getByTestId("comment-form")).toBeInTheDocument();
       expect(screen.getByTestId("comment-thread")).toBeInTheDocument();
     });
   });
 
+  it("保存済み threadId がある場合、スレッドを新規作成しない", async () => {
+    window.localStorage.setItem("plot-comment-thread:plot-001", "saved-thread-id");
+    render(<PlotDetail plot={basePlot} />);
+
+    expect(mockCreateThread).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comment-form")).toBeInTheDocument();
+      expect(screen.getByTestId("comment-thread")).toBeInTheDocument();
+    });
+  });
+
+  it("未ログインかつ保存済み threadId がない場合、案内メッセージを表示する", async () => {
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false } as ReturnType<typeof useAuth>);
+    render(<PlotDetail plot={basePlot} />);
+
+    expect(mockCreateThread).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("このプロットのコメントスレッドはまだ作成されていません。"),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("スレッド作成に失敗した場合、エラートーストが表示される", async () => {
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true } as ReturnType<typeof useAuth>);
     mockCreateThread.mockRejectedValueOnce(new Error("Network error"));
     render(<PlotDetail plot={basePlot} />);
 
