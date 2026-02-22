@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     log_format: str = "json"  # "json" or "text"
 
     # Images
-    images_dir: str = "images"
+    supabase_images_bucket: str = "images"
     max_image_size_mb: int = Field(default=5, gt=0)
     max_image_width: int = Field(default=1920, gt=0)
     jpeg_quality: int = Field(default=85, ge=1, le=95)

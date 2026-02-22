@@ -14,6 +14,15 @@ export const queryKeys = {
     byPlot: (plotId: string) => ["sections", "byPlot", plotId] as const,
     // TODO: Issue #3 以降で detail などを追加
   },
+  users: {
+    all: ["users"] as const,
+    profile: (username: string) => ["users", "profile", username] as const,
+    plots: (username: string, params?: { limit?: number; offset?: number }) =>
+      ["users", "plots", username, params ?? {}] as const,
+    contributions: (username: string, params?: { limit?: number; offset?: number }) =>
+      ["users", "contributions", username, params ?? {}] as const,
+  },
+  // TODO: Issue #3 以降で history, comments, search などを追加
   stars: {
     byPlot: (plotId: string) => ["stars", "byPlot", plotId] as const,
   },

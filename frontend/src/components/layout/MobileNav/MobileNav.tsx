@@ -65,7 +65,7 @@ export function MobileNav() {
           {/* /profile/undefined 防止: user.id が存在する場合のみマイページリンクを表示 */}
           {isAuthenticated && user?.id && (
             <SheetClose asChild>
-              <Link href={`/profile/${user.id}`} className={styles.navItem}>
+              <Link href={`/profile/${user.displayName}`} className={styles.navItem}>
                 <User size={20} />
                 <span>マイページ</span>
               </Link>

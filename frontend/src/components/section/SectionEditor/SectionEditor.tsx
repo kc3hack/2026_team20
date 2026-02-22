@@ -221,7 +221,7 @@ export function SectionEditor({
                 {onDelete && (
                   <Button
                     variant="destructive"
-                    size="icon"
+                    size="sm"
                     onClick={() => setDeleteDialogOpen(true)}
                     disabled={isDeleting}
                     aria-label="削除"

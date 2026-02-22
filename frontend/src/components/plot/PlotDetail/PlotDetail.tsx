@@ -8,14 +8,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { SectionEditor } from "@/components/section/SectionEditor/SectionEditor";
-import { SectionList } from "@/components/section/SectionList/SectionList";
 import { TableOfContents } from "@/components/section/TableOfContents/TableOfContents";
 import { TagBadge } from "@/components/shared/TagBadge/TagBadge";
 import { CommentForm } from "@/components/sns/CommentForm/CommentForm";
 import { CommentThread } from "@/components/sns/CommentThread/CommentThread";
 import { ForkButton } from "@/components/sns/ForkButton/ForkButton";
 import { StarButton } from "@/components/sns/StarButton/StarButton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatarLink } from "@/components/shared/UserAvatarLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +36,9 @@ function getThreadStorageKey(plotId: string) {
 export function PlotDetail({ plot }: PlotDetailProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
-  const { ydoc, provider, lockStates, connectionStatus, awareness } = usePlotRealtime(plot.id);
+  const { ydoc, provider, awareness } = usePlotRealtime(
+    isAuthenticated ? plot.id : "",
+  );
   const updateSection = useUpdateSection();
   const createSection = useCreateSection();
   const deleteSection = useDeleteSection();
@@ -83,14 +84,14 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 
   const { comments } = useComments(threadId ?? "");
 
-  const ownerInitials = plot.owner?.displayName.slice(0, 2) ?? "??";
+  // 無効な日付文字列が来た場合に NaN エラーを防ぐため、Number.isNaN でガードする
   const createdAtDate = new Date(plot.createdAt);
   const createdAgo = Number.isNaN(createdAtDate.getTime())
     ? "日時不明"
     : formatDistanceToNow(createdAtDate, {
-        addSuffix: true,
-        locale: ja,
-      });
+      addSuffix: true,
+      locale: ja,
+    });
 
   const sortedSections = useMemo(
     () => [...plot.sections].sort((a, b) => a.orderIndex - b.orderIndex),
@@ -140,12 +141,7 @@ export function PlotDetail({ plot }: PlotDetailProps) {
         <div className={styles.meta}>
           {plot.owner && (
             <div className={styles.owner}>
-              <Avatar size="sm">
-                {plot.owner.avatarUrl && (
-                  <AvatarImage src={plot.owner.avatarUrl} alt={plot.owner.displayName} />
-                )}
-                <AvatarFallback>{ownerInitials}</AvatarFallback>
-              </Avatar>
+              <UserAvatarLink user={plot.owner} size="sm" />
               <span className={styles.ownerName}>{plot.owner.displayName}</span>
             </div>
           )}
@@ -227,62 +223,67 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                         }
                         return false;
                       }
-                    }}
-                    onDelete={async () => {
-                      if (plot.isPaused) {
-                        toast.error("このPlotは編集が一時停止されています");
-                        return;
+                      return true;
+                    } catch {
+                      if (!options?.silent) {
+                        toast.error("セクションの保存に失敗しました");
                       }
+                      return false;
+                    }
+                  }}
+                  onDelete={async () => {
+                    if (!isAuthenticated) {
+                      toast.error("セクションを削除するにはログインが必要です");
+                      router.push(`/auth/login?redirectTo=/plots/${plot.id}`);
+                      return;
+                    }
 
-                      try {
-                        await deleteSection.mutateAsync({
-                          plotId: plot.id,
-                          sectionId: section.id,
-                        });
-                        toast.success("セクションを削除しました");
-                      } catch {
-                        toast.error("セクションの削除に失敗しました");
-                      }
-                    }}
-                  />
-                  {!plot.isPaused && index < sortedSections.length - 1 && (
-                    <div className={styles.insertSectionBetween}>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className={styles.insertButton}
-                        onClick={() => handleAddSection(index + 1)}
-                        disabled={createSection.isPending}
-                        aria-label="ここにセクションを挿入"
-                        title="ここにセクションを挿入"
-                      >
-                        <Plus size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </Fragment>
-              ))}
-              {!plot.isPaused && (
-                <div className={styles.addSection}>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleAddSection(sortedSections.length)}
-                    disabled={createSection.isPending}
-                  >
-                    <Plus size={16} />
-                    セクション追加
-                  </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <SectionList
-              sections={plot.sections}
-              lockStates={lockStates}
-              connectionStatus={connectionStatus}
-              provider={provider}
-            />
-          )}
+                    if (plot.isPaused) {
+                      toast.error("このPlotは編集が一時停止されています");
+                      return;
+                    }
+
+                    try {
+                      await deleteSection.mutateAsync({
+                        plotId: plot.id,
+                        sectionId: section.id,
+                      });
+                      toast.success("セクションを削除しました");
+                    } catch {
+                      toast.error("セクションの削除に失敗しました");
+                    }
+                  }}
+                />
+                {!plot.isPaused && index < sortedSections.length - 1 && (
+                  <div className={styles.insertSectionBetween}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className={styles.insertButton}
+                      onClick={() => handleAddSection(index + 1)}
+                      disabled={createSection.isPending}
+                      aria-label="ここにセクションを挿入"
+                      title="ここにセクションを挿入"
+                    >
+                      <Plus size={14} />
+                    </Button>
+                  </div>
+                )}
+              </Fragment>
+            ))}
+            {!plot.isPaused && (
+              <div className={styles.addSection}>
+                <Button
+                  variant="outline"
+                  onClick={() => handleAddSection(sortedSections.length)}
+                  disabled={createSection.isPending}
+                >
+                  <Plus size={16} />
+                  セクション追加
+                </Button>
+              </div>
+            )}
+          </>
         </main>
       </div>
 
@@ -291,9 +292,9 @@ export function PlotDetail({ plot }: PlotDetailProps) {
         {!isAuthenticated ? (
           <div className={styles.commentUnavailable}>
             <p>ログインをしないとコメント表示ができません。</p>
-              <Link href={`/auth/login?redirectTo=/plots/${plot.id}`} className={styles.loginLink}>
+            <Link href={`/auth/login?redirectTo=/plots/${plot.id}`} className={styles.loginLink}>
               ログインはこちら
-              </Link>
+            </Link>
           </div>
         ) : isThreadResolving ? (
           <div className={styles.commentLoading}>
@@ -331,6 +332,8 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 function SectionEditorWithLock({
   section,
   isPaused,
+  isAuthenticated,
+  onRequireLogin,
   isDeleting,
   ydoc,
   provider,
@@ -340,6 +343,8 @@ function SectionEditorWithLock({
 }: {
   section: SectionResponse;
   isPaused: boolean;
+  isAuthenticated: boolean;
+  onRequireLogin: () => void;
   isDeleting: boolean;
   ydoc: ReturnType<typeof usePlotRealtime>["ydoc"];
   provider: ReturnType<typeof usePlotRealtime>["provider"];
@@ -350,6 +355,12 @@ function SectionEditorWithLock({
   const [isEditing, setIsEditing] = useState(false);
 
   const handleEditStart = useCallback(async () => {
+    if (!isAuthenticated) {
+      toast.error("編集するにはログインが必要です");
+      onRequireLogin();
+      return;
+    }
+
     if (isPaused) {
       toast.error("このPlotは編集が一時停止されています");
       return;
@@ -359,9 +370,13 @@ function SectionEditorWithLock({
     onEditingSectionChange(section.id);
   }, [
     isPaused,
+    isAuthenticated,
+    onRequireLogin,
     section.id,
     onEditingSectionChange,
   ]);
+
+  const effectiveLockState: LockState = isAuthenticated ? lockState : "unlocked";
 
   const handleEditEnd = useCallback(() => {
     setIsEditing(false);

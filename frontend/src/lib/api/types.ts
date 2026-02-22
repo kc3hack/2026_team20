@@ -230,6 +230,11 @@ export type PausePlotRequest = {
   reason?: string;
 };
 
+export type UpdateProfileRequest = {
+  displayName?: string;
+  avatarUrl?: string | null;
+};
+
 // ---- Snapshot ----
 export type SnapshotResponse = {
   id: string;

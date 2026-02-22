@@ -2,6 +2,7 @@
 
 エンドポイント:
 - GET /auth/me: 現在のユーザー情報取得
+- PUT /auth/me: プロフィール更新
 - GET /auth/users/{username}: ユーザープロフィール取得
 - GET /auth/users/{username}/plots: ユーザーのPlot一覧
 - GET /auth/users/{username}/contributions: ユーザーのContribution一覧
@@ -23,7 +24,13 @@ from sqlalchemy.orm import selectinload
 from app.api.v1.deps import AuthUser, DbSession
 from app.api.v1.utils import _get_user_by_username_or_404, plot_to_response
 from app.models import HotOperation, Plot, Section, User
-from app.schemas import PlotListResponse, UserProfileResponse, UserResponse
+from app.schemas import (
+    PlotListResponse,
+    UpdateProfileRequest,
+    UserProfileResponse,
+    UserResponse,
+)
+from app.services import user_service
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +81,33 @@ def get_me(
         )
 
     return _user_to_response(user)
+
+
+# ─── PUT /auth/me ────────────────────────────────
+@router.put("/me", response_model=UserResponse)
+def update_me(
+    body: UpdateProfileRequest,
+    current_user: AuthUser,
+    db: DbSession,
+) -> UserResponse:
+    """現在のユーザーのプロフィールを更新する（要認証）。
+
+    UpdateProfileRequest で指定されたフィールドのみ更新する。
+    user_service 経由で DB と Supabase Auth の両方を同期的に更新する。
+    """
+    try:
+        updated_user = user_service.update_user_profile(
+            db=db,
+            user_id=str(current_user.id),
+            avatar_url=body.avatarUrl,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    return _user_to_response(updated_user)
 
 
 # ─── GET /auth/users/{username} ──────────────────
