@@ -159,3 +159,12 @@ Wiki Plotsは、誰でも企画書（Plot）を投稿し、コミュニティの
 │  └── Storage         │
 └──────────────────────┘
 ```
+<img width="2880" height="1800" alt="main" src="https://github.com/user-attachments/assets/3148fdae-1f76-4072-8f53-002621c78c88" />
+<img width="2880" height="1800" alt="edit" src="https://github.com/user-attachments/assets/38797bec-a90b-467b-aedb-f2ae9b62d642" />
+<img width="2880" height="1800" alt="history" src="https://github.com/user-attachments/assets/b28272f7-6dd6-44ad-9ba8-76791d263753" />
+
+
+
+
+
+
