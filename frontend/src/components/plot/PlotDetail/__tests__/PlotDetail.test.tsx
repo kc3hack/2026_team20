@@ -386,6 +386,7 @@ describe("PlotDetail", () => {
   });
 
   it("保存済み threadId がある場合、スレッドを新規作成しない", async () => {
+    vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true } as ReturnType<typeof useAuth>);
     window.localStorage.setItem("plot-comment-thread:plot-001", "saved-thread-id");
     render(<PlotDetail plot={basePlot} />);
 
@@ -405,7 +406,7 @@ describe("PlotDetail", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("このプロットのコメントスレッドはまだ作成されていません。"),
+        screen.getByText("ログインをしないとコメント表示ができません。"),
       ).toBeInTheDocument();
     });
   });

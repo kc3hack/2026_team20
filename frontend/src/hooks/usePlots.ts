@@ -96,7 +96,7 @@ export function usePlotDetail(id: string) {
     queryKey: queryKeys.plots.detail(id),
     queryFn: () => plotRepository.get(id, session?.access_token),
     enabled: !!id,
-    refetchInterval: 2000,
+    refetchInterval: 2,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });

@@ -22,10 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useComments, useCreateThread } from "@/hooks/useComments";
 import { usePlotRealtime } from "@/hooks/usePlotRealtime";
-import { useSectionLock } from "@/hooks/useSectionLock";
 import { useCreateSection, useDeleteSection, useUpdateSection } from "@/hooks/useSections";
 import type { CommentResponse, PlotDetailResponse, SectionResponse } from "@/lib/api/types";
-import type { LockState, SectionAwarenessState } from "@/lib/realtime/types";
 import styles from "./PlotDetail.module.scss";
 
 type PlotDetailProps = {
@@ -207,10 +205,8 @@ export function PlotDetail({ plot }: PlotDetailProps) {
                 <Fragment key={section.id}>
                   <SectionEditorWithLock
                     section={section}
-                    plotId={plot.id}
                     isPaused={plot.isPaused}
                     isDeleting={deleteSection.isPending}
-                    awareness={awareness}
                     ydoc={ydoc}
                     provider={provider}
                     onEditingSectionChange={setEditingSectionId}
@@ -334,10 +330,8 @@ export function PlotDetail({ plot }: PlotDetailProps) {
 
 function SectionEditorWithLock({
   section,
-  plotId,
   isPaused,
   isDeleting,
-  awareness,
   ydoc,
   provider,
   onEditingSectionChange,
@@ -345,27 +339,15 @@ function SectionEditorWithLock({
   onDelete,
 }: {
   section: SectionResponse;
-  plotId: string;
   isPaused: boolean;
   isDeleting: boolean;
-  awareness: ReturnType<typeof usePlotRealtime>["awareness"];
   ydoc: ReturnType<typeof usePlotRealtime>["ydoc"];
   provider: ReturnType<typeof usePlotRealtime>["provider"];
   onEditingSectionChange: (id: string | null) => void;
   onSave: (title: string, content: Record<string, unknown>, options?: { silent?: boolean }) => Promise<boolean>;
   onDelete: () => Promise<void>;
 }) {
-  const {
-    lockState: hookLockState,
-    lockedBy: hookLockedBy,
-    acquireLock,
-    releaseLock,
-  } = useSectionLock(plotId, section.id, {
-    awareness,
-    provider,
-  });
-  const lockState: LockState = hookLockState;
-  const lockedBy: SectionAwarenessState["user"] | null = hookLockedBy;
+  const [isEditing, setIsEditing] = useState(false);
 
   const handleEditStart = useCallback(async () => {
     if (isPaused) {
@@ -373,38 +355,24 @@ function SectionEditorWithLock({
       return;
     }
 
-    const success = await acquireLock();
-    if (success) {
-      onEditingSectionChange(section.id);
-    } else if (lockedBy) {
-      toast.error(`このセクションは ${lockedBy.displayName} が編集中です`);
-    } else {
-      toast.error("このセクションは現在編集できません。少し待って再試行してください");
-    }
+    setIsEditing(true);
+    onEditingSectionChange(section.id);
   }, [
     isPaused,
     section.id,
-    acquireLock,
     onEditingSectionChange,
-    lockedBy,
   ]);
 
   const handleEditEnd = useCallback(() => {
-    releaseLock();
-    onEditingSectionChange(null);
-  }, [releaseLock, onEditingSectionChange]);
-
-  const handleLockRevoked = useCallback(() => {
-    // ロックが奪われた場合は releaseLock を呼ばない（内部で処理済み）
-    // 親の editing 状態だけリセットする
+    setIsEditing(false);
     onEditingSectionChange(null);
   }, [onEditingSectionChange]);
 
   return (
     <SectionEditor
       section={section}
-      lockState={lockState}
-      lockedBy={lockedBy}
+      lockState={isEditing ? "locked-by-me" : "unlocked"}
+      lockedBy={null}
       ydoc={ydoc ?? undefined}
       provider={provider ?? undefined}
       onSave={onSave}
@@ -412,7 +380,6 @@ function SectionEditorWithLock({
       isDeleting={isDeleting}
       onEditStart={handleEditStart}
       onEditEnd={handleEditEnd}
-      onLockRevoked={handleLockRevoked}
     />
   );
 }
