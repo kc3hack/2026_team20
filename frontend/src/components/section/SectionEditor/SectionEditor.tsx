@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Loader2, Pencil, Check } from "lucide-react";
 import type { Editor } from "@tiptap/core";
 import { toast } from "sonner";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { SectionLockBadge } from "@/components/section/SectionLockBadge/SectionLockBadge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import type { LockState } from "@/lib/realtime/types";
 import type { SectionResponse } from "@/lib/api/types";
@@ -67,6 +68,13 @@ export function SectionEditor({
     (section.content as Record<string, unknown>) ?? { type: "doc", content: [] },
   );
   const editorRef = useRef<Editor | null>(null);
+  const [sectionTitle, setSectionTitle] = useState(section.title);
+
+  useEffect(() => {
+    if (lockState !== "locked-by-me") {
+      setSectionTitle(section.title);
+    }
+  }, [section.title, lockState]);
 
   // ----- Stale closure 防止: provider を ref で保持 -----
   // TiptapEditor の useEditor が onUpdate コールバックを再生成しない場合でも、
@@ -88,29 +96,40 @@ export function SectionEditor({
     [setHasUnsavedChanges],
   );
 
+  const handleTitleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setSectionTitle(event.target.value);
+      setHasUnsavedChanges(true);
+    },
+    [setHasUnsavedChanges],
+  );
+
   const handleEditComplete = useCallback(async () => {
     const latestContent =
       (editorRef.current?.getJSON() as Record<string, unknown> | undefined) ??
       contentRef.current;
-    const success = await onSave(section.title, latestContent);
+    const success = await onSave(sectionTitle, latestContent);
     if (!success) {
       return;
     }
 
     setHasUnsavedChanges(false);
     onEditEnd();
-  }, [onSave, onEditEnd, section.title, setHasUnsavedChanges]);
+  }, [onSave, onEditEnd, sectionTitle, setHasUnsavedChanges]);
 
   // ----- 自動保存: 編集中は 2 秒ごとにサイレント保存 -----
   // Supabase Broadcast が利用できない環境でも、REST API 経由で
   // 他ユーザーの usePlotDetail polling (2s) と合わせてリアルタイム反映する。
   const lastAutoSavedRef = useRef<string>(
-    JSON.stringify(section.content ?? { type: "doc", content: [] }),
+    JSON.stringify({
+      title: section.title,
+      content: section.content ?? { type: "doc", content: [] },
+    }),
   );
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
-  const sectionTitleRef = useRef(section.title);
-  sectionTitleRef.current = section.title;
+  const sectionTitleRef = useRef(sectionTitle);
+  sectionTitleRef.current = sectionTitle;
 
   useEffect(() => {
     if (lockState !== "locked-by-me") return;
@@ -118,7 +137,10 @@ export function SectionEditor({
     const AUTO_SAVE_INTERVAL_MS = 2000;
 
     const timer = setInterval(() => {
-      const current = JSON.stringify(contentRef.current);
+      const current = JSON.stringify({
+        title: sectionTitleRef.current,
+        content: contentRef.current,
+      });
       // 前回の自動保存と内容が同じならスキップ
       if (current === lastAutoSavedRef.current) return;
 
@@ -176,7 +198,13 @@ export function SectionEditor({
       <div id={`section-${section.id}`} className={styles.container}>
         <div className={styles.editMode}>
           <div className={styles.editHeader}>
-            <h2 className={styles.title}>{section.title}</h2>
+            <Input
+              value={sectionTitle}
+              onChange={handleTitleChange}
+              maxLength={200}
+              aria-label="セクションタイトル"
+              className={styles.titleInput}
+            />
             <Button variant="default" size="sm" onClick={handleEditComplete}>
               <Check size={16} />
               編集完了

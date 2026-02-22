@@ -39,6 +39,13 @@
   line-height: 1.4;
 }
 
+.titleInput {
+  flex: 1;
+  max-width: 28rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
 .actions {
   display: flex;
   align-items: center;

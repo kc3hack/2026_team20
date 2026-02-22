@@ -87,6 +87,7 @@ describe("SectionEditor", () => {
     render(<SectionEditor {...defaultProps} lockState="locked-by-me" />);
 
     expect(screen.getByTestId("editor-content")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "セクションタイトル" })).toHaveValue("概要");
     expect(screen.getByRole("button", { name: /編集完了/ })).toBeInTheDocument();
   });
 
@@ -98,6 +99,19 @@ describe("SectionEditor", () => {
     await waitFor(() => {
       expect(defaultProps.onSave).toHaveBeenCalledTimes(1);
       expect(defaultProps.onEditEnd).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("編集モードでタイトル変更後に編集完了すると、更新後タイトルで保存される", async () => {
+    render(<SectionEditor {...defaultProps} lockState="locked-by-me" />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "セクションタイトル" }), {
+      target: { value: "更新後タイトル" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /編集完了/ }));
+
+    await waitFor(() => {
+      expect(defaultProps.onSave).toHaveBeenCalledWith("更新後タイトル", expect.any(Object));
     });
   });
 
