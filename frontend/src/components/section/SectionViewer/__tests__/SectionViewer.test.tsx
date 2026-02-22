@@ -37,10 +37,10 @@ describe("SectionViewer", () => {
     expect(screen.getByTestId("editor-content")).toBeInTheDocument();
   });
 
-  it("content が null の場合、タイトルのみ表示される", () => {
+  it("content が null の場合、セクションは描画されない", () => {
     render(<SectionViewer section={sectionWithoutContent} />);
 
-    expect(screen.getByText("空セクション")).toBeInTheDocument();
+    expect(screen.queryByText("空セクション")).not.toBeInTheDocument();
     expect(screen.queryByTestId("editor-content")).not.toBeInTheDocument();
   });
 

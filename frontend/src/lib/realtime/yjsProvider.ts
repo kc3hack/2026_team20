@@ -36,8 +36,8 @@ export interface AwarenessInstance {
   getLocalState: () => Record<string, unknown> | null;
   setLocalState: (state: Record<string, unknown> | null) => void;
   getStates: () => Map<number, Record<string, unknown>>;
-  on: (event: string, cb: (...args: unknown[]) => void) => void;
-  off: (event: string, cb: (...args: unknown[]) => void) => void;
+  on: (event: string, cb: (...args: any[]) => void) => void;
+  off: (event: string, cb: (...args: any[]) => void) => void;
   destroy: () => void;
 }
 
