@@ -63,11 +63,11 @@ describe("AuthGuard", () => {
       </AuthGuard>,
     );
 
-    expect(mockReplace).toHaveBeenCalledWith("/auth/login?next=%2Fprotected");
+    expect(mockReplace).toHaveBeenCalledWith("/auth/login?redirectTo=%2Fprotected");
     expect(screen.queryByText("Protected Content")).not.toBeInTheDocument();
   });
 
-  it("isAuthenticated: false の場合、現在のパスを next パラメータとして含める", () => {
+  it("isAuthenticated: false の場合、現在のパスを redirectTo パラメータとして含める", () => {
     mockUseAuth.mockReturnValue({ isLoading: false, isAuthenticated: false });
     mockPathname.mockReturnValue("/plots/new");
 
@@ -77,7 +77,7 @@ describe("AuthGuard", () => {
       </AuthGuard>,
     );
 
-    expect(mockReplace).toHaveBeenCalledWith("/auth/login?next=%2Fplots%2Fnew");
+    expect(mockReplace).toHaveBeenCalledWith("/auth/login?redirectTo=%2Fplots%2Fnew");
   });
 
   it("isAuthenticated: false でカスタム redirectTo が渡された場合、そこにリダイレクトする", () => {
@@ -90,7 +90,7 @@ describe("AuthGuard", () => {
       </AuthGuard>,
     );
 
-    expect(mockReplace).toHaveBeenCalledWith("/custom-login?next=%2Fprotected");
+    expect(mockReplace).toHaveBeenCalledWith("/custom-login?redirectTo=%2Fprotected");
   });
 
   it("isAuthenticated: true の場合、children を表示する", () => {

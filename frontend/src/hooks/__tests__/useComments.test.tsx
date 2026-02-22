@@ -19,6 +19,7 @@ vi.mock("@/lib/api/repositories", () => ({
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => "/",
 }));
 
 const mockToastSuccess = vi.fn();
@@ -185,7 +186,7 @@ describe("useAddComment", () => {
     });
 
     expect(mockAddComment).not.toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith("/auth/login");
+    expect(mockPush).toHaveBeenCalledWith("/auth/login?redirectTo=%2F");
   });
 });
 

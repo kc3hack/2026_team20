@@ -1,8 +1,9 @@
 "use client";
 
 import { Check, Home, LogIn, LogOut, Menu, Monitor, Moon, Plus, Search, Sun, User } from "lucide-react";
-import { useTheme } from "next-themes";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import styles from "./MobileNav.module.scss";
 export function MobileNav() {
   const { isAuthenticated, user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
+  const currentPath = usePathname();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -81,7 +83,10 @@ export function MobileNav() {
             </SheetClose>
           ) : (
             <SheetClose asChild>
-              <Link href="/auth/login" className={styles.navItem}>
+              <Link
+                href={`/auth/login?redirectTo=${encodeURIComponent(currentPath)}`}
+                className={styles.navItem}
+              >
                 <LogIn size={20} />
                 <span>ログイン</span>
               </Link>

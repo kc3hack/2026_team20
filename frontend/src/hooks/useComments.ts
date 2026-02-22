@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { snsRepository } from "@/lib/api/repositories";
@@ -28,6 +28,7 @@ export function useComments(threadId: string) {
 export function useAddComment(threadId: string) {
   const { isAuthenticated, session } = useAuth();
   const router = useRouter();
+  const currentPath = usePathname();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -45,7 +46,7 @@ export function useAddComment(threadId: string) {
 
   const addComment = (content: string, parentCommentId?: string) => {
     if (!isAuthenticated) {
-      router.push("/auth/login");
+      router.push(`/auth/login?redirectTo=${encodeURIComponent(currentPath)}`);
       return;
     }
     mutation.mutate({ content, parentCommentId });

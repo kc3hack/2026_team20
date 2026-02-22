@@ -16,7 +16,7 @@ export function AuthGuard({ children, fallback, redirectTo = "/auth/login" }: Au
     if (!isLoading && !isAuthenticated) {
       // currentPath をエンコードして安全に query string に埋め込む
       // middleware.ts では URL API (searchParams.set) で自動エンコードしているため、同等の安全性を確保する
-      router.replace(`${redirectTo}?next=${encodeURIComponent(currentPath)}`);
+      router.replace(`${redirectTo}?redirectTo=${encodeURIComponent(currentPath)}`);
     }
   }, [isLoading, isAuthenticated, router, redirectTo, currentPath]);
 

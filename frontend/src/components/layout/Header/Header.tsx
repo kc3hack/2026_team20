@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ThemeToggle } from "@/components/common/ThemeToggle/ThemeToggle";
 import { MobileNav } from "@/components/layout/MobileNav/MobileNav";
@@ -29,6 +30,7 @@ type HeaderProps = {
 
 export function Header({ searchSlot, userMenuSlot }: HeaderProps) {
   const { isLoading, isAuthenticated } = useAuth();
+  const currentPath = usePathname();
 
   const createHref = isAuthenticated ? "/plots/new" : "/auth/login?redirectTo=/plots/new";
 
@@ -56,7 +58,9 @@ export function Header({ searchSlot, userMenuSlot }: HeaderProps) {
             (userMenuSlot ?? <Skeleton className="h-8 w-8 rounded-full" />)
           ) : (
             <Button asChild variant="ghost" size="sm">
-              <Link href="/auth/login">ログイン</Link>
+              <Link href={`/auth/login?redirectTo=${encodeURIComponent(currentPath)}`}>
+                ログイン
+              </Link>
             </Button>
           )}
 
