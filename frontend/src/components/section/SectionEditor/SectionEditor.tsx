@@ -258,12 +258,13 @@ export function SectionEditor({
                 {onDelete && (
                   <Button
                     variant="destructive"
-                    size="sm"
+                    size="icon"
                     onClick={() => setDeleteDialogOpen(true)}
                     disabled={isDeleting}
+                    aria-label="削除"
+                    title="削除"
                   >
                     <Trash2 size={16} />
-                    削除
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={onEditStart}>
