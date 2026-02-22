@@ -115,7 +115,7 @@ describe("useUser hooks", () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(mockGetUserPlots).toHaveBeenCalledWith("tanaka", undefined);
+      expect(mockGetUserPlots).toHaveBeenCalledWith("tanaka", undefined, undefined);
       expect(result.current.data).toEqual(mockPlotListResponse);
     });
 
@@ -137,7 +137,7 @@ describe("useUser hooks", () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(mockGetUserContributions).toHaveBeenCalledWith("tanaka", undefined);
+      expect(mockGetUserContributions).toHaveBeenCalledWith("tanaka", undefined, undefined);
       expect(result.current.data).toEqual(mockPlotListResponse);
     });
 
