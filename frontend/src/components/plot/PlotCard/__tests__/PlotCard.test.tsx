@@ -64,6 +64,25 @@ describe("PlotCard", () => {
     expect(starBadge?.querySelector("svg")).toBeTruthy();
   });
 
+  it("isStarred=true のときスターアイコンが塗りつぶし表示になる", () => {
+    const starredPlot: PlotResponse = {
+      ...mockPlot,
+      isStarred: true,
+    };
+
+    const { container } = render(<PlotCard plot={starredPlot} />);
+    const starIcon = container.querySelector("svg");
+
+    expect(starIcon).toHaveAttribute("fill", "currentColor");
+  });
+
+  it("isStarred=false のときスターアイコンは塗りつぶされない", () => {
+    const { container } = render(<PlotCard plot={mockPlot} />);
+    const starIcon = container.querySelector("svg");
+
+    expect(starIcon).toHaveAttribute("fill", "none");
+  });
+
   it("リンク先が正しい (/plots/{id})", () => {
     render(<PlotCard plot={mockPlot} />);
     const links = screen.getAllByRole("link");

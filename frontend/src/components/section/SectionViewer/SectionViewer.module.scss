@@ -3,6 +3,13 @@
 .container {
   margin-bottom: 2rem;
   scroll-margin-top: 6rem;
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.realtimeActive {
+  border-color: hsl(var(--primary) / 0.3);
 }
 
 .header {

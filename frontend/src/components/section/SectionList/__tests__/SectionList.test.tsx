@@ -1,7 +1,15 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { SectionResponse } from "@/lib/api/types";
+import type { LockState, SectionAwarenessState } from "@/lib/realtime/types";
 import { SectionList } from "../SectionList";
+
+vi.mock("@/hooks/useRealtimeSection", () => ({
+  useRealtimeSection: vi.fn(() => ({
+    liveContent: null,
+    connectionStatus: "disconnected",
+  })),
+}));
 
 const mockSections: SectionResponse[] = [
   {
@@ -53,7 +61,7 @@ describe("SectionList", () => {
     expect(container.querySelector("h2")).toBeNull();
   });
 
-  it("content が null のセクションは表示されない", () => {
+  it("content が null のセクションでもタイトルは表示される", () => {
     const sectionsWithNull: SectionResponse[] = [
       {
         ...mockSections[0],
@@ -63,6 +71,43 @@ describe("SectionList", () => {
 
     render(<SectionList sections={sectionsWithNull} />);
 
-    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "仕様" })).toBeInTheDocument();
+  });
+
+  it("connectionStatus が connected の場合、接続中インジケータが表示される", () => {
+    render(<SectionList sections={mockSections} connectionStatus="connected" />);
+
+    const indicator = screen.getByTestId("connection-indicator");
+    expect(indicator).toBeInTheDocument();
+    expect(indicator).toHaveTextContent("接続中");
+  });
+
+  it("connectionStatus が disconnected の場合、未接続インジケータが表示される", () => {
+    render(<SectionList sections={mockSections} connectionStatus="disconnected" />);
+
+    const indicator = screen.getByTestId("connection-indicator");
+    expect(indicator).toHaveTextContent("未接続");
+  });
+
+  it("connectionStatus が未指定の場合、インジケータが表示されない", () => {
+    render(<SectionList sections={mockSections} />);
+
+    expect(screen.queryByTestId("connection-indicator")).not.toBeInTheDocument();
+  });
+
+  it("lockStates で locked-by-other のセクションに SectionLockBadge が表示される", () => {
+    const lockStates = new Map<string, { lockState: LockState; lockedBy: SectionAwarenessState["user"] | null }>([
+      [
+        "section-001",
+        {
+          lockState: "locked-by-other",
+          lockedBy: { id: "user-other", displayName: "他ユーザー", avatarUrl: null },
+        },
+      ],
+    ]);
+
+    render(<SectionList sections={mockSections} lockStates={lockStates} />);
+
+    expect(screen.getByText("他ユーザー が編集中")).toBeInTheDocument();
   });
 });

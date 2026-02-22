@@ -2,3 +2,6 @@ ignoredBuiltDependencies:
   - msw
   - sharp
   - unrs-resolver
+
+patchedDependencies:
+  y-supabase@0.0.4-7-alpha: patches/y-supabase@0.0.4-7-alpha.patch

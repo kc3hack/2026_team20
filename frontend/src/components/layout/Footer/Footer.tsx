@@ -21,7 +21,7 @@ export function Footer() {
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
-        <p className={styles.copyright}>© 2026 Plot Platform. All rights reserved.</p>
+        <p className={styles.copyright}>© 2026 WikiPlots. All rights reserved.</p>
         <Link
           href={APP_CONFIG.GITHUB_URL}
           target="_blank"

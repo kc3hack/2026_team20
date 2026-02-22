@@ -46,7 +46,13 @@ export function PlotCard({ plot }: PlotCardProps) {
 
         <CardFooter className={styles.footer}>
           <Badge variant="secondary" className={cn(styles.stars)}>
-            <Star size={14} />
+            <Star
+              size={14}
+              fill={plot.isStarred ? "currentColor" : "none"}
+              className={cn(styles.starIcon, {
+                [styles.starred]: plot.isStarred,
+              })}
+            />
             {plot.starCount}
           </Badge>
           <time dateTime={plot.createdAt} className={styles.date}>
